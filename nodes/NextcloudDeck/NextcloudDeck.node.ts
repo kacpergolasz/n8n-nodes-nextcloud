@@ -13,6 +13,7 @@ import type { DeckBoard, DeckCard, DeckStack } from './DeckInterface';
 import {
 	buildBoardUpdatePayload,
 	deckRequest,
+	deleteCard,
 	filterActiveBoards,
 	findCardOnBoard,
 	flattenCardsFromStacks,
@@ -30,7 +31,7 @@ import { getStacks } from './listSearch/getStacks';
 import { boardDescription } from './resources/board';
 import { cardDescription } from './resources/card';
 import { stackDescription } from './resources/stack';
-import { getHttpStatusCode } from './shared/httpStatus';
+import { formatDeckAccessErrorMessage, getHttpStatusCode } from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
 
 function resolveBoardFromInput(
@@ -76,22 +77,6 @@ function stackToJson(stack: DeckStack): IDataObject {
 
 function cardToJson(card: DeckCard): IDataObject {
 	return { ...card } as IDataObject;
-}
-
-function notFoundMessage(resource: string, statusCode: number | undefined): string | undefined {
-	if (statusCode !== 404) {
-		return undefined;
-	}
-	switch (resource) {
-		case 'board':
-			return 'Board not found (404)';
-		case 'stack':
-			return 'Stack not found (404)';
-		case 'card':
-			return 'Card not found (404)';
-		default:
-			return 'Resource not found (404)';
-	}
 }
 
 export class NextcloudDeck implements INodeType {
@@ -315,13 +300,8 @@ export class NextcloudDeck implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const stackId = resolveStackFromInput(this, i);
 						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
-						const card = (await deckRequest(
-							this,
-							'GET',
-							`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
-						)) as DeckCard;
+						const { card } = await findCardOnBoard(this, boardId, cardId);
 						returnData.push({
 							json: cardToJson(card),
 							pairedItem: { item: i },
@@ -386,13 +366,8 @@ export class NextcloudDeck implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const stackId = resolveStackFromInput(this, i);
 						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
-						await deckRequest(
-							this,
-							'DELETE',
-							`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
-						);
+						await deleteCard(this, boardId, cardId);
 						returnData.push({
 							json: { id: cardId, deleted: true },
 							pairedItem: { item: i },
@@ -420,7 +395,7 @@ export class NextcloudDeck implements INodeType {
 					appPassword: credentials.appPassword,
 					username: credentials.username,
 				});
-				const message = notFoundMessage(resource, statusCode) ?? scrubbedMessage;
+				const message = formatDeckAccessErrorMessage(statusCode, scrubbedMessage);
 
 				if (this.continueOnFail()) {
 					returnData.push({

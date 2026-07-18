@@ -2,6 +2,7 @@ import type { ILoadOptionsFunctions, INodeListSearchResult, JsonObject } from 'n
 import { NodeApiError } from 'n8n-workflow';
 
 import { getCredentials, loadBoards } from '../GenericFunctions';
+import { formatDeckAccessErrorMessage, getHttpStatusCode } from '../shared/httpStatus';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
 
 export async function getBoards(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -18,6 +19,8 @@ export async function getBoards(this: ILoadOptionsFunctions): Promise<INodeListS
 			// ignore credential load failures while scrubbing
 		}
 		const scrubbedMessage = scrubErrorMessage(error, secrets);
-		throw new NodeApiError(this.getNode(), { message: scrubbedMessage } as JsonObject);
+		const statusCode = getHttpStatusCode(error);
+		const message = formatDeckAccessErrorMessage(statusCode, scrubbedMessage);
+		throw new NodeApiError(this.getNode(), { message } as JsonObject);
 	}
 }
