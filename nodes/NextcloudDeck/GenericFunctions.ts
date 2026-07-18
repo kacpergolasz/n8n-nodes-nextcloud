@@ -143,6 +143,14 @@ export function resolveStackId(stackInput: string): string {
 	return trimmed;
 }
 
+export function resolveCardId(cardInput: string): string {
+	const trimmed = cardInput.trim();
+	if (!trimmed) {
+		throw new Error('Card id is empty.');
+	}
+	return trimmed;
+}
+
 /** Overlay patch keys that are not `undefined` onto target (partial-update safety). */
 export function mergeDefined<T extends IDataObject>(target: T, patch: IDataObject): T {
 	const result = { ...target };
@@ -177,7 +185,11 @@ export function formatDeckDueDate(dueDate: string | undefined): string | null {
 	if (!dueDate?.trim()) {
 		return null;
 	}
-	return new Date(dueDate).toISOString();
+	const parsed = new Date(dueDate);
+	if (Number.isNaN(parsed.getTime())) {
+		throw new Error('Due date is invalid. Provide a valid date/time value.');
+	}
+	return parsed.toISOString();
 }
 
 /** Deck API expects hex colors without a leading `#` (e.g. `ff0000`). */

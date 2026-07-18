@@ -34,6 +34,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-02 | shared-oauth2-credential | create and use shared OAuth2 credential across suite nodes (proven on Calendar) | S-01 | FR-002 | proposed |
 | S-03 | nextcloud-files-drive | automate Nextcloud Files/Drive at legacy-standard coverage | S-01 | FR-004 | proposed |
 | S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | proposed |
+| S-10 | deck-partial-update | update a Deck card with only whitelisted writable fields (safe GET→merge→PUT) | S-04 | FR-005 | proposed |
 | S-05 | nextcloud-talk | automate Nextcloud Talk | S-01 | FR-006 | proposed |
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | proposed |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | proposed |
@@ -149,6 +150,18 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Author-priority suite app; parallel after shared credential to avoid serializing the whole suite.
 - **Status:** proposed
 
+### S-10: Deck partial card update (safe merge)
+
+- **Outcome:** user can Update a Deck card without sending the full GET entity back on PUT — node whitelists writable fields (`title`, `description`, `duedate`, `type`, `order`) via a `buildCardUpdatePayload` helper, mirroring board update and S-09 Calendar partial-update pattern.
+- **Change ID:** deck-partial-update
+- **PRD refs:** FR-005
+- **Prerequisites:** S-04
+- **Parallel with:** S-08, S-09, S-02, S-03, S-05, S-06, S-07
+- **Blockers:** —
+- **Unknowns:** Exact writable field set across Deck API versions; nested/read-only fields on card GET responses.
+- **Risk:** Current card Update uses `mergeDefined` on the full GET payload; read-only or nested fields may cause PUT failures or silent clobbering until this lands.
+- **Status:** proposed
+
 ### S-05: Nextcloud Talk
 
 - **Outcome:** user can automate Nextcloud Talk.
@@ -196,6 +209,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-02 | shared-oauth2-credential | Shared Nextcloud OAuth2 credential (prove on Calendar) | no | After S-01; parallel with suite apps |
 | S-03 | nextcloud-files-drive | Nextcloud Files/Drive legacy-standard node | no | After S-01; parallel suite |
 | S-04 | nextcloud-deck | Nextcloud Deck boards/cards node | no | After S-01; parallel suite |
+| S-10 | deck-partial-update | Deck Update with whitelisted writable fields | no | After S-04; safe GET→merge→PUT |
 | S-05 | nextcloud-talk | Nextcloud Talk node | no | After S-01; webhooks parked |
 | S-06 | nextcloud-news | Nextcloud News node | no | After S-01; parallel suite |
 | S-07 | suite-polling-triggers | Polling triggers for Nextcloud suite changes | no | After S-01; expands with apps |
