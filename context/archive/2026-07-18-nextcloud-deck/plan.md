@@ -324,9 +324,9 @@ Deck responses are small JSON payloads; Card Get Many fetches board stacks (with
 
 #### Manual
 
-- [ ] 3.2 F-01 link path — panel finds `Nextcloud Deck`
-- [ ] 3.3 Shared `Nextcloud API` credential authorizes Deck calls
-- [ ] 3.4 Board Create / Get / Get Many / Update / Delete produce useful items without secrets
-- [ ] 3.5 Stack Get Many / Create and Card Create / Get / Get Many / Update / Delete / Move all work
-- [ ] 3.6 Board picker works in list and manual id modes; stack picker populates after board selection
-- [ ] 3.7 Error path does not expose `appPassword`
+- [x] 3.2 F-01 link path — panel finds `Nextcloud Deck`
+- [x] 3.3 Shared `Nextcloud API` credential authorizes Deck calls
+- [x] 3.4 Board Create / Get / Get Many / Update / Delete produce useful items without secrets
+- [x] 3.5 Stack Get Many / Create and Card Create / Get / Get Many / Update / Delete / Move all work
+- [x] 3.6 Board picker works in list and manual id modes; stack picker populates after board selection
+- [x] 3.7 Error path does not expose `appPassword`
