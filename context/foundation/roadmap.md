@@ -32,7 +32,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-08 | calendar-get-many-caldav | list more than a truncated PROPFIND page of Calendar events (reliable Get Many) | S-01 | US-01, FR-001 | proposed |
 | S-09 | calendar-partial-update | update a Calendar event with only changed fields | S-01 | US-01, FR-001 | proposed |
 | S-02 | shared-oauth2-credential | create and use shared OAuth2 credential across suite nodes (proven on Calendar) | S-01 | FR-002 | proposed |
-| S-03 | nextcloud-files-drive | automate Nextcloud Files/Drive at legacy-standard coverage | S-01 | FR-004 | proposed |
+| S-03 | nextcloud-files-drive | automate Nextcloud Files/Drive at legacy-standard coverage | S-01 | FR-004 | done |
 | S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | done |
 | S-10 | deck-partial-update | update a Deck card with only whitelisted writable fields (safe GET→merge→PUT) | S-04 | FR-005 | proposed |
 | S-05 | nextcloud-talk | automate Nextcloud Talk | S-01 | FR-006 | proposed |
@@ -136,7 +136,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Addresses the thin core file pain; kept vertical and parallel with other suite apps so Files depth does not block Deck/Talk/News.
-- **Status:** proposed
+- **Status:** done
 
 ### S-04: Nextcloud Deck
 
@@ -232,3 +232,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **F-01: (foundation) package builds and runs via the local n8n community-node path so suite work can be verified before npm publish.** — Archived 2026-07-18 → `context/archive/2026-07-18-local-community-node-verify/`. Lesson: —.
 - **S-01: user can create a shared Nextcloud Basic Auth credential, run Calendar event operations with useful workflow outputs, and pick remote resources via loaded lists with manual-input fallback — without secrets in outputs or errors.** — Archived 2026-07-18 → `context/archive/2026-07-18-shared-basic-auth-calendar/`. Lesson: —.
 - **S-04: user can automate Nextcloud Deck boards and cards.** — Archived 2026-07-18 → `context/archive/2026-07-18-nextcloud-deck/`. Lesson: —.
+- **S-03: user can automate Nextcloud Files/Drive at legacy-standard coverage (file/folder/share-style operations).** — Archived 2026-07-18 → `context/archive/2026-07-18-nextcloud-files-drive/`. Lesson: —.
