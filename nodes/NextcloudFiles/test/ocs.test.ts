@@ -1,4 +1,13 @@
-import { parseShare, permissionsToBitmask, unwrapOcsResponse } from '../GenericFunctions';
+import {
+	buildShareUpdateBody,
+	parseShare,
+	parseShareId,
+	parseSharePasswordValidationResult,
+	permissionsToBitmask,
+	sanitizeSharePermissionLabels,
+	OCS_SHARE_TYPE_PUBLIC,
+	unwrapOcsResponse,
+} from '../GenericFunctions';
 
 const CREATE_SHARE_DATA = {
 	id: 42,
@@ -112,6 +121,135 @@ describe('Nextcloud Files OCS helpers', () => {
 				ocs: { meta: { status: 'ok', statuscode: 200 }, data: [{ id: 2 }] },
 			}),
 		).toEqual([{ id: 2 }]);
+	});
+
+	it('parseShare normalizes a GET-by-id array response', () => {
+		expect(parseShare([CREATE_SHARE_DATA])).toEqual(parseShare(CREATE_SHARE_DATA));
+	});
+
+	it('parseShare falls back to file_target when path is missing', () => {
+		expect(
+			parseShare({
+				id: 7,
+				share_type: 3,
+				file_target: '/Documents/report.pdf',
+				permissions: 1,
+			}),
+		).toMatchObject({
+			id: 7,
+			shareType: 3,
+			path: '/Documents/report.pdf',
+		});
+	});
+
+	it('sanitizeSharePermissionLabels limits public link shares to read/create', () => {
+		expect(
+			sanitizeSharePermissionLabels(['read', 'update', 'share'], OCS_SHARE_TYPE_PUBLIC),
+		).toEqual(['read']);
+		expect(
+			sanitizeSharePermissionLabels(['read', 'create'], OCS_SHARE_TYPE_PUBLIC),
+		).toEqual(['read', 'create']);
+		expect(sanitizeSharePermissionLabels(['update', 'share'], OCS_SHARE_TYPE_PUBLIC)).toEqual(
+			[],
+		);
+	});
+
+	it('buildShareUpdateBody rejects invalid public-link permission sets', () => {
+		expect(() =>
+			buildShareUpdateBody({
+				fieldsToUpdate: ['permissions'],
+				permissions: ['update', 'share'],
+				shareType: OCS_SHARE_TYPE_PUBLIC,
+			}),
+		).toThrow('No valid permissions remain for this share type');
+	});
+
+	it('buildShareUpdateBody defaults public-link permissions to read when none selected', () => {
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['permissions'],
+				permissions: [],
+				shareType: OCS_SHARE_TYPE_PUBLIC,
+			}),
+		).toEqual({
+			permissions: 1,
+		});
+	});
+
+	it('parseShareId accepts numeric strings from expressions', () => {
+		expect(parseShareId('42')).toBe(42);
+		expect(parseShareId(42)).toBe(42);
+		expect(() => parseShareId('')).toThrow('Share ID is required');
+		expect(() => parseShareId('abc')).toThrow('Share ID must be a positive number');
+	});
+
+	it('buildShareUpdateBody only sends selected fields', () => {
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['permissions', 'expireDate'],
+				permissions: ['read'],
+				expireDate: '2026-12-31',
+			}),
+		).toEqual({
+			permissions: 1,
+			expireDate: '2026-12-31',
+		});
+
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['publicUpload'],
+				publicUpload: true,
+			}),
+		).toEqual({
+			publicUpload: 'true',
+		});
+
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['publicUpload'],
+				publicUpload: false,
+			}),
+		).toEqual({
+			publicUpload: 'false',
+		});
+
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['password'],
+				password: '',
+			}),
+		).toEqual({
+			password: '',
+		});
+
+		expect(() => buildShareUpdateBody({ fieldsToUpdate: [] })).toThrow(
+			'Select at least one field to update',
+		);
+	});
+
+	it('parseSharePasswordValidationResult returns the server reason when validation fails', () => {
+		expect(
+			parseSharePasswordValidationResult({
+				ocs: {
+					meta: { status: 'ok', statuscode: 200 },
+					data: {
+						passed: false,
+						reason: 'Password must be at least 10 characters long.',
+					},
+				},
+			}),
+		).toBe('Password must be at least 10 characters long.');
+	});
+
+	it('parseSharePasswordValidationResult accepts a passing validation response', () => {
+		expect(
+			parseSharePasswordValidationResult({
+				ocs: {
+					meta: { status: 'ok', statuscode: 200 },
+					data: { passed: true },
+				},
+			}),
+		).toBeUndefined();
 	});
 
 	it('unwrapOcsResponse throws on OCS failure codes below 400', () => {

@@ -14,6 +14,7 @@ import {
 	buildDestinationHeader,
 	buildFilesUrl,
 	buildOverwriteHeader,
+	buildShareUpdateBody,
 	contentTypeFromFileName,
 	fileNameFromPath,
 	getCredentials,
@@ -22,8 +23,10 @@ import {
 	normalizeFilesPath,
 	ocsRequest,
 	parseShare,
+	parseShareId,
 	permissionsToBitmask,
 	resolveUploadPath,
+	validateSharePassword,
 } from './GenericFunctions';
 import { getFolders } from './listSearch/getFolders';
 import { fileDescription } from './resources/file';
@@ -304,13 +307,21 @@ export class NextcloudFiles implements INodeType {
 							permissions,
 						};
 						if (shareWith.trim()) body.shareWith = shareWith.trim();
-						if (password.trim()) body.password = password.trim();
+						if (password.trim()) {
+							const passwordPolicyError = await validateSharePassword(this, password);
+							if (passwordPolicyError) {
+								throw new NodeOperationError(this.getNode(), passwordPolicyError, {
+									itemIndex: i,
+								});
+							}
+							body.password = password.trim();
+						}
 						if (expireDate.trim()) body.expireDate = expireDate.trim();
 						if (publicUpload) body.publicUpload = 'true';
 						if (note.trim()) body.note = note.trim();
 
 						const data = await ocsRequest(this, 'POST', 'shares', body);
-						const share = parseShare(data as IDataObject);
+						const share = parseShare(data);
 						returnData.push({
 							json: share as unknown as IDataObject,
 							pairedItem: { item: i },
@@ -329,9 +340,7 @@ export class NextcloudFiles implements INodeType {
 						const data = await ocsRequest(this, 'GET', 'shares', undefined, qs);
 						// OCS returns the full share list; limit is applied client-side.
 						const rawShares = Array.isArray(data) ? data : data ? [data] : [];
-						const shares = rawShares.map((entry) =>
-							parseShare(entry as IDataObject),
-						);
+						const shares = rawShares.map((entry) => parseShare(entry));
 						const sliced = returnAll ? shares : shares.slice(0, limit);
 
 						if (sliced.length === 0) {
@@ -350,30 +359,55 @@ export class NextcloudFiles implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const shareId = this.getNodeParameter('shareId', i) as number;
-						if (!Number.isFinite(shareId) || shareId <= 0) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Share ID must be a positive number',
-								{ itemIndex: i },
-							);
+						let shareId: number;
+						try {
+							shareId = parseShareId(this.getNodeParameter('shareId', i));
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), (error as Error).message, {
+								itemIndex: i,
+							});
 						}
-						const permissions = this.getNodeParameter('permissions', i) as string[];
+
+						const existingData = await ocsRequest(this, 'GET', `shares/${shareId}`);
+						const existingShare = parseShare(existingData);
+
+						const updateFields = this.getNodeParameter('updateFields', i, []) as string[];
+						const updatePermissions = this.getNodeParameter('updatePermissions', i, []) as string[];
 						const password = this.getNodeParameter('password', i, '') as string;
 						const expireDate = this.getNodeParameter('expireDate', i, '') as string;
 						const publicUpload = this.getNodeParameter('publicUpload', i, false) as boolean;
 
-						const body: IDataObject = {
-							publicUpload: publicUpload ? 'true' : 'false',
-						};
-						if (permissions.length > 0) {
-							body.permissions = permissionsToBitmask(permissions);
+						let body: IDataObject;
+						try {
+							body = buildShareUpdateBody({
+								fieldsToUpdate: updateFields,
+								permissions: updatePermissions,
+								password,
+								expireDate,
+								publicUpload,
+								shareType: existingShare.shareType,
+							});
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), (error as Error).message, {
+								itemIndex: i,
+							});
 						}
-						if (password.trim()) body.password = password.trim();
-						if (expireDate.trim()) body.expireDate = expireDate.trim();
+
+						if (
+							updateFields.includes('password') &&
+							typeof body.password === 'string' &&
+							body.password.length > 0
+						) {
+							const passwordPolicyError = await validateSharePassword(this, body.password);
+							if (passwordPolicyError) {
+								throw new NodeOperationError(this.getNode(), passwordPolicyError, {
+									itemIndex: i,
+								});
+							}
+						}
 
 						const data = await ocsRequest(this, 'PUT', `shares/${shareId}`, body);
-						const share = parseShare(data as IDataObject);
+						const share = parseShare(data);
 						returnData.push({
 							json: share as unknown as IDataObject,
 							pairedItem: { item: i },
@@ -381,14 +415,15 @@ export class NextcloudFiles implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const shareId = this.getNodeParameter('shareId', i) as number;
-						if (!Number.isFinite(shareId) || shareId <= 0) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Share ID must be a positive number',
-								{ itemIndex: i },
-							);
+						let shareId: number;
+						try {
+							shareId = parseShareId(this.getNodeParameter('shareId', i));
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), (error as Error).message, {
+								itemIndex: i,
+							});
 						}
+
 						await ocsRequest(this, 'DELETE', `shares/${shareId}`);
 						returnData.push({
 							json: { shareId, deleted: true },

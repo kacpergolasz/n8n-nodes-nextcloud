@@ -2,10 +2,16 @@ import {
 	buildDestinationHeader,
 	buildFilesUrl,
 	buildOverwriteHeader,
+	directoryEntryToListOption,
+	matchesPathListFilter,
 	normalizeFilesPath,
+	paginatePathListOptions,
 	parseDirectoryListingFromMultistatus,
 	relativePathFromFilesHref,
+	resolvePathListSearchScope,
+	sortDirectoryEntries,
 } from '../GenericFunctions';
+import type { DirectoryEntry } from '../FilesInterface';
 
 const DIRECTORY_MULTISTATUS_XML = `<?xml version="1.0" encoding="utf-8" ?>
 <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
@@ -136,6 +142,83 @@ describe('Nextcloud Files GenericFunctions', () => {
 				contentType: undefined,
 				etag: undefined,
 			},
+		]);
+	});
+
+	it('directoryEntryToListOption shows full path for nested entries', () => {
+		expect(
+			directoryEntryToListOption({
+				href: '/remote.php/dav/files/alice/Documents/report.pdf',
+				basename: 'report.pdf',
+				path: '/Documents/report.pdf',
+				isFolder: false,
+			}),
+		).toEqual({
+			name: '📄 Documents/report.pdf',
+			value: '/Documents/report.pdf',
+		});
+	});
+
+	it('resolvePathListSearchScope limits file copy sources to files only', () => {
+		expect(resolvePathListSearchScope('file', 'copy')).toEqual({
+			includeFiles: true,
+			includeFolders: false,
+		});
+		expect(resolvePathListSearchScope('folder', 'copy')).toEqual({
+			includeFiles: false,
+			includeFolders: true,
+		});
+	});
+
+	it('matchesPathListFilter matches basename and full path', () => {
+		expect(matchesPathListFilter('/Documents/report.pdf', 'report.pdf', 'report')).toBe(true);
+		expect(matchesPathListFilter('/Documents/report.pdf', 'report.pdf', 'archive')).toBe(false);
+	});
+
+	it('paginatePathListOptions returns next offset token', () => {
+		const entries = Array.from({ length: 3 }, (_, index) => ({
+			name: `item-${index}`,
+			value: `/item-${index}`,
+		}));
+
+		expect(paginatePathListOptions(entries, 0, 2)).toEqual({
+			results: [
+				{ name: 'item-0', value: '/item-0' },
+				{ name: 'item-1', value: '/item-1' },
+			],
+			paginationToken: '2',
+		});
+		expect(paginatePathListOptions(entries, 2, 2)).toEqual({
+			results: [{ name: 'item-2', value: '/item-2' }],
+		});
+	});
+
+	it('sortDirectoryEntries lists folders before files and sorts by path', () => {
+		const entries: DirectoryEntry[] = [
+			{
+				href: '/remote.php/dav/files/alice/z.txt',
+				basename: 'z.txt',
+				path: '/z.txt',
+				isFolder: false,
+			},
+			{
+				href: '/remote.php/dav/files/alice/Documents/',
+				basename: 'Documents',
+				path: '/Documents',
+				isFolder: true,
+			},
+			{
+				href: '/remote.php/dav/files/alice/a.txt',
+				basename: 'a.txt',
+				path: '/a.txt',
+				isFolder: false,
+			},
+		];
+
+		expect(sortDirectoryEntries(entries).map((entry) => entry.path)).toEqual([
+			'/Documents',
+			'/a.txt',
+			'/z.txt',
 		]);
 	});
 });
