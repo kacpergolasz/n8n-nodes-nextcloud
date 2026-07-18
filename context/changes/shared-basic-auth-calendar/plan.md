@@ -244,31 +244,31 @@ CalDAV Get Many uses PROPFIND Depth 1 and client-side date filters from prior ar
 
 #### Automated
 
-- [x] 1.1 Credential type and icon exist under `credentials/`
-- [x] 1.2 `package.json` registers `NextcloudApi` alongside existing credentials
-- [x] 1.3 `n8n.nodes` still lists Example and GithubIssues only
-- [x] 1.4 `npm run build` succeeds
-- [x] 1.5 `npm run lint` succeeds
+- [x] 1.1 Credential type and icon exist under `credentials/` — cca67dc
+- [x] 1.2 `package.json` registers `NextcloudApi` alongside existing credentials — cca67dc
+- [x] 1.3 `n8n.nodes` still lists Example and GithubIssues only — cca67dc
+- [x] 1.4 `npm run build` succeeds — cca67dc
+- [x] 1.5 `npm run lint` succeeds — cca67dc
 
 #### Manual
 
-- [x] 1.6 Phase 1 pause — human confirms ready for Calendar (live credential Test deferred)
+- [x] 1.6 Phase 1 pause — human confirms ready for Calendar (live credential Test deferred) — cca67dc
 
 ### Phase 2: Calendar node + quality gates + canary cutover
 
 #### Automated
 
-- [ ] 2.1 Calendar modular tree exists (listSearch, event resources, GenericFunctions, scrubber)
-- [ ] 2.2 Starter Example/GithubIssues sources and GithubIssues credentials/icons removed
-- [ ] 2.3 `package.json` registers only `NextcloudApi` + `NextcloudCalendar`
-- [ ] 2.4 `npm run build` succeeds
-- [ ] 2.5 `npm run lint` succeeds
-- [ ] 2.6 `npm test` succeeds (GenericFunctions + scrubSecrets)
-- [ ] 2.7 README local-verify panel tip targets `Nextcloud Calendar`
+- [x] 2.1 Calendar modular tree exists (listSearch, event resources, GenericFunctions, scrubber)
+- [x] 2.2 Starter Example/GithubIssues sources and GithubIssues credentials/icons removed
+- [x] 2.3 `package.json` registers only `NextcloudApi` + `NextcloudCalendar`
+- [x] 2.4 `npm run build` succeeds
+- [x] 2.5 `npm run lint` succeeds
+- [x] 2.6 `npm test` succeeds (GenericFunctions + scrubSecrets)
+- [x] 2.7 README local-verify panel tip targets `Nextcloud Calendar`
 
 #### Manual
 
-- [ ] 2.8 Phase 2 pause — human confirms cutover ready for north-star smoke
+- [x] 2.8 Phase 2 pause — human confirms cutover ready for north-star smoke
 
 ### Phase 3: North-star local verification
 

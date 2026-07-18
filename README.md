@@ -25,22 +25,15 @@ This starts n8n with your nodes loaded and hot reload enabled.
 
 ## What's Included
 
-This starter repository includes two example nodes to learn from:
+This package currently includes:
 
-- **[Example Node](nodes/Example/)** - A simple starter node that shows the basic structure with a custom `execute` method
-- **[GitHub Issues Node](nodes/GithubIssues/)** - A complete, production-ready example built using the **declarative style**:
-  - **Low-code approach** - Define operations declaratively without writing request logic
-  - Multiple resources (Issues, Comments)
-  - Multiple operations (Get, Get All, Create)
-  - Two authentication methods (OAuth2 and Personal Access Token)
-  - List search functionality for dynamic dropdowns
-  - Proper error handling and typing
-  - Ideal for HTTP API-based integrations
+- **[Nextcloud Calendar](nodes/NextcloudCalendar/)** - CalDAV event Create / Get / Get Many / Update / Delete with list-or-type calendar pickers
+- **[Nextcloud API credential](credentials/NextcloudApi.credentials.ts)** - Shared Basic Auth (`baseUrl` / `username` / `appPassword`) reused by suite nodes
 
 > [!TIP]
-> The declarative/low-code style (used in GitHub Issues) is the recommended approach for building nodes that interact with HTTP APIs. It significantly reduces boilerplate code and handles requests automatically.
+> Attach the shared **Nextcloud API** credential to Nextcloud Calendar. Calendar pickers support **From List** and **By ID** (slug or full `/remote.php/dav/...` path).
 
-Browse these examples to understand both approaches, then modify them or create your own.
+Browse the Calendar node to understand CalDAV request patterns, then extend the suite with additional Nextcloud apps that reuse the same credential.
 
 ## Finding Inspiration
 
@@ -91,16 +84,16 @@ npm install
 
 This installs all required dependencies including the `@n8n/node-cli`.
 
-### 3. Explore the Examples
+### 3. Explore the Package
 
-Browse the example nodes in [nodes/](nodes/) and [credentials/](credentials/) to understand the structure:
+Browse the nodes in [nodes/](nodes/) and credentials in [credentials/](credentials/):
 
-- Start with [nodes/Example/](nodes/Example/) for a basic node
-- Study [nodes/GithubIssues/](nodes/GithubIssues/) for a real-world implementation
+- Start with [nodes/NextcloudCalendar/](nodes/NextcloudCalendar/) for CalDAV event operations
+- Reuse [credentials/NextcloudApi.credentials.ts](credentials/NextcloudApi.credentials.ts) for shared Basic Auth
 
 ### 4. Build Your Node
 
-Edit the example nodes to fit your use case, or create new node files by copying the structure from [nodes/Example/](nodes/Example/).
+Edit nodes to fit your use case, or create new node files by copying the structure from [nodes/NextcloudCalendar/](nodes/NextcloudCalendar/).
 
 > [!TIP]
 > If you want to scaffold a completely new node package, use `npm create @n8n/node` to start fresh with the CLI's interactive generator.
@@ -175,7 +168,7 @@ Before treating a change as verified (or before npm publish), prove the package 
    n8n start
    ```
 
-5. Open n8n in your browser and search the nodes panel by **node name**, not package name. For the current canary nodes, search for `Example` (and optionally `GitHub Issues`).
+5. Open n8n in your browser and search the nodes panel by **node name**, not package name. Search for `Nextcloud Calendar` (and create a **Nextcloud API** credential to attach).
 
 > [!NOTE]
 > Learn more about CLI commands in the [@n8n/node-cli documentation](https://www.npmjs.com/package/@n8n/node-cli). Full official steps and troubleshooting: [Run your node locally](https://docs.n8n.io/connect/create-nodes/test-your-node/run-your-node-locally).
@@ -267,6 +260,7 @@ This starter includes several npm scripts to streamline development:
 | `npm run build:watch` | Build in watch mode (auto-rebuild on changes)                               |
 | `npm run lint`        | Check your code for errors and style issues (runs `n8n-node lint`)          |
 | `npm run lint:fix`    | Automatically fix linting issues when possible (runs `n8n-node lint --fix`) |
+| `npm run test`        | Run unit tests (Vitest)                                                     |
 | `npm run release`     | Create a new release (runs `n8n-node release`)                              |
 
 > [!TIP]

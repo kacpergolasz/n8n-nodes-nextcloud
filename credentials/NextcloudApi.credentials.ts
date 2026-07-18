@@ -33,8 +33,8 @@ export class NextcloudApi implements ICredentialType {
 			default: '',
 			required: true,
 			description:
-				'Same user id Nextcloud uses in CalDAV paths (e.g. ext_662 in …/dav/calendars/ext_662/…). Not necessarily your login email.',
-			placeholder: 'e.g. ext_662',
+				'Same user id Nextcloud uses in CalDAV paths (e.g. ncuser in …/dav/calendars/ncuser/…). Not necessarily your login email.',
+			placeholder: 'e.g. ncuser',
 		},
 		{
 			displayName: 'App Password',
