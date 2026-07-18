@@ -102,6 +102,12 @@ describe('Nextcloud Files GenericFunctions', () => {
 		expect(normalizeFilesPath('/')).toBe('/');
 	});
 
+	it('normalizeFilesPath rejects dot and parent-directory segments', () => {
+		expect(() => normalizeFilesPath('/Documents/../Other')).toThrow(
+			'Invalid path: "/Documents/../Other" contains "." or ".." segments',
+		);
+	});
+
 	it('parses directory listing from multistatus XML fixture', () => {
 		const entries = parseDirectoryListingFromMultistatus(
 			DIRECTORY_MULTISTATUS_XML,

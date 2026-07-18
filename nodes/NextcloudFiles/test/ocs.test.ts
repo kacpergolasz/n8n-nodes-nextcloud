@@ -1,4 +1,4 @@
-import { parseShare, permissionsToBitmask } from '../GenericFunctions';
+import { parseShare, permissionsToBitmask, unwrapOcsResponse } from '../GenericFunctions';
 
 const CREATE_SHARE_DATA = {
 	id: 42,
@@ -99,5 +99,40 @@ describe('Nextcloud Files OCS helpers', () => {
 				mimetype: undefined,
 			},
 		]);
+	});
+
+	it('unwrapOcsResponse accepts OCS success codes 100 and 200', () => {
+		expect(
+			unwrapOcsResponse({
+				ocs: { meta: { status: 'ok', statuscode: 100 }, data: { id: 1 } },
+			}),
+		).toEqual({ id: 1 });
+		expect(
+			unwrapOcsResponse({
+				ocs: { meta: { status: 'ok', statuscode: 200 }, data: [{ id: 2 }] },
+			}),
+		).toEqual([{ id: 2 }]);
+	});
+
+	it('unwrapOcsResponse throws on OCS failure codes below 400', () => {
+		expect(() =>
+			unwrapOcsResponse({
+				ocs: { meta: { status: 'failure', statuscode: 997, message: 'Unauthorized' }, data: [] },
+			}),
+		).toThrow('Unauthorized');
+
+		const error = (() => {
+			try {
+				unwrapOcsResponse({
+					ocs: { meta: { status: 'failure', statuscode: 404, message: 'Not found' }, data: [] },
+				});
+			} catch (caught) {
+				return caught as Error & { statusCode?: number };
+			}
+			return undefined;
+		})();
+
+		expect(error?.message).toBe('Not found');
+		expect(error?.statusCode).toBe(404);
 	});
 });

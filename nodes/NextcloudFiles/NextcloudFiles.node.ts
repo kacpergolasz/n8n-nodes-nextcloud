@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildDestinationHeader,
@@ -87,6 +87,7 @@ export class NextcloudFiles implements INodeType {
 		const credentials = await getCredentials(this);
 
 		for (let i = 0; i < items.length; i++) {
+			const outputCountBefore = returnData.length;
 			try {
 				const resource = this.getNodeParameter('resource', i) as string;
 				const operation = this.getNodeParameter('operation', i) as string;
@@ -326,6 +327,7 @@ export class NextcloudFiles implements INodeType {
 						}
 
 						const data = await ocsRequest(this, 'GET', 'shares', undefined, qs);
+						// OCS returns the full share list; limit is applied client-side.
 						const rawShares = Array.isArray(data) ? data : data ? [data] : [];
 						const shares = rawShares.map((entry) =>
 							parseShare(entry as IDataObject),
@@ -349,6 +351,13 @@ export class NextcloudFiles implements INodeType {
 
 					if (operation === 'update') {
 						const shareId = this.getNodeParameter('shareId', i) as number;
+						if (!Number.isFinite(shareId) || shareId <= 0) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Share ID must be a positive number',
+								{ itemIndex: i },
+							);
+						}
 						const permissions = this.getNodeParameter('permissions', i) as string[];
 						const password = this.getNodeParameter('password', i, '') as string;
 						const expireDate = this.getNodeParameter('expireDate', i, '') as string;
@@ -373,12 +382,27 @@ export class NextcloudFiles implements INodeType {
 
 					if (operation === 'delete') {
 						const shareId = this.getNodeParameter('shareId', i) as number;
+						if (!Number.isFinite(shareId) || shareId <= 0) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Share ID must be a positive number',
+								{ itemIndex: i },
+							);
+						}
 						await ocsRequest(this, 'DELETE', `shares/${shareId}`);
 						returnData.push({
 							json: { shareId, deleted: true },
 							pairedItem: { item: i },
 						});
 					}
+				}
+
+				if (returnData.length === outputCountBefore) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The resource "${resource}" with operation "${operation}" is not supported.`,
+						{ itemIndex: i },
+					);
 				}
 			} catch (error) {
 				const statusCode = getHttpStatusCode(error);
