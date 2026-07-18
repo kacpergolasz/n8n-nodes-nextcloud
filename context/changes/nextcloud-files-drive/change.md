@@ -1,7 +1,7 @@
 ---
 change_id: nextcloud-files-drive
 title: Nextcloud Files/Drive node (legacy-standard coverage)
-status: implementing
+status: implemented
 created: 2026-07-18
 updated: 2026-07-18
 ---

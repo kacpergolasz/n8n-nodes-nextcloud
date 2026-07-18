@@ -326,5 +326,5 @@ WebDAV List and the `listSearch` picker use `PROPFIND Depth: 1` (single director
 - [x] 3.4 File Upload/Download/Delete/Move/Copy produce useful items with correct binary round-trip and no secrets — c7c9cd4
 - [x] 3.5 Folder Create/Delete/List/Move/Copy work; List returns one item per child — c7c9cd4
 - [x] 3.6 Path resourceLocator works in list and manual id modes — c7c9cd4
-- [ ] 3.7 Share Create (public link URL/token)/Get Many/Update/Delete work
-- [x] 3.8 Error path does not expose `appPassword`
+- [x] 3.7 Share Create (public link URL/token)/Get Many/Update/Delete work
+- [x] 3.8 Error path does not expose `appPassword` — c7c9cd4
