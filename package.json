@@ -1,5 +1,5 @@
 {
-	"name": "n8n-nodes-<...>",
+	"name": "n8n-nodes-nextcloud",
 	"version": "0.1.0",
 	"description": "",
 	"license": "MIT",
@@ -44,7 +44,7 @@
 		"eslint": "9.39.4",
 		"prettier": "3.8.3",
 		"release-it": "20.0.1",
-		"typescript": "5.9.3"
+		"typescript": "6.0.3"
 	},
 	"peerDependencies": {
 		"n8n-workflow": "*"
