@@ -191,25 +191,25 @@ If an older link to a previous package name exists under `~/.n8n/custom`, unlink
 
 #### Automated
 
-- [x] 1.1 package.json has non-empty description, author.name, author.email, and a non-placeholder repository.url
-- [x] 1.2 n8n.nodes still lists Example and GithubIssues only
-- [x] 1.3 npm run build still succeeds after the metadata edit
+- [x] 1.1 package.json has non-empty description, author.name, author.email, and a non-placeholder repository.url — a17a1e3
+- [x] 1.2 n8n.nodes still lists Example and GithubIssues only — a17a1e3
+- [x] 1.3 npm run build still succeeds after the metadata edit — a17a1e3
 
 #### Manual
 
-- [x] 1.4 Identity values look correct to the package owner (no leftover placeholders)
+- [x] 1.4 Identity values look correct to the package owner (no leftover placeholders) — a17a1e3
 
 ### Phase 2: README dual-path local verify
 
 #### Automated
 
-- [ ] 2.1 README.md contains both npm run dev and npm link / .n8n/custom guidance
-- [ ] 2.2 README.md links to the official run-your-node-locally docs URL
+- [x] 2.1 README.md contains both npm run dev and npm link / .n8n/custom guidance
+- [x] 2.2 README.md links to the official run-your-node-locally docs URL
 
 #### Manual
 
-- [ ] 2.3 A cold reader can follow the gate steps without opening this plan
-- [ ] 2.4 Canary search hint (Example) is explicit
+- [x] 2.3 A cold reader can follow the gate steps without opening this plan
+- [x] 2.4 Canary search hint (Example) is explicit
 
 ### Phase 3: Prove the gate
 

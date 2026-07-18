@@ -118,7 +118,9 @@ Make sure your node is registered in the `n8n.nodes` array.
 
 ### 6. Develop and Test Locally
 
-Start n8n with your node loaded:
+#### Day-to-day development
+
+Start n8n with your node loaded and hot reload:
 
 ```bash
 npm run dev
@@ -127,14 +129,56 @@ npm run dev
 This command runs `n8n-node dev` which:
 
 - Builds your node with watch mode
-- Starts n8n with your node available
+- Starts n8n with your node available (bundled via `@n8n/node-cli` — no global n8n install required)
 - Automatically rebuilds when you make changes
 - Opens n8n in your browser (usually http://localhost:5678)
 
-You can now test your node in n8n workflows!
+Use this loop while editing nodes and credentials.
+
+#### Verification gate (community-node link path)
+
+Before treating a change as verified (or before npm publish), prove the package loads via the official community-node install path. This matches [Run your node locally](https://docs.n8n.io/connect/create-nodes/test-your-node/run-your-node-locally) and is the required gate for this package.
+
+1. Install n8n globally if you do not already have it:
+
+   ```bash
+   npm install n8n -g
+   ```
+
+2. In this package directory (`packages/nextcloud/`), build and link the package:
+
+   ```bash
+   npm run build
+   npm link
+   ```
+
+3. Link the package into your local n8n custom extensions directory. On Linux this is typically `~/.n8n/custom` (for example `/home/<username>/.n8n/custom`). If `N8N_CUSTOM_EXTENSIONS` is set, use that directory instead.
+
+   If `custom` does not exist yet:
+
+   ```bash
+   mkdir -p ~/.n8n/custom
+   cd ~/.n8n/custom
+   npm init -y
+   ```
+
+   Then link this package (name from `package.json`):
+
+   ```bash
+   cd ~/.n8n/custom
+   npm link n8n-nodes-nextcloud
+   ```
+
+4. Start n8n:
+
+   ```bash
+   n8n start
+   ```
+
+5. Open n8n in your browser and search the nodes panel by **node name**, not package name. For the current canary nodes, search for `Example` (and optionally `GitHub Issues`).
 
 > [!NOTE]
-> Learn more about CLI commands in the [@n8n/node-cli documentation](https://www.npmjs.com/package/@n8n/node-cli).
+> Learn more about CLI commands in the [@n8n/node-cli documentation](https://www.npmjs.com/package/@n8n/node-cli). Full official steps and troubleshooting: [Run your node locally](https://docs.n8n.io/connect/create-nodes/test-your-node/run-your-node-locally).
 
 ### 7. Lint Your Code
 
