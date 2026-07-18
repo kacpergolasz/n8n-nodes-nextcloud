@@ -274,12 +274,12 @@ CalDAV Get Many uses PROPFIND Depth 1 and client-side date filters from prior ar
 
 #### Automated
 
-- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes
+- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes — 35e50c0
 
 #### Manual
 
-- [x] 3.2 F-01 link path — panel finds `Nextcloud Calendar`
-- [x] 3.3 Credential Test succeeds against real Nextcloud
-- [x] 3.4 Event Create / Get / Get Many / Update / Delete produce useful items without secrets
-- [x] 3.5 Calendar picker works in list and manual id modes
-- [x] 3.6 Error path does not expose `appPassword`
+- [x] 3.2 F-01 link path — panel finds `Nextcloud Calendar` — 35e50c0
+- [x] 3.3 Credential Test succeeds against real Nextcloud — 35e50c0
+- [x] 3.4 Event Create / Get / Get Many / Update / Delete produce useful items without secrets — 35e50c0
+- [x] 3.5 Calendar picker works in list and manual id modes — 35e50c0
+- [x] 3.6 Error path does not expose `appPassword` — 35e50c0
