@@ -1,9 +1,10 @@
 ---
 change_id: nextcloud-deck
 title: Nextcloud Deck (boards/cards)
-status: implementing
+status: archived
 created: 2026-07-18
 updated: 2026-07-18
+archived_at: 2026-07-18T19:46:00Z
 ---
 
 ## Notes
