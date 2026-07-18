@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { boardSelect, stackSelect } from '../../shared/descriptions';
+import { createBoardSelect, createStackSelect } from '../../shared/descriptions';
 
 const showOnlyForCard = {
 	resource: ['card'],
@@ -25,27 +25,28 @@ export const cardDescription: INodeProperties[] = [
 		default: 'get',
 	},
 	{
-		...boardSelect,
+		...createBoardSelect(),
 		displayOptions: {
 			show: showOnlyForCard,
 		},
 	},
 	{
-		...stackSelect,
+		...createStackSelect(),
 		displayOptions: {
 			show: {
 				resource: ['card'],
-				operation: ['create', 'get', 'delete', 'update', 'move'],
+				operation: ['create', 'get', 'delete'],
 			},
 		},
 	},
 	{
-		...stackSelect,
-		displayName: 'Stack Filter',
-		name: 'stackFilter',
-		required: false,
-		description:
-			'Optionally limit results to a single stack. Get Many loads all stacks (with nested cards) for the board in one request, then filters and limits client-side',
+		...createStackSelect({
+			displayName: 'Stack Filter',
+			name: 'stackFilter',
+			required: false,
+			description:
+				'Optionally limit results to a single stack. Get Many loads all stacks (with nested cards) for the board in one request, then filters and limits client-side',
+		}),
 		displayOptions: {
 			show: {
 				resource: ['card'],
@@ -165,9 +166,11 @@ export const cardDescription: INodeProperties[] = [
 		},
 	},
 	{
-		...stackSelect,
-		displayName: 'Target Stack',
-		name: 'toStack',
+		...createStackSelect({
+			displayName: 'Target Stack',
+			name: 'toStack',
+			description: 'The stack to move the card into',
+		}),
 		displayOptions: {
 			show: {
 				resource: ['card'],

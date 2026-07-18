@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { boardSelect } from '../../shared/descriptions';
+import { createBoardSelect } from '../../shared/descriptions';
 
 const showOnlyForBoard = {
 	resource: ['board'],
@@ -24,7 +24,7 @@ export const boardDescription: INodeProperties[] = [
 		default: 'getAll',
 	},
 	{
-		...boardSelect,
+		...createBoardSelect(),
 		displayOptions: {
 			show: {
 				resource: ['board'],

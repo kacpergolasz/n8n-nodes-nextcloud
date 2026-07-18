@@ -11,8 +11,12 @@ import {
 	deckApiBase,
 	filterActiveBoards,
 	flattenCardsFromStacks,
+	findCardInStacks,
 	mergeDefined,
 	normalizeDeckColor,
+	resolveBoardId,
+	resolveCardId,
+	resolveStackId,
 } from '../GenericFunctions';
 
 const BASE = 'https://cloud.example.com';
@@ -58,6 +62,47 @@ describe('Nextcloud Deck GenericFunctions', () => {
 		expect(buildCardReorderUrl(BASE, 1, 7, 99)).toBe(
 			'https://cloud.example.com/index.php/apps/deck/api/v1.0/boards/1/stacks/7/cards/99/reorder',
 		);
+	});
+});
+
+describe('resolve resource ids', () => {
+	it('coerces numeric ids from expressions', () => {
+		expect(resolveBoardId(42)).toBe('42');
+		expect(resolveStackId(7)).toBe('7');
+		expect(resolveCardId(99)).toBe('99');
+	});
+
+	it('trims string ids', () => {
+		expect(resolveBoardId(' 42 ')).toBe('42');
+	});
+
+	it('rejects empty ids', () => {
+		expect(() => resolveBoardId('')).toThrow('Board id is empty.');
+		expect(() => resolveStackId('   ')).toThrow('Stack id is empty.');
+	});
+});
+
+describe('findCardInStacks', () => {
+	it('finds a card by id across stacks', () => {
+		const card = findCardInStacks(
+			[
+				{
+					id: 1,
+					title: 'Todo',
+					order: 0,
+					cards: [{ id: 10, title: 'A', order: 0 }],
+				},
+				{
+					id: 2,
+					title: 'Done',
+					order: 1,
+					cards: [{ id: 20, title: 'B', order: 0 }],
+				},
+			],
+			'20',
+		);
+		expect(card?.id).toBe(20);
+		expect(card?.stackId).toBe(2);
 	});
 });
 
