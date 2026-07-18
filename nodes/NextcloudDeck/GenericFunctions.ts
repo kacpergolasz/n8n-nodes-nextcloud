@@ -7,6 +7,7 @@ import type {
 
 import type {
 	DeckBoard,
+	DeckCard,
 	DeckPickerOption,
 	DeckStack,
 	NextcloudCredentialData,
@@ -132,6 +133,51 @@ export function resolveBoardId(boardInput: string): string {
 		throw new Error('Board id is empty.');
 	}
 	return trimmed;
+}
+
+export function resolveStackId(stackInput: string): string {
+	const trimmed = stackInput.trim();
+	if (!trimmed) {
+		throw new Error('Stack id is empty.');
+	}
+	return trimmed;
+}
+
+/** Overlay patch keys that are not `undefined` onto target (partial-update safety). */
+export function mergeDefined<T extends IDataObject>(target: T, patch: IDataObject): T {
+	const result = { ...target };
+	for (const [key, value] of Object.entries(patch)) {
+		if (value !== undefined) {
+			result[key as keyof T] = value as T[keyof T];
+		}
+	}
+	return result;
+}
+
+/** Flatten nested `cards[]` from stack payloads; optional stack id filter. */
+export function flattenCardsFromStacks(stacks: DeckStack[], stackFilter?: string): DeckCard[] {
+	const cards: DeckCard[] = [];
+
+	for (const stack of stacks) {
+		if (stackFilter && String(stack.id) !== stackFilter) {
+			continue;
+		}
+		for (const card of stack.cards ?? []) {
+			cards.push({
+				...card,
+				stackId: card.stackId ?? stack.id,
+			});
+		}
+	}
+
+	return cards;
+}
+
+export function formatDeckDueDate(dueDate: string | undefined): string | null {
+	if (!dueDate?.trim()) {
+		return null;
+	}
+	return new Date(dueDate).toISOString();
 }
 
 /** Deck API expects hex colors without a leading `#` (e.g. `ff0000`). */
