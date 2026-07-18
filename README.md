@@ -30,11 +30,24 @@ This package currently includes:
 - **[Nextcloud Calendar](nodes/NextcloudCalendar/)** - CalDAV event Create / Get / Get Many / Update / Delete with list-or-type calendar pickers
 - **[Nextcloud Files](nodes/NextcloudFiles/)** - WebDAV file and folder Upload / Download / Delete / Move / Copy / List, plus OCS Share Create / Get Many / Update / Delete with path pickers
 - **[Nextcloud API credential](credentials/NextcloudApi.credentials.ts)** - Shared Basic Auth (`baseUrl` / `username` / `appPassword`) reused by suite nodes
+- **[Nextcloud OAuth2 API credential](credentials/NextcloudOAuth2Api.credentials.ts)** - Shared OAuth2 (`baseUrl` / `username` / client id & secret) reused by suite nodes
 
 > [!TIP]
-> Attach the shared **Nextcloud API** credential to Nextcloud Calendar. Calendar pickers support **From List** and **By ID** (slug or full `/remote.php/dav/...` path).
+> Attach the shared **Nextcloud API** or **Nextcloud OAuth2 API** credential to Nextcloud Calendar. On the Calendar node, use **Authentication** to choose **Basic Auth** or **OAuth2**; the matching credential picker appears for each mode. Calendar pickers support **From List** and **By ID** (slug or full `/remote.php/dav/...` path).
 
-Browse the Calendar node to understand CalDAV request patterns, then extend the suite with additional Nextcloud apps that reuse the same credential.
+Browse the Calendar node to understand CalDAV request patterns, then extend the suite with additional Nextcloud apps that reuse the same credentials.
+
+## Nextcloud OAuth2 API credential
+
+Use this when you prefer OAuth2 over app passwords. Nextcloud grants **full account access** (no scoped permissions) and requires a **confidential** OAuth2 client (client id + client secret).
+
+1. In Nextcloud, open **Administration settings → Security** and create an OAuth2 client.
+2. Copy n8n's **OAuth Redirect URL** from the credential form into the Nextcloud client's redirect URI.
+3. In n8n, create a **Nextcloud OAuth2 API** credential: paste the client id and client secret, enter your server **Base URL** and CalDAV **Username** (same path user id as Basic Auth).
+4. Complete the OAuth consent flow in n8n.
+5. On the **Nextcloud Calendar** node, set **Authentication** to **OAuth2** and attach the OAuth2 credential.
+
+Basic Auth workflows are unchanged: leave **Authentication** on **Basic Auth** (the default) and use the **Nextcloud API** credential.
 
 ## Finding Inspiration
 

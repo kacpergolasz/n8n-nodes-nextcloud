@@ -3,6 +3,7 @@ import {
 	buildEventUrl,
 	buildICalendarPayload,
 	eventIdFromCalDavHref,
+	getCredentials,
 	parseCalendarsFromXml,
 	icsDateOrDateTimeToIso,
 	parseDtStartFromIcs,
@@ -10,11 +11,13 @@ import {
 	parseEventHrefsFromMultistatus,
 	parseIcsEventVerbose,
 	parseUserIdAndCalendarIdFromCalendarUrl,
+	resolveCredentialName,
 	unescapeIcsText,
 	unfoldIcsContent,
 	resolveCalendarPath,
 	resolveCalendarUrl,
 } from '../GenericFunctions';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 const CALENDARS_MULTISTATUS_XML = `<?xml version="1.0" encoding="utf-8" ?>
 <d:multistatus xmlns:d="DAV:">
@@ -273,5 +276,68 @@ END:VEVENT
 END:VCALENDAR`,
 			},
 		]);
+	});
+});
+
+describe('getCredentials auth mode', () => {
+	function mockContext(
+		authentication: string,
+		expectedCredentialName: string,
+		credentialData: Record<string, unknown>,
+	) {
+		return {
+			getNodeParameter: vi.fn((name: string, _index: number, defaultValue?: string) => {
+				if (name === 'authentication') return authentication;
+				return defaultValue;
+			}),
+			getCredentials: vi.fn(async (name: string) => {
+				expect(name).toBe(expectedCredentialName);
+				return credentialData;
+			}),
+		} as unknown as IExecuteFunctions;
+	}
+
+	it('resolveCredentialName maps authentication modes', () => {
+		expect(resolveCredentialName('basicAuth')).toBe('nextcloudApi');
+		expect(resolveCredentialName('oAuth2')).toBe('nextcloudOAuth2Api');
+		expect(resolveCredentialName('anything-else')).toBe('nextcloudApi');
+	});
+
+	it('loads nextcloudApi for basicAuth', async () => {
+		const context = mockContext('basicAuth', 'nextcloudApi', {
+			baseUrl: 'https://cloud.example.com/',
+			username: 'ncuser',
+			appPassword: 'secret',
+		});
+
+		await expect(getCredentials(context)).resolves.toEqual({
+			baseUrl: 'https://cloud.example.com',
+			username: 'ncuser',
+			appPassword: 'secret',
+			credentialName: 'nextcloudApi',
+			authentication: 'basicAuth',
+		});
+	});
+
+	it('loads nextcloudOAuth2Api for oAuth2', async () => {
+		const context = mockContext('oAuth2', 'nextcloudOAuth2Api', {
+			baseUrl: 'https://cloud.example.com',
+			username: 'ncuser',
+			clientSecret: 'client-secret',
+			oauthTokenData: {
+				access_token: 'access-tok',
+				refresh_token: 'refresh-tok',
+			},
+		});
+
+		await expect(getCredentials(context)).resolves.toEqual({
+			baseUrl: 'https://cloud.example.com',
+			username: 'ncuser',
+			clientSecret: 'client-secret',
+			accessToken: 'access-tok',
+			refreshToken: 'refresh-tok',
+			credentialName: 'nextcloudOAuth2Api',
+			authentication: 'oAuth2',
+		});
 	});
 });

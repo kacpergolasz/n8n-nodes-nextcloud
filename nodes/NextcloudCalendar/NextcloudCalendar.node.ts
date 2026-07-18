@@ -47,8 +47,44 @@ export class NextcloudCalendar implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [{ name: 'nextcloudApi', required: true }],
+		credentials: [
+			{
+				name: 'nextcloudApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['basicAuth'],
+					},
+				},
+			},
+			{
+				name: 'nextcloudOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+			},
+		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'basicAuth',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -111,8 +147,11 @@ export class NextcloudCalendar implements INodeType {
 			} catch (error) {
 				const statusCode = getHttpStatusCode(error);
 				const scrubbedMessage = scrubErrorMessage(error, {
-					appPassword: credentials.appPassword,
 					username: credentials.username,
+					appPassword: credentials.appPassword,
+					accessToken: credentials.accessToken,
+					refreshToken: credentials.refreshToken,
+					clientSecret: credentials.clientSecret,
 				});
 				const message =
 					statusCode === 404 ? `Event not found (404)` : scrubbedMessage;
