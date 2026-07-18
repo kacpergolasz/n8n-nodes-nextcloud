@@ -25,6 +25,7 @@ import {
 } from './GenericFunctions';
 import { getCalendars } from './listSearch/getCalendars';
 import { eventDescription } from './resources/event';
+import { getHttpStatusCode } from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
 
 function nodeDateToFilterMs(value: unknown): number | null {
@@ -113,7 +114,7 @@ export class NextcloudCalendar implements INodeType {
 
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
-					const limit = this.getNodeParameter('limit', i, 25) as number;
+					const limit = this.getNodeParameter('limit', i, 10) as number;
 					const afterMs = nodeDateToFilterMs(this.getNodeParameter('after', i, ''));
 					const beforeMs = nodeDateToFilterMs(this.getNodeParameter('before', i, ''));
 					const hasTimeFilter = afterMs !== null || beforeMs !== null;
@@ -205,23 +206,32 @@ export class NextcloudCalendar implements INodeType {
 					});
 				}
 			} catch (error) {
+				const statusCode = getHttpStatusCode(error);
 				const scrubbedMessage = scrubErrorMessage(error, {
 					appPassword: credentials.appPassword,
 					username: credentials.username,
 				});
+				const message =
+					statusCode === 404 ? `Event not found (404)` : scrubbedMessage;
 
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: scrubbedMessage,
+							error: message,
+							...(statusCode !== undefined ? { statusCode } : {}),
 						},
 						pairedItem: { item: i },
 					});
 					continue;
 				}
-				throw new NodeApiError(this.getNode(), { message: scrubbedMessage } as JsonObject, {
-					itemIndex: i,
-				});
+				throw new NodeApiError(
+					this.getNode(),
+					{ message, ...(statusCode !== undefined ? { httpCode: statusCode } : {}) } as JsonObject,
+					{
+						itemIndex: i,
+						...(statusCode !== undefined ? { httpCode: String(statusCode) } : {}),
+					},
+				);
 			}
 		}
 

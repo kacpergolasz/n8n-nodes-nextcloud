@@ -29,6 +29,8 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 |---|---|---|---|---|---|
 | F-01 | local-community-node-verify | (foundation) package builds and runs via local n8n community-node link for verification | — | FR-003 | ready |
 | S-01 | shared-basic-auth-calendar | create shared Basic Auth credential, run Calendar events, pick resources from lists or manually | F-01 | US-01, FR-001, FR-011 | proposed |
+| S-08 | calendar-get-many-caldav | list more than a truncated PROPFIND page of Calendar events (reliable Get Many) | S-01 | US-01, FR-001 | proposed |
+| S-09 | calendar-partial-update | update a Calendar event with only changed fields | S-01 | US-01, FR-001 | proposed |
 | S-02 | shared-oauth2-credential | create and use shared OAuth2 credential across suite nodes (proven on Calendar) | S-01 | FR-002 | proposed |
 | S-03 | nextcloud-files-drive | automate Nextcloud Files/Drive at legacy-standard coverage | S-01 | FR-004 | proposed |
 | S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | proposed |
@@ -42,7 +44,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 
 | Stream | Theme | Chain | Note |
 |---|---|---|---|
-| A | Credential & Calendar proof | `F-01` → `S-01` → `S-02` | Quality-first validation path; OAuth follows Basic Auth once Calendar proves the shared credential. |
+| A | Credential & Calendar proof | `F-01` → `S-01` → `S-08` / `S-09` → `S-02` | Quality-first validation path; Calendar depth (Get Many / partial update) follows the north star; OAuth follows once Calendar proves the shared credential. |
 | B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` | Parallel after `S-01`; joins Stream A at the shared credential. |
 | C | Triggers | `S-07` | Polling after Calendar exists; expands as suite apps land. |
 
@@ -85,6 +87,30 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** North star and quality gate for the shared-credential contract; if this is weak, later suite nodes inherit a bad pattern.
+- **Status:** proposed
+
+### S-08: Calendar Get Many via CalDAV query
+
+- **Outcome:** user can Get Many Calendar events beyond the truncated PROPFIND page (default Limit 10 matches observed server behavior until this lands), with Return All / Limit behaving against a complete listing strategy (likely `REPORT` `calendar-query` and/or paging).
+- **Change ID:** calendar-get-many-caldav
+- **PRD refs:** US-01, FR-001
+- **Prerequisites:** S-01
+- **Parallel with:** S-09, S-02, S-03, S-04, S-05, S-06, S-07
+- **Blockers:** —
+- **Unknowns:** Exact Nextcloud/Sabre truncation rules for PROPFIND + `calendar-data`; whether `calendar-query` REPORT alone is enough or sync-collection / offset+limit is required.
+- **Risk:** S-01 ships a working but incomplete Get Many; leaving this untracked would silently under-fetch events in production workflows.
+- **Status:** proposed
+
+### S-09: Calendar partial event update
+
+- **Outcome:** user can Update a Calendar event by sending only changed fields (node performs GET → merge → PUT under the hood) instead of re-supplying summary/start/end/description every time.
+- **Change ID:** calendar-partial-update
+- **PRD refs:** US-01, FR-001
+- **Prerequisites:** S-01
+- **Parallel with:** S-08, S-02, S-03, S-04, S-05, S-06, S-07
+- **Blockers:** —
+- **Unknowns:** Merge rules for all-day vs timed events and timezone fields when only a subset is provided.
+- **Risk:** CalDAV replaces whole `.ics` resources; without an explicit merge path, Update stays awkward for automation authors.
 - **Status:** proposed
 
 ### S-02: Shared OAuth2 credential
@@ -165,6 +191,8 @@ Foundations below assume these are present and do NOT re-scaffold them.
 |---|---|---|---|---|
 | F-01 | local-community-node-verify | Make package runnable via local n8n community-node link | yes | Run `/10x-plan local-community-node-verify` — unlocks north star |
 | S-01 | shared-basic-auth-calendar | Shared Basic Auth + Nextcloud Calendar (+ resource pickers) | no | After F-01 |
+| S-08 | calendar-get-many-caldav | Reliable Calendar Get Many (CalDAV query / paging) | no | After S-01; observed PROPFIND truncation |
+| S-09 | calendar-partial-update | Calendar Update with only changed fields | no | After S-01; GET→merge→PUT |
 | S-02 | shared-oauth2-credential | Shared Nextcloud OAuth2 credential (prove on Calendar) | no | After S-01; parallel with suite apps |
 | S-03 | nextcloud-files-drive | Nextcloud Files/Drive legacy-standard node | no | After S-01; parallel suite |
 | S-04 | nextcloud-deck | Nextcloud Deck boards/cards node | no | After S-01; parallel suite |

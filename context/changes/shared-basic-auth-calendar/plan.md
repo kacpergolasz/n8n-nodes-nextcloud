@@ -258,28 +258,28 @@ CalDAV Get Many uses PROPFIND Depth 1 and client-side date filters from prior ar
 
 #### Automated
 
-- [x] 2.1 Calendar modular tree exists (listSearch, event resources, GenericFunctions, scrubber)
-- [x] 2.2 Starter Example/GithubIssues sources and GithubIssues credentials/icons removed
-- [x] 2.3 `package.json` registers only `NextcloudApi` + `NextcloudCalendar`
-- [x] 2.4 `npm run build` succeeds
-- [x] 2.5 `npm run lint` succeeds
-- [x] 2.6 `npm test` succeeds (GenericFunctions + scrubSecrets)
-- [x] 2.7 README local-verify panel tip targets `Nextcloud Calendar`
+- [x] 2.1 Calendar modular tree exists (listSearch, event resources, GenericFunctions, scrubber) — 54fccbb
+- [x] 2.2 Starter Example/GithubIssues sources and GithubIssues credentials/icons removed — 54fccbb
+- [x] 2.3 `package.json` registers only `NextcloudApi` + `NextcloudCalendar` — 54fccbb
+- [x] 2.4 `npm run build` succeeds — 54fccbb
+- [x] 2.5 `npm run lint` succeeds — 54fccbb
+- [x] 2.6 `npm test` succeeds (GenericFunctions + scrubSecrets) — 54fccbb
+- [x] 2.7 README local-verify panel tip targets `Nextcloud Calendar` — 54fccbb
 
 #### Manual
 
-- [x] 2.8 Phase 2 pause — human confirms cutover ready for north-star smoke
+- [x] 2.8 Phase 2 pause — human confirms cutover ready for north-star smoke — 54fccbb
 
 ### Phase 3: North-star local verification
 
 #### Automated
 
-- [ ] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes
+- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes
 
 #### Manual
 
-- [ ] 3.2 F-01 link path — panel finds `Nextcloud Calendar`
-- [ ] 3.3 Credential Test succeeds against real Nextcloud
-- [ ] 3.4 Event Create / Get / Get Many / Update / Delete produce useful items without secrets
-- [ ] 3.5 Calendar picker works in list and manual id modes
-- [ ] 3.6 Error path does not expose `appPassword`
+- [x] 3.2 F-01 link path — panel finds `Nextcloud Calendar`
+- [x] 3.3 Credential Test succeeds against real Nextcloud
+- [x] 3.4 Event Create / Get / Get Many / Update / Delete produce useful items without secrets
+- [x] 3.5 Calendar picker works in list and manual id modes
+- [x] 3.6 Error path does not expose `appPassword`

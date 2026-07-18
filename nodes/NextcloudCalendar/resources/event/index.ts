@@ -113,7 +113,9 @@ export const eventDescription: INodeProperties[] = [
 		type: 'number',
 		description: 'Max number of results to return',
 		typeOptions: { minValue: 1 },
-		default: 50,
+		// Default 10 mirrors observed Nextcloud PROPFIND truncation (see roadmap S-08).
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-limit
+		default: 10,
 		displayOptions: {
 			show: {
 				resource: ['event'],
