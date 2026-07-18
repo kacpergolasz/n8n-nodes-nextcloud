@@ -35,7 +35,8 @@
 			"dist/credentials/NextcloudApi.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/NextcloudCalendar/NextcloudCalendar.node.js"
+			"dist/nodes/NextcloudCalendar/NextcloudCalendar.node.js",
+			"dist/nodes/NextcloudDeck/NextcloudDeck.node.js"
 		]
 	},
 	"devDependencies": {

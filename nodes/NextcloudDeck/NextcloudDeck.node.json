@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-nextcloud.nextcloudDeck",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.nextcloud.com/server/latest/developer_manual/client_apis/WebDAV/basic.html"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://deck.readthedocs.io/en/latest/API/"
+			}
+		]
+	}
+}
