@@ -292,15 +292,15 @@ Deck responses are small JSON payloads; Card Get Many fetches board stacks (with
 
 #### Automated
 
-- [x] 1.1 `nodes/NextcloudDeck/` tree exists (node, GenericFunctions, DeckInterface, board resource, listSearch/getBoards, shared scrub/status, icon, node.json)
-- [x] 1.2 `package.json` `n8n.nodes` lists both Calendar and Deck; `n8n.credentials` unchanged
-- [x] 1.3 `npm run build` succeeds
-- [x] 1.4 `npm run lint` succeeds
-- [x] 1.5 `npm test` succeeds (Deck GenericFunctions + scrubSecrets)
+- [x] 1.1 `nodes/NextcloudDeck/` tree exists (node, GenericFunctions, DeckInterface, board resource, listSearch/getBoards, shared scrub/status, icon, node.json) — 7dae236
+- [x] 1.2 `package.json` `n8n.nodes` lists both Calendar and Deck; `n8n.credentials` unchanged — 7dae236
+- [x] 1.3 `npm run build` succeeds — 7dae236
+- [x] 1.4 `npm run lint` succeeds — 7dae236
+- [x] 1.5 `npm test` succeeds (Deck GenericFunctions + scrubSecrets) — 7dae236
 
 #### Manual
 
-- [x] 1.6 Phase 1 pause — human confirms Deck node appears with Board ops (live calls deferred)
+- [x] 1.6 Phase 1 pause — human confirms Deck node appears with Board ops (live calls deferred) — 7dae236
 
 ### Phase 2: Stack (minimal) + Card resource with placement
 
