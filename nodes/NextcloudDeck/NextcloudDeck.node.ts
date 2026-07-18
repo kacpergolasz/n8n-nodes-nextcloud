@@ -20,6 +20,7 @@ import {
 	mergeDefined,
 	normalizeDeckColor,
 	resolveBoardId,
+	resolveCardId,
 	resolveStackId,
 } from './GenericFunctions';
 import { getBoards } from './listSearch/getBoards';
@@ -309,7 +310,7 @@ export class NextcloudDeck implements INodeType {
 
 					if (operation === 'get') {
 						const stackId = resolveStackFromInput(this, i);
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
 						const card = (await deckRequest(
 							this,
 							'GET',
@@ -342,7 +343,7 @@ export class NextcloudDeck implements INodeType {
 
 					if (operation === 'update') {
 						const stackId = resolveStackFromInput(this, i);
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
 						const current = (await deckRequest(
 							this,
 							'GET',
@@ -351,7 +352,7 @@ export class NextcloudDeck implements INodeType {
 						const title = this.getNodeParameter('title', i, '') as string;
 						const description = this.getNodeParameter('description', i, '') as string;
 						const dueDate = this.getNodeParameter('dueDate', i, '') as string;
-						const type = this.getNodeParameter('type', i, 'plain') as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
 						const patch: IDataObject = {};
 						if (title.trim()) {
@@ -360,11 +361,10 @@ export class NextcloudDeck implements INodeType {
 						if (description.trim()) {
 							patch.description = description;
 						}
-						if (dueDate.trim()) {
+						if (additionalFields.clearDueDate === true) {
+							patch.duedate = null;
+						} else if (dueDate.trim()) {
 							patch.duedate = formatDeckDueDate(dueDate);
-						}
-						if (type.trim()) {
-							patch.type = type;
 						}
 
 						const payload = mergeDefined(current as IDataObject, patch);
@@ -382,7 +382,7 @@ export class NextcloudDeck implements INodeType {
 
 					if (operation === 'delete') {
 						const stackId = resolveStackFromInput(this, i);
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
 						await deckRequest(
 							this,
 							'DELETE',
@@ -396,7 +396,7 @@ export class NextcloudDeck implements INodeType {
 
 					if (operation === 'move') {
 						const stackId = resolveStackFromInput(this, i);
-						const cardId = this.getNodeParameter('cardId', i) as string;
+						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
 						const toStackId = resolveStackFromInput(this, i, 'toStack');
 						const order = this.getNodeParameter('order', i, 0) as number;
 						const card = (await deckRequest(

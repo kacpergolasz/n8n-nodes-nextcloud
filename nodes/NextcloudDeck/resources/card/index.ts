@@ -44,7 +44,8 @@ export const cardDescription: INodeProperties[] = [
 		displayName: 'Stack Filter',
 		name: 'stackFilter',
 		required: false,
-		description: 'Optionally limit results to a single stack',
+		description:
+			'Optionally limit results to a single stack. Get Many loads all stacks (with nested cards) for the board in one request, then filters and limits client-side',
 		displayOptions: {
 			show: {
 				resource: ['card'],
@@ -70,12 +71,24 @@ export const cardDescription: INodeProperties[] = [
 		name: 'title',
 		type: 'string',
 		default: '',
-		description:
-			'Card title. Required when creating a card; leave empty on update to keep the current title.',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['card'],
-				operation: ['create', 'update'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		description: 'Leave empty on update to keep the current title',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -103,6 +116,28 @@ export const cardDescription: INodeProperties[] = [
 				operation: ['create', 'update'],
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Clear Due Date',
+				name: 'clearDueDate',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to remove the card due date',
+			},
+		],
 	},
 	{
 		displayName: 'Type',
