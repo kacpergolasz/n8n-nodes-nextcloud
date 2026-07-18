@@ -306,15 +306,15 @@ Deck responses are small JSON payloads; Card Get Many fetches board stacks (with
 
 #### Automated
 
-- [x] 2.1 Card and Stack resources exist with descriptions, listSearch/getStacks, and execute handlers
-- [x] 2.2 `methods.listSearch` exposes both `getBoards` and `getStacks`
-- [x] 2.3 `npm run build` succeeds
-- [x] 2.4 `npm run lint` succeeds
-- [x] 2.5 `npm test` succeeds (URL builders, card flatten, merge, scrub)
+- [x] 2.1 Card and Stack resources exist with descriptions, listSearch/getStacks, and execute handlers — 50cd438
+- [x] 2.2 `methods.listSearch` exposes both `getBoards` and `getStacks` — 50cd438
+- [x] 2.3 `npm run build` succeeds — 50cd438
+- [x] 2.4 `npm run lint` succeeds — 50cd438
+- [x] 2.5 `npm test` succeeds (URL builders, card flatten, merge, scrub) — 50cd438
 
 #### Manual
 
-- [x] 2.6 Phase 2 pause — human confirms resources and dependent stack picker before smoke
+- [x] 2.6 Phase 2 pause — human confirms resources and dependent stack picker before smoke — 50cd438
 
 ### Phase 3: North-star local verification
 
