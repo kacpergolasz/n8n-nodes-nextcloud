@@ -289,29 +289,29 @@ WebDAV List and the `listSearch` picker use `PROPFIND Depth: 1` (single director
 
 #### Automated
 
-- [x] 1.1 Node tree exists (node.ts, GenericFunctions, FilesInterface, resources file/folder, shared, listSearch/getFolders, icon, node.json)
-- [x] 1.2 `package.json` `n8n.nodes` lists both NextcloudCalendar and NextcloudFiles; credentials unchanged
-- [x] 1.3 `npm run build` succeeds
-- [x] 1.4 `npm run lint` succeeds
-- [x] 1.5 `npm test` succeeds (GenericFunctions + scrubSecrets)
+- [x] 1.1 Node tree exists (node.ts, GenericFunctions, FilesInterface, resources file/folder, shared, listSearch/getFolders, icon, node.json) — b0d47e5
+- [x] 1.2 `package.json` `n8n.nodes` lists both NextcloudCalendar and NextcloudFiles; credentials unchanged — b0d47e5
+- [x] 1.3 `npm run build` succeeds — b0d47e5
+- [x] 1.4 `npm run lint` succeeds — b0d47e5
+- [x] 1.5 `npm test` succeeds (GenericFunctions + scrubSecrets) — b0d47e5
 
 #### Manual
 
-- [x] 1.6 Phase 1 pause — human confirms file/folder node ready before OCS sharing
+- [x] 1.6 Phase 1 pause — human confirms file/folder node ready before OCS sharing — b0d47e5
 
 ### Phase 2: Sharing via OCS API
 
 #### Automated
 
-- [ ] 2.1 `share` resource exists and is registered in the node `resource` options
-- [ ] 2.2 `ocsRequest` / `permissionsToBitmask` / `parseShare` implemented in GenericFunctions
-- [ ] 2.3 `npm run build` succeeds
-- [ ] 2.4 `npm run lint` succeeds
-- [ ] 2.5 `npm test` succeeds (adds OCS parsing tests)
+- [x] 2.1 `share` resource exists and is registered in the node `resource` options
+- [x] 2.2 `ocsRequest` / `permissionsToBitmask` / `parseShare` implemented in GenericFunctions
+- [x] 2.3 `npm run build` succeeds
+- [x] 2.4 `npm run lint` succeeds
+- [x] 2.5 `npm test` succeeds (adds OCS parsing tests)
 
 #### Manual
 
-- [ ] 2.6 Phase 2 pause — human confirms sharing ready for north-star smoke
+- [x] 2.6 Phase 2 pause — human confirms sharing ready for north-star smoke
 
 ### Phase 3: North-star local verification
 

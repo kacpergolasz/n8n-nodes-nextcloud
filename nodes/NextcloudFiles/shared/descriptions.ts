@@ -43,3 +43,27 @@ export const overwriteField: INodeProperties = {
 	default: false,
 	description: 'Whether to overwrite an existing resource at the destination',
 };
+
+export const sharePermissionsField: INodeProperties = {
+	displayName: 'Permissions',
+	name: 'permissions',
+	type: 'multiOptions',
+	options: [
+		{ name: 'Create', value: 'create' },
+		{ name: 'Delete', value: 'delete' },
+		{ name: 'Read', value: 'read' },
+		{ name: 'Share', value: 'share' },
+		{ name: 'Update', value: 'update' },
+	],
+	default: ['read', 'update', 'create', 'delete', 'share'],
+	description: 'Permissions granted on the shared resource',
+};
+
+export const shareIdField: INodeProperties = {
+	displayName: 'Share ID',
+	name: 'shareId',
+	type: 'number',
+	required: true,
+	default: 0,
+	description: 'ID of the share to update or delete',
+};

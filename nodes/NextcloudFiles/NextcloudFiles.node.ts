@@ -20,11 +20,15 @@ import {
 	loadDirectoryListing,
 	nextcloudRequest,
 	normalizeFilesPath,
+	ocsRequest,
+	parseShare,
+	permissionsToBitmask,
 	resolveUploadPath,
 } from './GenericFunctions';
 import { getFolders } from './listSearch/getFolders';
 import { fileDescription } from './resources/file';
 import { folderDescription } from './resources/folder';
+import { shareDescription } from './resources/share';
 import { getHttpStatusCode } from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
 
@@ -44,7 +48,7 @@ export class NextcloudFiles implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Upload, download, and manage files and folders in Nextcloud via WebDAV',
+		description: 'Upload, download, and manage files, folders, and shares in Nextcloud',
 		defaults: {
 			name: 'Nextcloud Files',
 		},
@@ -60,11 +64,13 @@ export class NextcloudFiles implements INodeType {
 				options: [
 					{ name: 'File', value: 'file' },
 					{ name: 'Folder', value: 'folder' },
+					{ name: 'Share', value: 'share' },
 				],
 				default: 'file',
 			},
 			...fileDescription,
 			...folderDescription,
+			...shareDescription,
 		],
 		usableAsTool: true,
 	};
@@ -273,6 +279,103 @@ export class NextcloudFiles implements INodeType {
 								destinationPath,
 								[operation === 'move' ? 'moved' : 'copied']: true,
 							},
+							pairedItem: { item: i },
+						});
+					}
+				}
+
+				if (resource === 'share') {
+					if (operation === 'create') {
+						const sharePath = resolvePathFromInput(this, i);
+						const shareType = this.getNodeParameter('shareType', i) as number;
+						const shareWith = this.getNodeParameter('shareWith', i, '') as string;
+						const permissions = permissionsToBitmask(
+							this.getNodeParameter('permissions', i) as string[],
+						);
+						const password = this.getNodeParameter('password', i, '') as string;
+						const expireDate = this.getNodeParameter('expireDate', i, '') as string;
+						const publicUpload = this.getNodeParameter('publicUpload', i, false) as boolean;
+						const note = this.getNodeParameter('note', i, '') as string;
+
+						const body: IDataObject = {
+							path: sharePath,
+							shareType,
+							permissions,
+						};
+						if (shareWith.trim()) body.shareWith = shareWith.trim();
+						if (password.trim()) body.password = password.trim();
+						if (expireDate.trim()) body.expireDate = expireDate.trim();
+						if (publicUpload) body.publicUpload = 'true';
+						if (note.trim()) body.note = note.trim();
+
+						const data = await ocsRequest(this, 'POST', 'shares', body);
+						const share = parseShare(data as IDataObject);
+						returnData.push({
+							json: share as unknown as IDataObject,
+							pairedItem: { item: i },
+						});
+					}
+
+					if (operation === 'getAll') {
+						const filterPath = this.getNodeParameter('filterPath', i, '') as string;
+						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
+						const limit = this.getNodeParameter('limit', i, 100) as number;
+						const qs: IDataObject = {};
+						if (filterPath.trim()) {
+							qs.path = normalizeFilesPath(filterPath);
+						}
+
+						const data = await ocsRequest(this, 'GET', 'shares', undefined, qs);
+						const rawShares = Array.isArray(data) ? data : data ? [data] : [];
+						const shares = rawShares.map((entry) =>
+							parseShare(entry as IDataObject),
+						);
+						const sliced = returnAll ? shares : shares.slice(0, limit);
+
+						if (sliced.length === 0) {
+							returnData.push({
+								json: { empty: true },
+								pairedItem: { item: i },
+							});
+						} else {
+							for (const share of sliced) {
+								returnData.push({
+									json: share as unknown as IDataObject,
+									pairedItem: { item: i },
+								});
+							}
+						}
+					}
+
+					if (operation === 'update') {
+						const shareId = this.getNodeParameter('shareId', i) as number;
+						const permissions = this.getNodeParameter('permissions', i) as string[];
+						const password = this.getNodeParameter('password', i, '') as string;
+						const expireDate = this.getNodeParameter('expireDate', i, '') as string;
+						const publicUpload = this.getNodeParameter('publicUpload', i, false) as boolean;
+
+						const body: IDataObject = {
+							publicUpload: publicUpload ? 'true' : 'false',
+						};
+						if (permissions.length > 0) {
+							body.permissions = permissionsToBitmask(permissions);
+						}
+						if (password.trim()) body.password = password.trim();
+						if (expireDate.trim()) body.expireDate = expireDate.trim();
+
+						const data = await ocsRequest(this, 'PUT', `shares/${shareId}`, body);
+						const share = parseShare(data as IDataObject);
+						returnData.push({
+							json: share as unknown as IDataObject,
+							pairedItem: { item: i },
+						});
+					}
+
+					if (operation === 'delete') {
+						const shareId = this.getNodeParameter('shareId', i) as number;
+						await ocsRequest(this, 'DELETE', `shares/${shareId}`);
+						returnData.push({
+							json: { shareId, deleted: true },
 							pairedItem: { item: i },
 						});
 					}
