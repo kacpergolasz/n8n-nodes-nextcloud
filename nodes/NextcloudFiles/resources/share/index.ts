@@ -3,7 +3,11 @@ import type { INodeProperties } from 'n8n-workflow';
 import {
 	pathSelect,
 	shareIdField,
+	sharePasswordFieldDescription,
 	sharePermissionsField,
+	shareUpdateFieldsField,
+	shareUpdatePasswordFieldDescription,
+	shareUpdatePermissionsField,
 } from '../../shared/descriptions';
 
 const showOnlyForShare = {
@@ -74,7 +78,35 @@ export const shareDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['share'],
-				operation: ['create', 'update'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
+		...shareIdField,
+		displayOptions: {
+			show: {
+				resource: ['share'],
+				operation: ['update', 'delete'],
+			},
+		},
+	},
+	{
+		...shareUpdateFieldsField,
+		displayOptions: {
+			show: {
+				resource: ['share'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
+		...shareUpdatePermissionsField,
+		displayOptions: {
+			show: {
+				resource: ['share'],
+				operation: ['update'],
+				updateFields: ['permissions'],
 			},
 		},
 	},
@@ -84,11 +116,41 @@ export const shareDescription: INodeProperties[] = [
 		type: 'string',
 		typeOptions: { password: true },
 		default: '',
-		description: 'Optional password to protect a public link share',
+		description: shareUpdatePasswordFieldDescription,
 		displayOptions: {
 			show: {
 				resource: ['share'],
-				operation: ['create', 'update'],
+				operation: ['update'],
+				updateFields: ['password'],
+			},
+		},
+	},
+	{
+		displayName: 'Password',
+		name: 'password',
+		type: 'string',
+		typeOptions: { password: true },
+		default: '',
+		description: sharePasswordFieldDescription,
+		displayOptions: {
+			show: {
+				resource: ['share'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
+		displayName: 'Expire Date',
+		name: 'expireDate',
+		type: 'string',
+		default: '',
+		placeholder: 'YYYY-MM-DD',
+		description: 'Expiration date to set. Leave empty to remove the expiration date.',
+		displayOptions: {
+			show: {
+				resource: ['share'],
+				operation: ['update'],
+				updateFields: ['expireDate'],
 			},
 		},
 	},
@@ -102,7 +164,7 @@ export const shareDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['share'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -115,7 +177,21 @@ export const shareDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['share'],
-				operation: ['create', 'update'],
+				operation: ['update'],
+				updateFields: ['publicUpload'],
+			},
+		},
+	},
+	{
+		displayName: 'Public Upload',
+		name: 'publicUpload',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to allow uploads to a public shared folder',
+		displayOptions: {
+			show: {
+				resource: ['share'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -172,15 +248,6 @@ export const shareDescription: INodeProperties[] = [
 				resource: ['share'],
 				operation: ['getAll'],
 				returnAll: [false],
-			},
-		},
-	},
-	{
-		...shareIdField,
-		displayOptions: {
-			show: {
-				resource: ['share'],
-				operation: ['update', 'delete'],
 			},
 		},
 	},

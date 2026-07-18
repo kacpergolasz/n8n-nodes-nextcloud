@@ -6,7 +6,7 @@ export const pathSelect: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	description:
-		'File or folder path relative to your Nextcloud files root — e.g. /Documents/report.pdf. Browse one directory level or type a path manually.',
+		'File or folder path relative to your Nextcloud files root — e.g. /Documents/report.pdf. Search or scroll the list, or type a path manually.',
 	required: true,
 	modes: [
 		{
@@ -59,12 +59,48 @@ export const sharePermissionsField: INodeProperties = {
 	description: 'Permissions granted on the shared resource',
 };
 
-// eslint-disable-next-line n8n-nodes-base/node-param-default-missing -- no safe default; execute validates shareId > 0
+export const sharePasswordFieldDescription =
+	'Password for the public link. Must meet your Nextcloud server share password policy (commonly at least 10 characters).';
+
+export const shareUpdatePasswordFieldDescription =
+	'Password to set on the public link. Leave empty to remove password protection. Must meet your Nextcloud server share password policy.';
+
+export const shareUpdateFieldsField: INodeProperties = {
+	displayName: 'Fields to Update',
+	name: 'updateFields',
+	type: 'multiOptions',
+	options: [
+		{ name: 'Expire Date', value: 'expireDate' },
+		{ name: 'Password', value: 'password' },
+		{ name: 'Permissions', value: 'permissions' },
+		{ name: 'Public Upload', value: 'publicUpload' },
+	],
+	default: [],
+	required: true,
+	description: 'Choose which share properties to change in this request',
+};
+
+export const shareUpdatePermissionsField: INodeProperties = {
+	displayName: 'Permissions',
+	name: 'updatePermissions',
+	type: 'multiOptions',
+	options: [
+		{ name: 'Create', value: 'create' },
+		{ name: 'Delete', value: 'delete' },
+		{ name: 'Read', value: 'read' },
+		{ name: 'Share', value: 'share' },
+		{ name: 'Update', value: 'update' },
+	],
+	default: [],
+	description:
+		'Permissions to apply. Public link shares support Read only (Create for folder uploads). Leave empty to set Read-only on public links.',
+};
+
 export const shareIdField: INodeProperties = {
 	displayName: 'Share ID',
 	name: 'shareId',
-	type: 'number',
+	type: 'string',
 	required: true,
-	typeOptions: { minValue: 1 },
-	description: 'ID of the share to update or delete',
-} as INodeProperties;
+	default: '',
+	description: 'ID of the share to update or delete — e.g. from a previous Create or Get Many item',
+};

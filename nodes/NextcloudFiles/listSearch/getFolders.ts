@@ -2,35 +2,40 @@ import type { ILoadOptionsFunctions, INodeListSearchResult, JsonObject } from 'n
 import { NodeApiError } from 'n8n-workflow';
 
 import {
+	collectPathEntriesRecursive,
 	directoryEntryToListOption,
 	getCredentials,
-	loadDirectoryListing,
-	normalizeFilesPath,
+	resolvePathListSearchScope,
+	paginatePathListOptions,
 } from '../GenericFunctions';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
+
+function parsePaginationOffset(paginationToken?: string): number {
+	if (!paginationToken?.trim()) return 0;
+
+	const offset = Number(paginationToken);
+	return Number.isFinite(offset) && offset >= 0 ? offset : 0;
+}
 
 export async function getFolders(
 	this: ILoadOptionsFunctions,
 	filter?: string,
+	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	try {
 		const credentials = await getCredentials(this);
-		const directoryPath = normalizeFilesPath(filter ?? '/');
-		const entries = await loadDirectoryListing(this, credentials, directoryPath);
-		const results = entries.map(directoryEntryToListOption);
+		const resource = this.getNodeParameter('resource') as string | undefined;
+		const operation = this.getNodeParameter('operation') as string | undefined;
+		const scope = resolvePathListSearchScope(resource, operation);
+		const entries = await collectPathEntriesRecursive(this, credentials, {
+			...scope,
+			filter,
+		});
+		const options = entries.map(directoryEntryToListOption);
+		const offset = parsePaginationOffset(paginationToken);
+		const page = paginatePathListOptions(options, offset);
 
-		if (directoryPath !== '/') {
-			const parent =
-				directoryPath.lastIndexOf('/') > 0
-					? directoryPath.slice(0, directoryPath.lastIndexOf('/')) || '/'
-					: '/';
-			results.unshift({
-				name: '📁 ..',
-				value: parent,
-			});
-		}
-
-		return { results };
+		return page;
 	} catch (error) {
 		let secrets = {};
 		try {
