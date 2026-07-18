@@ -49,6 +49,9 @@ Use this when you prefer OAuth2 over app passwords. Nextcloud grants **full acco
 
 Basic Auth workflows are unchanged: leave **Authentication** on **Basic Auth** (the default) and use the **Nextcloud API** credential.
 
+> [!WARNING]
+> **OAuth2 end-to-end flow untested.** The credential type and Calendar wiring load correctly in n8n, but live OAuth2 consent and CalDAV operations under OAuth2 have not been verified against a real Nextcloud instance — the maintainer's test instance does not expose OAuth2 (Administration → Security). If you have OAuth2 enabled, please report results or open an issue.
+
 ## Finding Inspiration
 
 Looking for more examples? Check out these resources:
