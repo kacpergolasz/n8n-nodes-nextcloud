@@ -59,11 +59,12 @@ export const sharePermissionsField: INodeProperties = {
 	description: 'Permissions granted on the shared resource',
 };
 
+// eslint-disable-next-line n8n-nodes-base/node-param-default-missing -- no safe default; execute validates shareId > 0
 export const shareIdField: INodeProperties = {
 	displayName: 'Share ID',
 	name: 'shareId',
 	type: 'number',
 	required: true,
-	default: 0,
+	typeOptions: { minValue: 1 },
 	description: 'ID of the share to update or delete',
-};
+} as INodeProperties;

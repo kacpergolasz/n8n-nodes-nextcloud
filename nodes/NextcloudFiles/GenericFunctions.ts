@@ -34,7 +34,16 @@ export function normalizeFilesPath(path: string): string {
 	const trimmed = path.trim();
 	if (!trimmed || trimmed === '/') return '/';
 	const withLeading = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-	return withLeading.replace(/\/+$/, '') || '/';
+	const normalized = withLeading.replace(/\/+$/, '') || '/';
+	if (normalized === '/') return '/';
+
+	for (const segment of normalized.split('/').filter(Boolean)) {
+		if (segment === '.' || segment === '..') {
+			throw new Error(`Invalid path: "${path}" contains "." or ".." segments`);
+		}
+	}
+
+	return normalized;
 }
 
 /**
@@ -339,7 +348,7 @@ function buildOcsFormBody(body?: IDataObject): string | undefined {
 	return params.toString();
 }
 
-function unwrapOcsResponse(response: unknown): unknown {
+export function unwrapOcsResponse(response: unknown): unknown {
 	const envelope = response as OcsEnvelope;
 	const statusCode = envelope?.ocs?.meta?.statuscode;
 	const message = envelope?.ocs?.meta?.message;
@@ -348,8 +357,12 @@ function unwrapOcsResponse(response: unknown): unknown {
 		throw new Error('Invalid OCS response envelope');
 	}
 
-	if (statusCode >= 400) {
-		throw new Error(message?.trim() || `OCS request failed with status ${statusCode}`);
+	if (statusCode !== 100 && statusCode !== 200) {
+		const ocsError = new Error(
+			message?.trim() || `OCS request failed with status ${statusCode}`,
+		) as Error & { statusCode: number };
+		ocsError.statusCode = statusCode;
+		throw ocsError;
 	}
 
 	return envelope.ocs.data;

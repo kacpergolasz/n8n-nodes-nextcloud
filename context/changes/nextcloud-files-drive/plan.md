@@ -303,15 +303,15 @@ WebDAV List and the `listSearch` picker use `PROPFIND Depth: 1` (single director
 
 #### Automated
 
-- [x] 2.1 `share` resource exists and is registered in the node `resource` options
-- [x] 2.2 `ocsRequest` / `permissionsToBitmask` / `parseShare` implemented in GenericFunctions
-- [x] 2.3 `npm run build` succeeds
-- [x] 2.4 `npm run lint` succeeds
-- [x] 2.5 `npm test` succeeds (adds OCS parsing tests)
+- [x] 2.1 `share` resource exists and is registered in the node `resource` options — 61db982
+- [x] 2.2 `ocsRequest` / `permissionsToBitmask` / `parseShare` implemented in GenericFunctions — 61db982
+- [x] 2.3 `npm run build` succeeds — 61db982
+- [x] 2.4 `npm run lint` succeeds — 61db982
+- [x] 2.5 `npm test` succeeds (adds OCS parsing tests) — 61db982
 
 #### Manual
 
-- [x] 2.6 Phase 2 pause — human confirms sharing ready for north-star smoke
+- [x] 2.6 Phase 2 pause — human confirms sharing ready for north-star smoke — 61db982
 
 ### Phase 3: North-star local verification
 

@@ -28,7 +28,7 @@ This starts n8n with your nodes loaded and hot reload enabled.
 This package currently includes:
 
 - **[Nextcloud Calendar](nodes/NextcloudCalendar/)** - CalDAV event Create / Get / Get Many / Update / Delete with list-or-type calendar pickers
-- **[Nextcloud Files](nodes/NextcloudFiles/)** - WebDAV file and folder Upload / Download / Delete / Move / Copy / List with path pickers
+- **[Nextcloud Files](nodes/NextcloudFiles/)** - WebDAV file and folder Upload / Download / Delete / Move / Copy / List, plus OCS Share Create / Get Many / Update / Delete with path pickers
 - **[Nextcloud API credential](credentials/NextcloudApi.credentials.ts)** - Shared Basic Auth (`baseUrl` / `username` / `appPassword`) reused by suite nodes
 
 > [!TIP]
