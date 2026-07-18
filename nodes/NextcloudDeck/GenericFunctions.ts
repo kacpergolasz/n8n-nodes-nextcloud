@@ -104,6 +104,58 @@ export async function deckRequest(
 	});
 }
 
+/** Locate a card on a board by id (summary from nested stack payloads). */
+export function findCardInStacks(stacks: DeckStack[], cardId: string): DeckCard | undefined {
+	return flattenCardsFromStacks(stacks).find((card) => String(card.id) === cardId);
+}
+
+/** Load a card by board + card id; stack is resolved from the board stacks payload. */
+export async function findCardOnBoard(
+	context: IExecuteFunctions,
+	boardId: string,
+	cardId: string,
+): Promise<{ card: DeckCard; stackId: string }> {
+	const stacks = (await deckRequest(context, 'GET', `/boards/${boardId}/stacks`)) as DeckStack[];
+	const match = findCardInStacks(stacks, cardId);
+	if (!match?.stackId) {
+		throw new Error(`Card ${cardId} was not found on board ${boardId}.`);
+	}
+
+	const stackId = String(match.stackId);
+	const card = (await deckRequest(
+		context,
+		'GET',
+		`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
+	)) as DeckCard;
+
+	return { card, stackId };
+}
+
+/**
+ * Move a card via REST PUT (Basic Auth). Deck's `/reorder` REST route ignores target stackId;
+ * PUT to the destination stack URL with stackId + order in the body matches the web UI behavior.
+ */
+export async function moveCard(
+	context: IExecuteFunctions,
+	boardId: string,
+	cardId: string,
+	toStackId: string,
+	order: number,
+): Promise<DeckCard> {
+	const { card } = await findCardOnBoard(context, boardId, cardId);
+	const payload = mergeDefined(card as IDataObject, {
+		stackId: Number(toStackId),
+		order,
+	});
+
+	return (await deckRequest(
+		context,
+		'PUT',
+		`/boards/${boardId}/stacks/${toStackId}/cards/${cardId}`,
+		payload,
+	)) as DeckCard;
+}
+
 export async function loadBoards(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<DeckPickerOption[]> {
@@ -127,28 +179,27 @@ export async function loadStacks(
 	}));
 }
 
-export function resolveBoardId(boardInput: string): string {
-	const trimmed = boardInput.trim();
+function coerceResourceId(input: unknown, resourceLabel: string): string {
+	if (input === undefined || input === null || input === '') {
+		throw new Error(`${resourceLabel} id is empty.`);
+	}
+	const trimmed = String(input).trim();
 	if (!trimmed) {
-		throw new Error('Board id is empty.');
+		throw new Error(`${resourceLabel} id is empty.`);
 	}
 	return trimmed;
 }
 
-export function resolveStackId(stackInput: string): string {
-	const trimmed = stackInput.trim();
-	if (!trimmed) {
-		throw new Error('Stack id is empty.');
-	}
-	return trimmed;
+export function resolveBoardId(boardInput: string | number): string {
+	return coerceResourceId(boardInput, 'Board');
 }
 
-export function resolveCardId(cardInput: string): string {
-	const trimmed = cardInput.trim();
-	if (!trimmed) {
-		throw new Error('Card id is empty.');
-	}
-	return trimmed;
+export function resolveStackId(stackInput: string | number): string {
+	return coerceResourceId(stackInput, 'Stack');
+}
+
+export function resolveCardId(cardInput: string | number): string {
+	return coerceResourceId(cardInput, 'Card');
 }
 
 /** Overlay patch keys that are not `undefined` onto target (partial-update safety). */

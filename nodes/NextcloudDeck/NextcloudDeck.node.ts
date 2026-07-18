@@ -14,10 +14,12 @@ import {
 	buildBoardUpdatePayload,
 	deckRequest,
 	filterActiveBoards,
+	findCardOnBoard,
 	flattenCardsFromStacks,
 	formatDeckDueDate,
 	getCredentials,
 	mergeDefined,
+	moveCard,
 	normalizeDeckColor,
 	resolveBoardId,
 	resolveCardId,
@@ -56,7 +58,11 @@ function resolveOptionalStackFilter(
 		mode: 'id',
 		value: '',
 	}) as INodeParameterResourceLocator;
-	const value = (locator?.value as string | undefined)?.trim();
+	const raw = locator?.value;
+	if (raw === undefined || raw === null || raw === '') {
+		return undefined;
+	}
+	const value = String(raw).trim();
 	return value || undefined;
 }
 
@@ -342,13 +348,12 @@ export class NextcloudDeck implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const stackId = resolveStackFromInput(this, i);
 						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
-						const current = (await deckRequest(
+						const { card: current, stackId: sourceStackId } = await findCardOnBoard(
 							this,
-							'GET',
-							`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
-						)) as DeckCard;
+							boardId,
+							cardId,
+						);
 						const title = this.getNodeParameter('title', i, '') as string;
 						const description = this.getNodeParameter('description', i, '') as string;
 						const dueDate = this.getNodeParameter('dueDate', i, '') as string;
@@ -371,7 +376,7 @@ export class NextcloudDeck implements INodeType {
 						const card = (await deckRequest(
 							this,
 							'PUT',
-							`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
+							`/boards/${boardId}/stacks/${sourceStackId}/cards/${cardId}`,
 							payload,
 						)) as DeckCard;
 						returnData.push({
@@ -395,19 +400,10 @@ export class NextcloudDeck implements INodeType {
 					}
 
 					if (operation === 'move') {
-						const stackId = resolveStackFromInput(this, i);
 						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
 						const toStackId = resolveStackFromInput(this, i, 'toStack');
 						const order = this.getNodeParameter('order', i, 0) as number;
-						const card = (await deckRequest(
-							this,
-							'PUT',
-							`/boards/${boardId}/stacks/${stackId}/cards/${cardId}/reorder`,
-							{
-								order,
-								stackId: Number(toStackId),
-							},
-						)) as DeckCard;
+						const card = await moveCard(this, boardId, cardId, toStackId, order);
 						returnData.push({
 							json: cardToJson(card),
 							pairedItem: { item: i },

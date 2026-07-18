@@ -320,7 +320,7 @@ Deck responses are small JSON payloads; Card Get Many fetches board stacks (with
 
 #### Automated
 
-- [ ] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes
+- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes
 
 #### Manual
 
