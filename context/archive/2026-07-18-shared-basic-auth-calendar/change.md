@@ -1,10 +1,10 @@
 ---
 change_id: shared-basic-auth-calendar
 title: Shared Basic Auth + Nextcloud Calendar
-status: implemented
+status: archived
 created: 2026-07-18
 updated: 2026-07-18
-archived_at: null
+archived_at: 2026-07-18T12:05:37Z
 ---
 
 ## Notes

@@ -28,7 +28,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | ID | Change ID | Outcome (user can …) | Prerequisites | PRD refs | Status |
 |---|---|---|---|---|---|
 | F-01 | local-community-node-verify | (foundation) package builds and runs via local n8n community-node link for verification | — | FR-003 | ready |
-| S-01 | shared-basic-auth-calendar | create shared Basic Auth credential, run Calendar events, pick resources from lists or manually | F-01 | US-01, FR-001, FR-011 | proposed |
+| S-01 | shared-basic-auth-calendar | create shared Basic Auth credential, run Calendar events, pick resources from lists or manually | F-01 | US-01, FR-001, FR-011 | done |
 | S-08 | calendar-get-many-caldav | list more than a truncated PROPFIND page of Calendar events (reliable Get Many) | S-01 | US-01, FR-001 | proposed |
 | S-09 | calendar-partial-update | update a Calendar event with only changed fields | S-01 | US-01, FR-001 | proposed |
 | S-02 | shared-oauth2-credential | create and use shared OAuth2 credential across suite nodes (proven on Calendar) | S-01 | FR-002 | proposed |
@@ -87,7 +87,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** North star and quality gate for the shared-credential contract; if this is weak, later suite nodes inherit a bad pattern.
-- **Status:** proposed
+- **Status:** done
 
 ### S-08: Calendar Get Many via CalDAV query
 
@@ -215,4 +215,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
-(Empty on first generation. `/10x-archive` appends entries here when matching Change IDs are archived.)
+- **S-01: user can create a shared Nextcloud Basic Auth credential, run Calendar event operations with useful workflow outputs, and pick remote resources via loaded lists with manual-input fallback — without secrets in outputs or errors.** — Archived 2026-07-18 → `context/archive/2026-07-18-shared-basic-auth-calendar/`. Lesson: —.
