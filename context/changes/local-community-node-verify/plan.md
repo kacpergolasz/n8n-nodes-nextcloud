@@ -215,10 +215,10 @@ If an older link to a previous package name exists under `~/.n8n/custom`, unlink
 
 #### Automated
 
-- [x] 3.1 npm run build exits 0
-- [x] 3.2 npm run lint exits 0
+- [x] 3.1 npm run build exits 0 — 422bae3
+- [x] 3.2 npm run lint exits 0 — 422bae3
 
 #### Manual
 
-- [x] 3.3 After official link path, Example is visible in the n8n node panel when searching by node name
-- [x] 3.4 No reliance on npm run dev alone for this phase’s pass criteria
+- [x] 3.3 After official link path, Example is visible in the n8n node panel when searching by node name — 422bae3
+- [x] 3.4 No reliance on npm run dev alone for this phase’s pass criteria — 422bae3
