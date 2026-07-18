@@ -10,6 +10,8 @@ import {
 	buildStacksUrl,
 	deckApiBase,
 	filterActiveBoards,
+	flattenCardsFromStacks,
+	mergeDefined,
 	normalizeDeckColor,
 } from '../GenericFunctions';
 
@@ -94,6 +96,69 @@ describe('board helpers', () => {
 	});
 });
 
+describe('mergeDefined', () => {
+	it('overlays only defined keys and drops undefined', () => {
+		expect(
+			mergeDefined({ title: 'Old', description: 'Keep', order: 1 }, {
+				title: 'New',
+				description: undefined,
+				duedate: '2026-07-18T12:00:00.000Z',
+			}),
+		).toEqual({
+			title: 'New',
+			description: 'Keep',
+			order: 1,
+			duedate: '2026-07-18T12:00:00.000Z',
+		});
+	});
+});
+
+describe('flattenCardsFromStacks', () => {
+	it('returns cards across stacks in order', () => {
+		const cards = flattenCardsFromStacks([
+			{
+				id: 1,
+				title: 'Todo',
+				order: 0,
+				cards: [
+					{ id: 10, title: 'A', order: 0 },
+					{ id: 11, title: 'B', order: 1 },
+				],
+			},
+			{
+				id: 2,
+				title: 'Done',
+				order: 1,
+				cards: [{ id: 20, title: 'C', order: 0 }],
+			},
+		]);
+		expect(cards.map((card) => card.id)).toEqual([10, 11, 20]);
+		expect(cards[0].stackId).toBe(1);
+		expect(cards[2].stackId).toBe(2);
+	});
+
+	it('honors an optional stack filter', () => {
+		const cards = flattenCardsFromStacks(
+			[
+				{
+					id: 1,
+					title: 'Todo',
+					order: 0,
+					cards: [{ id: 10, title: 'A', order: 0 }],
+				},
+				{
+					id: 2,
+					title: 'Done',
+					order: 1,
+					cards: [{ id: 20, title: 'C', order: 0 }],
+				},
+			],
+			'2',
+		);
+		expect(cards.map((card) => card.id)).toEqual([20]);
+	});
+});
+
 describe('loadBoards mapping', () => {
 	it('maps board ids to string picker values', async () => {
 		const { loadBoards } = await import('../GenericFunctions');
@@ -117,6 +182,32 @@ describe('loadBoards mapping', () => {
 		expect(boards).toEqual([
 			{ name: 'Personal', value: '1' },
 			{ name: 'Work', value: '42' },
+		]);
+	});
+});
+
+describe('loadStacks mapping', () => {
+	it('maps stack ids to string picker values', async () => {
+		const { loadStacks } = await import('../GenericFunctions');
+
+		const context = {
+			getCredentials: async () => ({
+				baseUrl: BASE,
+				username: 'alice',
+				appPassword: 'secret',
+			}),
+			helpers: {
+				httpRequestWithAuthentication: async () => [
+					{ id: 3, title: 'Backlog', order: 0 },
+					{ id: 7, title: 'In Progress', order: 1 },
+				],
+			},
+		};
+
+		const stacks = await loadStacks(context as never, '42');
+		expect(stacks).toEqual([
+			{ name: 'Backlog', value: '3' },
+			{ name: 'In Progress', value: '7' },
 		]);
 	});
 });

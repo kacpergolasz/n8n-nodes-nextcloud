@@ -1,0 +1,172 @@
+import type { INodeProperties } from 'n8n-workflow';
+import { boardSelect, stackSelect } from '../../shared/descriptions';
+
+const showOnlyForCard = {
+	resource: ['card'],
+};
+
+export const cardDescription: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: showOnlyForCard,
+		},
+		options: [
+			{ name: 'Create', value: 'create', action: 'Create a card' },
+			{ name: 'Delete', value: 'delete', action: 'Delete a card' },
+			{ name: 'Get', value: 'get', action: 'Get a card' },
+			{ name: 'Get Many', value: 'getAll', action: 'Get many cards' },
+			{ name: 'Move', value: 'move', action: 'Move a card' },
+			{ name: 'Update', value: 'update', action: 'Update a card' },
+		],
+		default: 'get',
+	},
+	{
+		...boardSelect,
+		displayOptions: {
+			show: showOnlyForCard,
+		},
+	},
+	{
+		...stackSelect,
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['create', 'get', 'delete', 'update', 'move'],
+			},
+		},
+	},
+	{
+		...stackSelect,
+		displayName: 'Stack Filter',
+		name: 'stackFilter',
+		required: false,
+		description: 'Optionally limit results to a single stack',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['getAll'],
+			},
+		},
+	},
+	{
+		displayName: 'Card ID',
+		name: 'cardId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['get', 'delete', 'update', 'move'],
+			},
+		},
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		description:
+			'Card title. Required when creating a card; leave empty on update to keep the current title.',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['create', 'update'],
+			},
+		},
+	},
+	{
+		displayName: 'Description',
+		name: 'description',
+		type: 'string',
+		typeOptions: { rows: 4 },
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['create', 'update'],
+			},
+		},
+	},
+	{
+		displayName: 'Due Date',
+		name: 'dueDate',
+		type: 'dateTime',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['create', 'update'],
+			},
+		},
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'hidden',
+		default: 'plain',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['create', 'update'],
+			},
+		},
+	},
+	{
+		displayName: 'Order',
+		name: 'order',
+		type: 'number',
+		default: 0,
+		description: 'Position of the card within the stack',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['create', 'move'],
+			},
+		},
+	},
+	{
+		...stackSelect,
+		displayName: 'Target Stack',
+		name: 'toStack',
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['move'],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		description: 'Whether to return all results or only up to a given limit',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['getAll'],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		description: 'Max number of results to return',
+		typeOptions: { minValue: 1 },
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-limit
+		default: 10,
+		displayOptions: {
+			show: {
+				resource: ['card'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+	},
+];

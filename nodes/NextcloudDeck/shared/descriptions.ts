@@ -25,3 +25,29 @@ export const boardSelect: INodeProperties = {
 		},
 	],
 };
+
+export const stackSelect: INodeProperties = {
+	displayName: 'Stack',
+	name: 'stack',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	description: 'The Deck stack (column) to operate on',
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getStacks',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 7',
+		},
+	],
+};
