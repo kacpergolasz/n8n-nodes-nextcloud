@@ -317,14 +317,14 @@ WebDAV List and the `listSearch` picker use `PROPFIND Depth: 1` (single director
 
 #### Automated
 
-- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes
+- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes — c7c9cd4
 
 #### Manual
 
-- [x] 3.2 F-01 link path — panel finds Nextcloud Files
-- [x] 3.3 Existing shared `nextcloudApi` credential attaches and authorizes Files ops (reuse proven)
-- [x] 3.4 File Upload/Download/Delete/Move/Copy produce useful items with correct binary round-trip and no secrets
-- [x] 3.5 Folder Create/Delete/List/Move/Copy work; List returns one item per child
-- [x] 3.6 Path resourceLocator works in list and manual id modes
+- [x] 3.2 F-01 link path — panel finds Nextcloud Files — c7c9cd4
+- [x] 3.3 Existing shared `nextcloudApi` credential attaches and authorizes Files ops (reuse proven) — c7c9cd4
+- [x] 3.4 File Upload/Download/Delete/Move/Copy produce useful items with correct binary round-trip and no secrets — c7c9cd4
+- [x] 3.5 Folder Create/Delete/List/Move/Copy work; List returns one item per child — c7c9cd4
+- [x] 3.6 Path resourceLocator works in list and manual id modes — c7c9cd4
 - [ ] 3.7 Share Create (public link URL/token)/Get Many/Update/Delete work
 - [x] 3.8 Error path does not expose `appPassword`
