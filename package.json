@@ -1,19 +1,19 @@
 {
 	"name": "n8n-nodes-nextcloud",
 	"version": "0.1.0",
-	"description": "",
+	"description": "Nextcloud suite community nodes for n8n — WIP",
 	"license": "MIT",
-	"homepage": "",
+	"homepage": "https://github.com/kacpergolasz/n8n-nodes-monorepo/tree/main/packages/nextcloud",
 	"keywords": [
 		"n8n-community-node-package"
 	],
 	"author": {
-		"name": "",
-		"email": ""
+		"name": "kacpergolasz",
+		"email": "kgolasz@outlook.com"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/<...>/n8n-nodes-<...>.git"
+		"url": "https://github.com/kacpergolasz/n8n-nodes-monorepo.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
