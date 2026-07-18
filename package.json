@@ -32,7 +32,8 @@
 		"n8nNodesApiVersion": 1,
 		"strict": true,
 		"credentials": [
-			"dist/credentials/NextcloudApi.credentials.js"
+			"dist/credentials/NextcloudApi.credentials.js",
+			"dist/credentials/NextcloudOAuth2Api.credentials.js"
 		],
 		"nodes": [
 			"dist/nodes/NextcloudCalendar/NextcloudCalendar.node.js",
