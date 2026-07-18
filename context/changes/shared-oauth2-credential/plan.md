@@ -286,7 +286,7 @@ OAuth2 adds no per-request cost beyond token injection; n8n caches and refreshes
 
 #### Automated
 
-- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes
+- [x] 3.1 `npm run build`, `npm run lint`, and `npm test` still pass after any Phase 3 fixes — 795b349
 
 #### Manual
 
