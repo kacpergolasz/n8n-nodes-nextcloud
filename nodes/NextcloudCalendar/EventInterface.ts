@@ -1,7 +1,16 @@
+export type NextcloudAuthenticationMode = 'basicAuth' | 'oAuth2';
+
+export type NextcloudCredentialName = 'nextcloudApi' | 'nextcloudOAuth2Api';
+
 export interface NextcloudCredentialData {
 	baseUrl: string;
 	username: string;
-	appPassword: string;
+	credentialName: NextcloudCredentialName;
+	authentication: NextcloudAuthenticationMode;
+	appPassword?: string;
+	accessToken?: string;
+	refreshToken?: string;
+	clientSecret?: string;
 }
 
 export interface NextcloudCalendarOption {

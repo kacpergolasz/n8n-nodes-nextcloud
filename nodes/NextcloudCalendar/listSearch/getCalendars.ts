@@ -3,6 +3,17 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { getCredentials, loadCalendars } from '../GenericFunctions';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
+import type { ScrubSecretsInput } from '../shared/scrubSecrets';
+
+function toScrubSecretsInput(credentials: Awaited<ReturnType<typeof getCredentials>>): ScrubSecretsInput {
+	return {
+		username: credentials.username,
+		appPassword: credentials.appPassword,
+		accessToken: credentials.accessToken,
+		refreshToken: credentials.refreshToken,
+		clientSecret: credentials.clientSecret,
+	};
+}
 
 export async function getCalendars(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	try {
@@ -11,9 +22,9 @@ export async function getCalendars(this: ILoadOptionsFunctions): Promise<INodeLi
 			results: calendars.map((calendar) => ({ name: calendar.name, value: calendar.value })),
 		};
 	} catch (error) {
-		let secrets = {};
+		let secrets: ScrubSecretsInput = {};
 		try {
-			secrets = await getCredentials(this);
+			secrets = toScrubSecretsInput(await getCredentials(this));
 		} catch {
 			// ignore credential load failures while scrubbing
 		}

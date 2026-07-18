@@ -8,6 +8,7 @@ import type {
 import type {
 	NextcloudCalendarOption,
 	NextcloudCredentialData,
+	NextcloudCredentialName,
 	NextcloudEventInput,
 } from './EventInterface';
 
@@ -75,15 +76,38 @@ export function parseCalendarsFromXml(xml: string): NextcloudCalendarOption[] {
 	return calendars;
 }
 
+export function resolveCredentialName(authentication: string): NextcloudCredentialName {
+	return authentication === 'oAuth2' ? 'nextcloudOAuth2Api' : 'nextcloudApi';
+}
+
 export async function getCredentials(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<NextcloudCredentialData> {
-	const credentials = (await context.getCredentials('nextcloudApi')) as NextcloudCredentialData;
+	const authentication = context.getNodeParameter('authentication', 0, 'basicAuth') as string;
+	const credentialName = resolveCredentialName(authentication);
+	const raw = (await context.getCredentials(credentialName)) as IDataObject;
+
+	const base: NextcloudCredentialData = {
+		baseUrl: normalizeBaseUrl(raw.baseUrl as string),
+		username: raw.username as string,
+		credentialName,
+		authentication: authentication === 'oAuth2' ? 'oAuth2' : 'basicAuth',
+	};
+
+	if (credentialName === 'nextcloudApi') {
+		return {
+			...base,
+			appPassword: raw.appPassword as string,
+		};
+	}
+
+	const oauthTokenData = raw.oauthTokenData as IDataObject | undefined;
 
 	return {
-		baseUrl: normalizeBaseUrl(credentials.baseUrl),
-		username: credentials.username,
-		appPassword: credentials.appPassword,
+		...base,
+		accessToken: oauthTokenData?.access_token as string | undefined,
+		refreshToken: oauthTokenData?.refresh_token as string | undefined,
+		clientSecret: raw.clientSecret as string | undefined,
 	};
 }
 
@@ -93,8 +117,13 @@ export async function nextcloudRequest(
 	url: string,
 	body?: string | IDataObject,
 	headers?: IDataObject,
+	credentialName?: NextcloudCredentialName,
 ) {
-	return await context.helpers.httpRequestWithAuthentication.call(context, 'nextcloudApi', {
+	const resolvedCredentialName =
+		credentialName ??
+		resolveCredentialName(context.getNodeParameter('authentication', 0, 'basicAuth') as string);
+
+	return await context.helpers.httpRequestWithAuthentication.call(context, resolvedCredentialName, {
 		method: method as IHttpRequestMethods,
 		url,
 		body,

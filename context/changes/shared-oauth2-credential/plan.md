@@ -259,24 +259,24 @@ OAuth2 adds no per-request cost beyond token injection; n8n caches and refreshes
 
 #### Automated
 
-- [x] 1.1 OAuth2 credential type and icon exist under `credentials/`
-- [x] 1.2 `package.json` registers both `NextcloudApi` and `NextcloudOAuth2Api`
-- [x] 1.3 `npm run build` succeeds
-- [x] 1.4 `npm run lint` succeeds
+- [x] 1.1 OAuth2 credential type and icon exist under `credentials/` — af37a4a
+- [x] 1.2 `package.json` registers both `NextcloudApi` and `NextcloudOAuth2Api` — af37a4a
+- [x] 1.3 `npm run build` succeeds — af37a4a
+- [x] 1.4 `npm run lint` succeeds — af37a4a
 
 #### Manual
 
-- [ ] 1.5 "Nextcloud OAuth2 API" appears as a selectable credential type after local load
+- [x] 1.5 "Nextcloud OAuth2 API" appears as a selectable credential type after local load
 
 ### Phase 2: Wire Calendar for Basic OR OAuth2 + scrubbing + tests
 
 #### Automated
 
-- [ ] 2.1 Calendar node exposes `authentication` selector and both credentials with `displayOptions`
-- [ ] 2.2 `GenericFunctions` resolves credential name from `authentication` (no hard-coded `'nextcloudApi'` in `nextcloudRequest`)
-- [ ] 2.3 `npm run build` succeeds
-- [ ] 2.4 `npm run lint` succeeds
-- [ ] 2.5 `npm test` succeeds (OAuth2 scrubbing + credential-name resolution + existing suites)
+- [x] 2.1 Calendar node exposes `authentication` selector and both credentials with `displayOptions`
+- [x] 2.2 `GenericFunctions` resolves credential name from `authentication` (no hard-coded `'nextcloudApi'` in `nextcloudRequest`)
+- [x] 2.3 `npm run build` succeeds
+- [x] 2.4 `npm run lint` succeeds
+- [x] 2.5 `npm test` succeeds (OAuth2 scrubbing + credential-name resolution + existing suites)
 
 #### Manual
 

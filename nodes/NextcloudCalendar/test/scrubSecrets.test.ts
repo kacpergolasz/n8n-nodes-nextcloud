@@ -46,4 +46,32 @@ describe('scrubSecrets', () => {
 		).toBe('bad auth [REDACTED]');
 		expect(scrubErrorMessage(`token=${appPassword}`, { appPassword })).toBe('token=[REDACTED]');
 	});
+
+	it('redacts OAuth2 accessToken, refreshToken, and clientSecret', () => {
+		const accessToken = 'oauth-access-token-fixture';
+		const refreshToken = 'oauth-refresh-token-fixture';
+		const clientSecret = 'oauth-client-secret-fixture';
+		const input = `Failed with ${accessToken}, ${refreshToken}, and ${clientSecret}`;
+		const scrubbed = scrubSecrets(input, { accessToken, refreshToken, clientSecret });
+		expect(scrubbed).toBe('Failed with [REDACTED], [REDACTED], and [REDACTED]');
+		expect(scrubbed).not.toContain(accessToken);
+		expect(scrubbed).not.toContain(refreshToken);
+		expect(scrubbed).not.toContain(clientSecret);
+	});
+
+	it('redacts Authorization Bearer blobs', () => {
+		const accessToken = 'oauth-access-token-fixture';
+		const input = `Authorization: Bearer ${accessToken}`;
+		const scrubbed = scrubSecrets(input, { accessToken });
+		expect(scrubbed).toBe('Authorization: Bearer [REDACTED]');
+		expect(scrubbed).not.toContain(accessToken);
+	});
+
+	it('redacts standalone Bearer token blobs', () => {
+		const accessToken = 'oauth-access-token-fixture';
+		const input = `Request failed: Bearer ${accessToken} rejected`;
+		const scrubbed = scrubSecrets(input, { accessToken });
+		expect(scrubbed).toBe('Request failed: Bearer [REDACTED] rejected');
+		expect(scrubbed).not.toContain(accessToken);
+	});
 });
