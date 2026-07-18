@@ -5,7 +5,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import type { DirectoryEntry, NextcloudCredentialData } from './FilesInterface';
+import type { DirectoryEntry, NextcloudCredentialData, OcsEnvelope, ParsedShare } from './FilesInterface';
 
 /** n8n's IHttpRequestMethods omits WebDAV verbs like PROPFIND, MKCOL, MOVE, and COPY. */
 export type NextcloudHttpMethod = IHttpRequestMethods | 'PROPFIND' | 'MKCOL' | 'MOVE' | 'COPY';
@@ -248,4 +248,144 @@ export function contentTypeFromFileName(fileName: string): string {
 	if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'text/html';
 	if (lower.endsWith('.csv')) return 'text/csv';
 	return 'application/octet-stream';
+}
+
+const PERMISSION_BITMASK: Record<string, number> = {
+	read: 1,
+	update: 2,
+	create: 4,
+	delete: 8,
+	share: 16,
+};
+
+/** OR permission labels into the Nextcloud OCS permissions bitmask. */
+export function permissionsToBitmask(permissions: string[]): number {
+	return permissions.reduce(
+		(mask, permission) => mask | (PERMISSION_BITMASK[permission.toLowerCase()] ?? 0),
+		0,
+	);
+}
+
+function asString(value: unknown): string | undefined {
+	if (value === undefined || value === null) return undefined;
+	const text = String(value).trim();
+	return text || undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function asBoolean(value: unknown): boolean | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value === 'boolean') return value;
+	const normalized = String(value).toLowerCase();
+	if (normalized === 'true' || normalized === '1') return true;
+	if (normalized === 'false' || normalized === '0') return false;
+	return undefined;
+}
+
+/** Normalize a single OCS share payload into a stable workflow shape. */
+export function parseShare(data: IDataObject): ParsedShare {
+	const id = asNumber(data.id);
+	const shareType = asNumber(data.share_type ?? data.shareType);
+	const path = asString(data.path);
+
+	if (id === undefined || shareType === undefined || !path) {
+		throw new Error('Invalid OCS share payload');
+	}
+
+	const permissions = asNumber(data.permissions) ?? 0;
+
+	return {
+		id,
+		shareType,
+		path,
+		permissions,
+		shareWith: asString(data.share_with ?? data.shareWith),
+		url: asString(data.url),
+		token: asString(data.token),
+		expiration: asString(data.expiration ?? data.expire_date ?? data.expireDate),
+		note: asString(data.note),
+		publicUpload: asBoolean(data.public_upload ?? data.publicUpload),
+		uidOwner: asString(data.uid_owner ?? data.uidOwner),
+		displaynameOwner: asString(data.displayname_owner ?? data.displaynameOwner),
+		itemType: asString(data.item_type ?? data.itemType),
+		mimetype: asString(data.mimetype),
+	};
+}
+
+function buildOcsQueryString(qs?: IDataObject): string {
+	const params = new URLSearchParams({ format: 'json' });
+	if (qs) {
+		for (const [key, value] of Object.entries(qs)) {
+			if (value !== undefined && value !== null && value !== '') {
+				params.set(key, String(value));
+			}
+		}
+	}
+	return params.toString();
+}
+
+function buildOcsFormBody(body?: IDataObject): string | undefined {
+	if (!body) return undefined;
+	const params = new URLSearchParams();
+	for (const [key, value] of Object.entries(body)) {
+		if (value === undefined || value === null || value === '') continue;
+		params.set(key, String(value));
+	}
+	return params.toString();
+}
+
+function unwrapOcsResponse(response: unknown): unknown {
+	const envelope = response as OcsEnvelope;
+	const statusCode = envelope?.ocs?.meta?.statuscode;
+	const message = envelope?.ocs?.meta?.message;
+
+	if (statusCode === undefined) {
+		throw new Error('Invalid OCS response envelope');
+	}
+
+	if (statusCode >= 400) {
+		throw new Error(message?.trim() || `OCS request failed with status ${statusCode}`);
+	}
+
+	return envelope.ocs.data;
+}
+
+/**
+ * Authenticated OCS request against the files_sharing API.
+ * Forces JSON output and unwraps the `ocs.data` envelope.
+ */
+export async function ocsRequest(
+	context: ILoadOptionsFunctions | IExecuteFunctions,
+	method: NextcloudHttpMethod,
+	apiPath: string,
+	body?: IDataObject,
+	qs?: IDataObject,
+): Promise<unknown> {
+	const credentials = await getCredentials(context);
+	const queryString = buildOcsQueryString(qs);
+	const url = `${credentials.baseUrl}/ocs/v2.php/apps/files_sharing/api/v1/${apiPath}?${queryString}`;
+	const formBody = buildOcsFormBody(body);
+	const headers: IDataObject = {
+		'OCS-APIRequest': 'true',
+		Accept: 'application/json',
+	};
+
+	if (formBody !== undefined) {
+		headers['Content-Type'] = 'application/x-www-form-urlencoded';
+	}
+
+	const response = await nextcloudRequest(
+		context,
+		method,
+		url,
+		formBody,
+		headers,
+	);
+
+	return unwrapOcsResponse(response);
 }
