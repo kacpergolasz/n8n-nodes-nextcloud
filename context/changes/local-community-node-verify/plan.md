@@ -203,22 +203,22 @@ If an older link to a previous package name exists under `~/.n8n/custom`, unlink
 
 #### Automated
 
-- [x] 2.1 README.md contains both npm run dev and npm link / .n8n/custom guidance
-- [x] 2.2 README.md links to the official run-your-node-locally docs URL
+- [x] 2.1 README.md contains both npm run dev and npm link / .n8n/custom guidance — 6f98e4e
+- [x] 2.2 README.md links to the official run-your-node-locally docs URL — 6f98e4e
 
 #### Manual
 
-- [x] 2.3 A cold reader can follow the gate steps without opening this plan
-- [x] 2.4 Canary search hint (Example) is explicit
+- [x] 2.3 A cold reader can follow the gate steps without opening this plan — 6f98e4e
+- [x] 2.4 Canary search hint (Example) is explicit — 6f98e4e
 
 ### Phase 3: Prove the gate
 
 #### Automated
 
-- [ ] 3.1 npm run build exits 0
-- [ ] 3.2 npm run lint exits 0
+- [x] 3.1 npm run build exits 0
+- [x] 3.2 npm run lint exits 0
 
 #### Manual
 
-- [ ] 3.3 After official link path, Example is visible in the n8n node panel when searching by node name
-- [ ] 3.4 No reliance on npm run dev alone for this phase’s pass criteria
+- [x] 3.3 After official link path, Example is visible in the n8n node panel when searching by node name
+- [x] 3.4 No reliance on npm run dev alone for this phase’s pass criteria
