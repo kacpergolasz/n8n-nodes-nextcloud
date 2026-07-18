@@ -27,7 +27,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 
 | ID | Change ID | Outcome (user can …) | Prerequisites | PRD refs | Status |
 |---|---|---|---|---|---|
-| F-01 | local-community-node-verify | (foundation) package builds and runs via local n8n community-node link for verification | — | FR-003 | ready |
+| F-01 | local-community-node-verify | (foundation) package builds and runs via local n8n community-node link for verification | — | FR-003 | done |
 | S-01 | shared-basic-auth-calendar | create shared Basic Auth credential, run Calendar events, pick resources from lists or manually | F-01 | US-01, FR-001, FR-011 | done |
 | S-08 | calendar-get-many-caldav | list more than a truncated PROPFIND page of Calendar events (reliable Get Many) | S-01 | US-01, FR-001 | proposed |
 | S-09 | calendar-partial-update | update a Calendar event with only changed fields | S-01 | US-01, FR-001 | proposed |
@@ -73,7 +73,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Sequenced first so Calendar quality work is never planned without a runnable local check; failure mode is shipping nodes that cannot be exercised in n8n.
-- **Status:** ready
+- **Status:** done
 
 ## Slices
 
@@ -215,4 +215,5 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Done
 
+- **F-01: (foundation) package builds and runs via the local n8n community-node path so suite work can be verified before npm publish.** — Archived 2026-07-18 → `context/archive/2026-07-18-local-community-node-verify/`. Lesson: —.
 - **S-01: user can create a shared Nextcloud Basic Auth credential, run Calendar event operations with useful workflow outputs, and pick remote resources via loaded lists with manual-input fallback — without secrets in outputs or errors.** — Archived 2026-07-18 → `context/archive/2026-07-18-shared-basic-auth-calendar/`. Lesson: —.

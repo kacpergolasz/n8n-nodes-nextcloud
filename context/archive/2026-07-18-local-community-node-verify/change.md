@@ -1,10 +1,10 @@
 ---
 change_id: local-community-node-verify
 title: Local community-node verification path
-status: implemented
+status: archived
 created: 2026-07-18
 updated: 2026-07-18
-archived_at: null
+archived_at: 2026-07-18T12:05:47Z
 ---
 
 ## Notes
