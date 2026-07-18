@@ -135,6 +135,19 @@ export async function findCardOnBoard(
  * Move a card via REST PUT (Basic Auth). Deck's `/reorder` REST route ignores target stackId;
  * PUT to the destination stack URL with stackId + order in the body matches the web UI behavior.
  */
+export async function deleteCard(
+	context: IExecuteFunctions,
+	boardId: string,
+	cardId: string,
+): Promise<void> {
+	const { stackId } = await findCardOnBoard(context, boardId, cardId);
+	await deckRequest(
+		context,
+		'DELETE',
+		`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
+	);
+}
+
 export async function moveCard(
 	context: IExecuteFunctions,
 	boardId: string,

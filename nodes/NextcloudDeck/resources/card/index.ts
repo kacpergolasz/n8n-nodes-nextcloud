@@ -35,7 +35,7 @@ export const cardDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['card'],
-				operation: ['create', 'get', 'delete'],
+				operation: ['create'],
 			},
 		},
 	},
