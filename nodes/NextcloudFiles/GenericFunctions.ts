@@ -530,6 +530,7 @@ export async function validateSharePassword(
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
 			},
+			{ json: true },
 		);
 		return parseSharePasswordValidationResult(response);
 	} catch {
@@ -629,11 +630,11 @@ function buildOcsQueryString(qs?: IDataObject): string {
 	return params.toString();
 }
 
-function buildOcsFormBody(body?: IDataObject): string | undefined {
+export function buildOcsFormBody(body?: IDataObject): string | undefined {
 	if (!body) return undefined;
 	const params = new URLSearchParams();
 	for (const [key, value] of Object.entries(body)) {
-		if (value === undefined || value === null || value === '') continue;
+		if (value === undefined || value === null) continue;
 		params.set(key, String(value));
 	}
 	return params.toString();
