@@ -6,7 +6,6 @@ import type {
 } from 'n8n-workflow';
 
 import type { DirectoryEntry, NextcloudCredentialData, OcsEnvelope, ParsedShare } from './FilesInterface';
-import { getHttpStatusCode } from './shared/httpStatus';
 
 /** n8n's IHttpRequestMethods omits WebDAV verbs like PROPFIND, MKCOL, MOVE, and COPY. */
 export type NextcloudHttpMethod = IHttpRequestMethods | 'PROPFIND' | 'MKCOL' | 'MOVE' | 'COPY';
@@ -394,6 +393,32 @@ export function sanitizeSharePermissionLabels(
 	return normalized;
 }
 
+/** Resolve share permission labels to the OCS bitmask, sanitizing by share type. */
+export function buildSharePermissionsBitmask(
+	permissionLabels: string[],
+	shareType: number,
+): number {
+	const sanitized = sanitizeSharePermissionLabels(permissionLabels, shareType);
+
+	if (sanitized.length === 0) {
+		if (permissionLabels.length > 0) {
+			throw new Error(
+				'No valid permissions remain for this share type. Public link shares support Read (and Create for folder uploads) only.',
+			);
+		}
+
+		if (shareType === OCS_SHARE_TYPE_PUBLIC) {
+			return permissionsToBitmask(['read']);
+		}
+
+		throw new Error(
+			'Select at least one permission to apply. Public link shares support Read (and Create for folder uploads) only.',
+		);
+	}
+
+	return permissionsToBitmask(sanitized);
+}
+
 /** Parse a share ID from node parameters or expressions such as `{{ $json.id }}`. */
 export function parseShareId(value: unknown): number {
 	if (value === undefined || value === null || value === '') {
@@ -433,28 +458,10 @@ export function buildShareUpdateBody(options: {
 
 	if (fieldsToUpdate.has(SHARE_UPDATE_FIELD_PERMISSIONS)) {
 		const permissionLabels = options.permissions ?? [];
-		const sanitized =
+		body.permissions =
 			options.shareType === undefined
-				? permissionLabels
-				: sanitizeSharePermissionLabels(permissionLabels, options.shareType);
-
-		if (sanitized.length === 0) {
-			if (permissionLabels.length > 0) {
-				throw new Error(
-					'No valid permissions remain for this share type. Public link shares support Read (and Create for folder uploads) only.',
-				);
-			}
-
-			if (options.shareType === OCS_SHARE_TYPE_PUBLIC) {
-				body.permissions = permissionsToBitmask(['read']);
-			} else {
-				throw new Error(
-					'Select at least one permission to apply. Public link shares support Read (and Create for folder uploads) only.',
-				);
-			}
-		} else {
-			body.permissions = permissionsToBitmask(sanitized);
-		}
+				? permissionsToBitmask(permissionLabels)
+				: buildSharePermissionsBitmask(permissionLabels, options.shareType);
 	}
 
 	if (fieldsToUpdate.has(SHARE_UPDATE_FIELD_PASSWORD)) {
@@ -499,8 +506,8 @@ export function parseSharePasswordValidationResult(response: unknown): string | 
 
 /**
  * Validate a share password against the Nextcloud password_policy app (sharing context).
- * Returns an error message when validation fails, or undefined when the password is accepted
- * or the password_policy app is unavailable.
+ * Returns an error message when validation fails, or undefined when the password is accepted,
+ * the password_policy app is unavailable, or the validate request cannot be completed.
  */
 export async function validateSharePassword(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
@@ -525,10 +532,8 @@ export async function validateSharePassword(
 			},
 		);
 		return parseSharePasswordValidationResult(response);
-	} catch (error) {
-		if (getHttpStatusCode(error) === 404) return undefined;
-
-		return error instanceof Error ? error.message : String(error);
+	} catch {
+		return undefined;
 	}
 }
 
