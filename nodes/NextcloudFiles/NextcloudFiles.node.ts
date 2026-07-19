@@ -1,47 +1,36 @@
 import type {
-	IDataObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeParameterResourceLocator,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import {
-	buildDestinationHeader,
-	buildFilesUrl,
-	buildOverwriteHeader,
-	buildSharePermissionsBitmask,
-	buildShareUpdateBody,
-	contentTypeFromFileName,
-	fileNameFromPath,
-	getCredentials,
-	loadDirectoryListing,
-	nextcloudRequest,
-	normalizeFilesPath,
-	ocsRequest,
-	parseShare,
-	parseShareId,
-	resolveUploadPath,
-	validateSharePassword,
-} from './GenericFunctions';
+import { getCredentials } from './GenericFunctions';
 import { getFolders } from './listSearch/getFolders';
 import { fileDescription } from './resources/file';
+import { fileCopy } from './resources/file/copy';
+import { fileDelete } from './resources/file/delete';
+import { fileDownload } from './resources/file/download';
+import { fileMove } from './resources/file/move';
+import type { FileOperationContext } from './resources/file/types';
+import { fileUpload } from './resources/file/upload';
 import { folderDescription } from './resources/folder';
+import { folderCopy } from './resources/folder/copy';
+import { folderCreate } from './resources/folder/create';
+import { folderDelete } from './resources/folder/delete';
+import { folderList } from './resources/folder/list';
+import { folderMove } from './resources/folder/move';
+import type { FolderOperationContext } from './resources/folder/types';
 import { shareDescription } from './resources/share';
+import { shareCreate } from './resources/share/create';
+import { shareDelete } from './resources/share/delete';
+import { shareGetAll } from './resources/share/getAll';
+import { shareUpdate } from './resources/share/update';
+import type { ShareOperationContext } from './resources/share/types';
 import { getHttpStatusCode } from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
-
-function resolvePathFromInput(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
-	itemIndex: number,
-): string {
-	const locator = context.getNodeParameter('path', itemIndex) as INodeParameterResourceLocator;
-	return normalizeFilesPath(locator.value as string);
-}
 
 export class NextcloudFiles implements INodeType {
 	description: INodeTypeDescription = {
@@ -96,346 +85,63 @@ export class NextcloudFiles implements INodeType {
 				const operation = this.getNodeParameter('operation', i) as string;
 
 				if (resource === 'file') {
-					if (operation === 'upload') {
-						const targetPath = resolvePathFromInput(this, i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-						const fileNameParam = this.getNodeParameter('fileName', i, '') as string;
-						const inputItem = items[i];
-						const binaryMeta = inputItem.binary?.[binaryPropertyName];
-						const resolvedFileName =
-							fileNameParam.trim() ||
-							binaryMeta?.fileName ||
-							`upload-${Date.now()}`;
-						const uploadPath = resolveUploadPath(targetPath, resolvedFileName);
-						const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-						const mimeType = binaryMeta?.mimeType ?? contentTypeFromFileName(resolvedFileName);
-						const fileUrl = buildFilesUrl(
-							credentials.baseUrl,
-							credentials.username,
-							uploadPath,
-						);
-
-						await nextcloudRequest(this, 'PUT', fileUrl, buffer, {
-							'Content-Type': mimeType,
-						});
-
-						returnData.push({
-							json: {
-								path: uploadPath,
-								fileName: fileNameFromPath(uploadPath),
-								uploaded: true,
-							},
-							pairedItem: { item: i },
-						});
+					const opCtx: FileOperationContext = { itemIndex: i, credentials };
+					switch (operation) {
+						case 'upload':
+							returnData.push(await fileUpload(this, opCtx));
+							break;
+						case 'download':
+							returnData.push(await fileDownload(this, opCtx));
+							break;
+						case 'delete':
+							returnData.push(await fileDelete(this, opCtx));
+							break;
+						case 'move':
+							returnData.push(await fileMove(this, opCtx));
+							break;
+						case 'copy':
+							returnData.push(await fileCopy(this, opCtx));
+							break;
 					}
-
-					if (operation === 'download') {
-						const sourcePath = resolvePathFromInput(this, i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-						const fileUrl = buildFilesUrl(
-							credentials.baseUrl,
-							credentials.username,
-							sourcePath,
-						);
-						const response = await nextcloudRequest(
-							this,
-							'GET',
-							fileUrl,
-							undefined,
-							{},
-							{ encoding: 'arraybuffer' },
-						);
-						const buffer = Buffer.from(response as ArrayBuffer);
-						const fileName = fileNameFromPath(sourcePath);
-						const mimeType = contentTypeFromFileName(fileName);
-						const binaryData = await this.helpers.prepareBinaryData(buffer, fileName, mimeType);
-
-						returnData.push({
-							json: {
-								path: sourcePath,
-								fileName,
-								downloaded: true,
-							},
-							binary: {
-								[binaryPropertyName]: binaryData,
-							},
-							pairedItem: { item: i },
-						});
+				} else if (resource === 'folder') {
+					const opCtx: FolderOperationContext = { itemIndex: i, credentials };
+					switch (operation) {
+						case 'create':
+							returnData.push(await folderCreate(this, opCtx));
+							break;
+						case 'delete':
+							returnData.push(await folderDelete(this, opCtx));
+							break;
+						case 'list':
+							returnData.push(...(await folderList(this, opCtx)));
+							break;
+						case 'move':
+							returnData.push(await folderMove(this, opCtx));
+							break;
+						case 'copy':
+							returnData.push(await folderCopy(this, opCtx));
+							break;
 					}
-
-					if (operation === 'delete') {
-						const sourcePath = resolvePathFromInput(this, i);
-						const fileUrl = buildFilesUrl(
-							credentials.baseUrl,
-							credentials.username,
-							sourcePath,
-						);
-						await nextcloudRequest(this, 'DELETE', fileUrl);
-						returnData.push({
-							json: { path: sourcePath, deleted: true },
-							pairedItem: { item: i },
-						});
+				} else if (resource === 'share') {
+					const opCtx: ShareOperationContext = { itemIndex: i, credentials };
+					switch (operation) {
+						case 'create':
+							returnData.push(await shareCreate(this, opCtx));
+							break;
+						case 'getAll':
+							returnData.push(...(await shareGetAll(this, opCtx)));
+							break;
+						case 'update':
+							returnData.push(await shareUpdate(this, opCtx));
+							break;
+						case 'delete':
+							returnData.push(await shareDelete(this, opCtx));
+							break;
 					}
-
-					if (operation === 'move' || operation === 'copy') {
-						const sourcePath = resolvePathFromInput(this, i);
-						const destinationPath = normalizeFilesPath(
-							this.getNodeParameter('destinationPath', i) as string,
-						);
-						const overwrite = this.getNodeParameter('overwrite', i, false) as boolean;
-						const sourceUrl = buildFilesUrl(
-							credentials.baseUrl,
-							credentials.username,
-							sourcePath,
-						);
-						const method = operation === 'move' ? 'MOVE' : 'COPY';
-						await nextcloudRequest(this, method, sourceUrl, undefined, {
-							Destination: buildDestinationHeader(
-								credentials.baseUrl,
-								credentials.username,
-								destinationPath,
-							),
-							Overwrite: buildOverwriteHeader(overwrite),
-						});
-						returnData.push({
-							json: {
-								path: sourcePath,
-								destinationPath,
-								[operation === 'move' ? 'moved' : 'copied']: true,
-							},
-							pairedItem: { item: i },
-						});
-					}
-				}
-
-				if (resource === 'folder') {
-					const folderPath = resolvePathFromInput(this, i);
-
-					if (operation === 'create') {
-						const folderUrl = buildFilesUrl(
-							credentials.baseUrl,
-							credentials.username,
-							folderPath,
-						);
-						await nextcloudRequest(this, 'MKCOL', folderUrl);
-						returnData.push({
-							json: { path: folderPath, created: true },
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'delete') {
-						const folderUrl = buildFilesUrl(
-							credentials.baseUrl,
-							credentials.username,
-							folderPath,
-						);
-						await nextcloudRequest(this, 'DELETE', folderUrl);
-						returnData.push({
-							json: { path: folderPath, deleted: true },
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'list') {
-						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
-						const limit = this.getNodeParameter('limit', i, 100) as number;
-						const entries = await loadDirectoryListing(this, credentials, folderPath);
-						const sliced = returnAll ? entries : entries.slice(0, limit);
-
-						if (sliced.length === 0) {
-							returnData.push({
-								json: { path: folderPath, empty: true },
-								pairedItem: { item: i },
-							});
-						} else {
-							for (const entry of sliced) {
-								returnData.push({
-									json: entry as unknown as IDataObject,
-									pairedItem: { item: i },
-								});
-							}
-						}
-					}
-
-					if (operation === 'move' || operation === 'copy') {
-						const destinationPath = normalizeFilesPath(
-							this.getNodeParameter('destinationPath', i) as string,
-						);
-						const overwrite = this.getNodeParameter('overwrite', i, false) as boolean;
-						const sourceUrl = buildFilesUrl(
-							credentials.baseUrl,
-							credentials.username,
-							folderPath,
-						);
-						const method = operation === 'move' ? 'MOVE' : 'COPY';
-						await nextcloudRequest(this, method, sourceUrl, undefined, {
-							Destination: buildDestinationHeader(
-								credentials.baseUrl,
-								credentials.username,
-								destinationPath,
-							),
-							Overwrite: buildOverwriteHeader(overwrite),
-						});
-						returnData.push({
-							json: {
-								path: folderPath,
-								destinationPath,
-								[operation === 'move' ? 'moved' : 'copied']: true,
-							},
-							pairedItem: { item: i },
-						});
-					}
-				}
-
-				if (resource === 'share') {
-					if (operation === 'create') {
-						const sharePath = resolvePathFromInput(this, i);
-						const shareType = this.getNodeParameter('shareType', i) as number;
-						const shareWith = this.getNodeParameter('shareWith', i, '') as string;
-						const permissionLabels = this.getNodeParameter('permissions', i) as string[];
-						let permissions: number;
-						try {
-							permissions = buildSharePermissionsBitmask(permissionLabels, shareType);
-						} catch (error) {
-							throw new NodeOperationError(this.getNode(), (error as Error).message, {
-								itemIndex: i,
-							});
-						}
-						const password = this.getNodeParameter('password', i, '') as string;
-						const expireDate = this.getNodeParameter('expireDate', i, '') as string;
-						const publicUpload = this.getNodeParameter('publicUpload', i, false) as boolean;
-						const note = this.getNodeParameter('note', i, '') as string;
-
-						const body: IDataObject = {
-							path: sharePath,
-							shareType,
-							permissions,
-						};
-						if (shareWith.trim()) body.shareWith = shareWith.trim();
-						if (password.trim()) {
-							const passwordPolicyError = await validateSharePassword(this, password);
-							if (passwordPolicyError) {
-								throw new NodeOperationError(this.getNode(), passwordPolicyError, {
-									itemIndex: i,
-								});
-							}
-							body.password = password.trim();
-						}
-						if (expireDate.trim()) body.expireDate = expireDate.trim();
-						if (publicUpload) body.publicUpload = 'true';
-						if (note.trim()) body.note = note.trim();
-
-						const data = await ocsRequest(this, 'POST', 'shares', body);
-						const share = parseShare(data);
-						returnData.push({
-							json: share as unknown as IDataObject,
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'getAll') {
-						const filterPath = this.getNodeParameter('filterPath', i, '') as string;
-						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
-						const limit = this.getNodeParameter('limit', i, 100) as number;
-						const qs: IDataObject = {};
-						if (filterPath.trim()) {
-							qs.path = normalizeFilesPath(filterPath);
-						}
-
-						const data = await ocsRequest(this, 'GET', 'shares', undefined, qs);
-						// OCS returns the full share list; limit is applied client-side.
-						const rawShares = Array.isArray(data) ? data : data ? [data] : [];
-						const shares = rawShares.map((entry) => parseShare(entry));
-						const sliced = returnAll ? shares : shares.slice(0, limit);
-
-						if (sliced.length === 0) {
-							returnData.push({
-								json: { empty: true },
-								pairedItem: { item: i },
-							});
-						} else {
-							for (const share of sliced) {
-								returnData.push({
-									json: share as unknown as IDataObject,
-									pairedItem: { item: i },
-								});
-							}
-						}
-					}
-
-					if (operation === 'update') {
-						let shareId: number;
-						try {
-							shareId = parseShareId(this.getNodeParameter('shareId', i));
-						} catch (error) {
-							throw new NodeOperationError(this.getNode(), (error as Error).message, {
-								itemIndex: i,
-							});
-						}
-
-						const existingData = await ocsRequest(this, 'GET', `shares/${shareId}`);
-						const existingShare = parseShare(existingData);
-
-						const updateFields = this.getNodeParameter('updateFields', i, []) as string[];
-						const updatePermissions = this.getNodeParameter('updatePermissions', i, []) as string[];
-						const password = this.getNodeParameter('password', i, '') as string;
-						const expireDate = this.getNodeParameter('expireDate', i, '') as string;
-						const publicUpload = this.getNodeParameter('publicUpload', i, false) as boolean;
-
-						let body: IDataObject;
-						try {
-							body = buildShareUpdateBody({
-								fieldsToUpdate: updateFields,
-								permissions: updatePermissions,
-								password,
-								expireDate,
-								publicUpload,
-								shareType: existingShare.shareType,
-							});
-						} catch (error) {
-							throw new NodeOperationError(this.getNode(), (error as Error).message, {
-								itemIndex: i,
-							});
-						}
-
-						if (
-							updateFields.includes('password') &&
-							typeof body.password === 'string' &&
-							body.password.length > 0
-						) {
-							const passwordPolicyError = await validateSharePassword(this, body.password);
-							if (passwordPolicyError) {
-								throw new NodeOperationError(this.getNode(), passwordPolicyError, {
-									itemIndex: i,
-								});
-							}
-						}
-
-						const data = await ocsRequest(this, 'PUT', `shares/${shareId}`, body);
-						const share = parseShare(data);
-						returnData.push({
-							json: share as unknown as IDataObject,
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'delete') {
-						let shareId: number;
-						try {
-							shareId = parseShareId(this.getNodeParameter('shareId', i));
-						} catch (error) {
-							throw new NodeOperationError(this.getNode(), (error as Error).message, {
-								itemIndex: i,
-							});
-						}
-
-						await ocsRequest(this, 'DELETE', `shares/${shareId}`);
-						returnData.push({
-							json: { shareId, deleted: true },
-							pairedItem: { item: i },
-						});
-					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unsupported resource: ${resource}`, {
+						itemIndex: i,
+					});
 				}
 
 				if (returnData.length === outputCountBefore) {
