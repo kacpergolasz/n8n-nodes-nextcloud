@@ -1,83 +1,37 @@
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	INodeParameterResourceLocator,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { DeckBoard, DeckCard, DeckStack } from './DeckInterface';
-import {
-	buildBoardUpdatePayload,
-	deckRequest,
-	deleteCard,
-	filterActiveBoards,
-	findCardOnBoard,
-	flattenCardsFromStacks,
-	formatDeckDueDate,
-	getCredentials,
-	mergeDefined,
-	moveCard,
-	normalizeDeckColor,
-	resolveBoardId,
-	resolveCardId,
-	resolveStackId,
-} from './GenericFunctions';
+import { getCredentials } from './GenericFunctions';
 import { getBoards } from './listSearch/getBoards';
 import { getStacks } from './listSearch/getStacks';
 import { boardDescription } from './resources/board';
+import { boardCreate } from './resources/board/create';
+import { boardDelete } from './resources/board/delete';
+import { boardGet } from './resources/board/get';
+import { boardGetAll } from './resources/board/getAll';
+import { boardUpdate } from './resources/board/update';
+import type { BoardOperationContext } from './resources/board/types';
 import { cardDescription } from './resources/card';
+import { cardCreate } from './resources/card/create';
+import { cardDelete } from './resources/card/delete';
+import { cardGet } from './resources/card/get';
+import { cardGetAll } from './resources/card/getAll';
+import { cardMove } from './resources/card/move';
+import { cardUpdate } from './resources/card/update';
+import type { CardOperationContext } from './resources/card/types';
+import { resolveBoardFromInput } from './resources/shared/resolveInput';
 import { stackDescription } from './resources/stack';
+import { stackCreate } from './resources/stack/create';
+import { stackGetAll } from './resources/stack/getAll';
+import type { StackOperationContext } from './resources/stack/types';
 import { formatDeckAccessErrorMessage, getHttpStatusCode } from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
-
-function resolveBoardFromInput(
-	context: IExecuteFunctions,
-	itemIndex: number,
-): string {
-	const locator = context.getNodeParameter('board', itemIndex) as INodeParameterResourceLocator;
-	return resolveBoardId(locator.value as string);
-}
-
-function resolveStackFromInput(
-	context: IExecuteFunctions,
-	itemIndex: number,
-	paramName = 'stack',
-): string {
-	const locator = context.getNodeParameter(paramName, itemIndex) as INodeParameterResourceLocator;
-	return resolveStackId(locator.value as string);
-}
-
-function resolveOptionalStackFilter(
-	context: IExecuteFunctions,
-	itemIndex: number,
-): string | undefined {
-	const locator = context.getNodeParameter('stackFilter', itemIndex, {
-		mode: 'id',
-		value: '',
-	}) as INodeParameterResourceLocator;
-	const raw = locator?.value;
-	if (raw === undefined || raw === null || raw === '') {
-		return undefined;
-	}
-	const value = String(raw).trim();
-	return value || undefined;
-}
-
-function boardToJson(board: DeckBoard): IDataObject {
-	return { ...board } as IDataObject;
-}
-
-function stackToJson(stack: DeckStack): IDataObject {
-	return { ...stack } as IDataObject;
-}
-
-function cardToJson(card: DeckCard): IDataObject {
-	return { ...card } as IDataObject;
-}
 
 export class NextcloudDeck implements INodeType {
 	description: INodeTypeDescription = {
@@ -127,263 +81,65 @@ export class NextcloudDeck implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const credentials = await getCredentials(this);
-		const resource = this.getNodeParameter('resource', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
 			const outputCountBefore = returnData.length;
 			try {
+				const resource = this.getNodeParameter('resource', i) as string;
 				const operation = this.getNodeParameter('operation', i) as string;
 
 				if (resource === 'board') {
-					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
-						const hexColor = this.getNodeParameter('hexColor', i, '') as string;
-						if (!title.trim()) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Title is required when creating a board',
-								{ itemIndex: i },
-							);
-						}
-						const board = (await deckRequest(this, 'POST', '/boards', {
-							title,
-							color: normalizeDeckColor(hexColor) || '0082c9',
-						})) as DeckBoard;
-						returnData.push({
-							json: boardToJson(board),
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'get') {
-						const boardId = resolveBoardFromInput(this, i);
-						const board = (await deckRequest(this, 'GET', `/boards/${boardId}`)) as DeckBoard;
-						returnData.push({
-							json: boardToJson(board),
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
-						const limit = this.getNodeParameter('limit', i, 10) as number;
-						const boards = filterActiveBoards(
-							(await deckRequest(this, 'GET', '/boards')) as DeckBoard[],
-						);
-						const sliced = returnAll ? boards : boards.slice(0, limit);
-						for (const board of sliced) {
-							returnData.push({
-								json: boardToJson(board),
-								pairedItem: { item: i },
-							});
-						}
-					}
-
-					if (operation === 'update') {
-						const boardId = resolveBoardFromInput(this, i);
-						const current = (await deckRequest(this, 'GET', `/boards/${boardId}`)) as DeckBoard;
-						const title = this.getNodeParameter('title', i, '') as string;
-						const hexColor = this.getNodeParameter('hexColor', i, '') as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-						const patch: {
-							title?: string;
-							color?: string;
-							archived?: boolean;
-						} = {};
-						if (title.trim()) {
-							patch.title = title;
-						}
-						if (hexColor.trim()) {
-							patch.color = hexColor;
-						}
-						if (typeof additionalFields.archived === 'boolean') {
-							patch.archived = additionalFields.archived;
-						}
-
-						const payload = buildBoardUpdatePayload(current, patch);
-
-						const board = (await deckRequest(
-							this,
-							'PUT',
-							`/boards/${boardId}`,
-							payload,
-						)) as DeckBoard;
-						returnData.push({
-							json: boardToJson(board),
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'delete') {
-						const boardId = resolveBoardFromInput(this, i);
-						await deckRequest(this, 'DELETE', `/boards/${boardId}`);
-						returnData.push({
-							json: { id: boardId, deleted: true },
-							pairedItem: { item: i },
-						});
+					const opCtx: BoardOperationContext = { itemIndex: i, credentials };
+					switch (operation) {
+						case 'create':
+							returnData.push(await boardCreate(this, opCtx));
+							break;
+						case 'get':
+							returnData.push(await boardGet(this, opCtx));
+							break;
+						case 'getAll':
+							returnData.push(...(await boardGetAll(this, opCtx)));
+							break;
+						case 'update':
+							returnData.push(await boardUpdate(this, opCtx));
+							break;
+						case 'delete':
+							returnData.push(await boardDelete(this, opCtx));
+							break;
 					}
 				} else if (resource === 'stack') {
 					const boardId = resolveBoardFromInput(this, i);
-
-					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
-						const limit = this.getNodeParameter('limit', i, 10) as number;
-						const stacks = (await deckRequest(
-							this,
-							'GET',
-							`/boards/${boardId}/stacks`,
-						)) as DeckStack[];
-						const sliced = returnAll ? stacks : stacks.slice(0, limit);
-						for (const stack of sliced) {
-							returnData.push({
-								json: stackToJson(stack),
-								pairedItem: { item: i },
-							});
-						}
-					}
-
-					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
-						const order = this.getNodeParameter('order', i, 0) as number;
-						if (!title.trim()) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Title is required when creating a stack',
-								{ itemIndex: i },
-							);
-						}
-						const stack = (await deckRequest(this, 'POST', `/boards/${boardId}/stacks`, {
-							title,
-							order,
-						})) as DeckStack;
-						returnData.push({
-							json: stackToJson(stack),
-							pairedItem: { item: i },
-						});
+					const opCtx: StackOperationContext = { itemIndex: i, credentials, boardId };
+					switch (operation) {
+						case 'create':
+							returnData.push(await stackCreate(this, opCtx));
+							break;
+						case 'getAll':
+							returnData.push(...(await stackGetAll(this, opCtx)));
+							break;
 					}
 				} else if (resource === 'card') {
 					const boardId = resolveBoardFromInput(this, i);
-
-					if (operation === 'create') {
-						const stackId = resolveStackFromInput(this, i);
-						const title = this.getNodeParameter('title', i) as string;
-						const description = this.getNodeParameter('description', i, '') as string;
-						const dueDate = this.getNodeParameter('dueDate', i, '') as string;
-						const type = this.getNodeParameter('type', i, 'plain') as string;
-						const order = this.getNodeParameter('order', i, 0) as number;
-						if (!title.trim()) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Title is required when creating a card',
-								{ itemIndex: i },
-							);
-						}
-						const body: IDataObject = {
-							title,
-							type: type || 'plain',
-							order,
-							duedate: formatDeckDueDate(dueDate),
-						};
-						if (description.trim()) {
-							body.description = description;
-						}
-						const card = (await deckRequest(
-							this,
-							'POST',
-							`/boards/${boardId}/stacks/${stackId}/cards`,
-							body,
-						)) as DeckCard;
-						returnData.push({
-							json: cardToJson(card),
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'get') {
-						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
-						const { card } = await findCardOnBoard(this, boardId, cardId);
-						returnData.push({
-							json: cardToJson(card),
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i, false) as boolean;
-						const limit = this.getNodeParameter('limit', i, 10) as number;
-						const stackFilter = resolveOptionalStackFilter(this, i);
-						const stacks = (await deckRequest(
-							this,
-							'GET',
-							`/boards/${boardId}/stacks`,
-						)) as DeckStack[];
-						const cards = flattenCardsFromStacks(stacks, stackFilter);
-						const sliced = returnAll ? cards : cards.slice(0, limit);
-						for (const card of sliced) {
-							returnData.push({
-								json: cardToJson(card),
-								pairedItem: { item: i },
-							});
-						}
-					}
-
-					if (operation === 'update') {
-						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
-						const { card: current, stackId: sourceStackId } = await findCardOnBoard(
-							this,
-							boardId,
-							cardId,
-						);
-						const title = this.getNodeParameter('title', i, '') as string;
-						const description = this.getNodeParameter('description', i, '') as string;
-						const dueDate = this.getNodeParameter('dueDate', i, '') as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-
-						const patch: IDataObject = {};
-						if (title.trim()) {
-							patch.title = title;
-						}
-						if (description.trim()) {
-							patch.description = description;
-						}
-						if (additionalFields.clearDueDate === true) {
-							patch.duedate = null;
-						} else if (dueDate.trim()) {
-							patch.duedate = formatDeckDueDate(dueDate);
-						}
-
-						const payload = mergeDefined(current as IDataObject, patch);
-						const card = (await deckRequest(
-							this,
-							'PUT',
-							`/boards/${boardId}/stacks/${sourceStackId}/cards/${cardId}`,
-							payload,
-						)) as DeckCard;
-						returnData.push({
-							json: cardToJson(card),
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'delete') {
-						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
-						await deleteCard(this, boardId, cardId);
-						returnData.push({
-							json: { id: cardId, deleted: true },
-							pairedItem: { item: i },
-						});
-					}
-
-					if (operation === 'move') {
-						const cardId = resolveCardId(this.getNodeParameter('cardId', i) as string);
-						const toStackId = resolveStackFromInput(this, i, 'toStack');
-						const order = this.getNodeParameter('order', i, 0) as number;
-						const card = await moveCard(this, boardId, cardId, toStackId, order);
-						returnData.push({
-							json: cardToJson(card),
-							pairedItem: { item: i },
-						});
+					const opCtx: CardOperationContext = { itemIndex: i, credentials, boardId };
+					switch (operation) {
+						case 'create':
+							returnData.push(await cardCreate(this, opCtx));
+							break;
+						case 'get':
+							returnData.push(await cardGet(this, opCtx));
+							break;
+						case 'getAll':
+							returnData.push(...(await cardGetAll(this, opCtx)));
+							break;
+						case 'update':
+							returnData.push(await cardUpdate(this, opCtx));
+							break;
+						case 'delete':
+							returnData.push(await cardDelete(this, opCtx));
+							break;
+						case 'move':
+							returnData.push(await cardMove(this, opCtx));
+							break;
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `Unsupported resource: ${resource}`, {
