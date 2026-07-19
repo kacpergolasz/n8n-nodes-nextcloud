@@ -1,4 +1,5 @@
 import {
+	buildOcsFormBody,
 	buildSharePermissionsBitmask,
 	buildShareUpdateBody,
 	parseShare,
@@ -141,6 +142,11 @@ describe('Nextcloud Files OCS helpers', () => {
 			shareType: 3,
 			path: '/Documents/report.pdf',
 		});
+	});
+
+	it('buildOcsFormBody retains empty password and expireDate for share clears', () => {
+		expect(buildOcsFormBody({ password: '', expireDate: '' })).toBe('password=&expireDate=');
+		expect(buildOcsFormBody({ permissions: 1, note: undefined })).toBe('permissions=1');
 	});
 
 	it('buildSharePermissionsBitmask sanitizes public link defaults to read/create only', () => {
