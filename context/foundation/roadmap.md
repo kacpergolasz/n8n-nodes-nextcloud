@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-19
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -213,6 +213,15 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-05 | nextcloud-talk | Nextcloud Talk node | no | After S-01; webhooks parked |
 | S-06 | nextcloud-news | Nextcloud News node | no | After S-01; parallel suite |
 | S-07 | suite-polling-triggers | Polling triggers for Nextcloud suite changes | no | After S-01; expands with apps |
+
+## Investigations
+
+### Cross-node `resource` parameter index audit
+
+- **Source:** Bugbot review 2026-07-19 — `nodes/NextcloudDeck/NextcloudDeck.node.ts:130-134`
+- **Issue:** `execute` reads `resource` via `getNodeParameter('resource', 0)` while every other parameter uses loop index `i`. In multi-item runs where `resource` is driven by an expression, every item is dispatched using the first item's resource.
+- **Scope:** Audit all suite node `execute` implementations (`NextcloudDeck`, `NextcloudFiles`, `NextcloudCalendar`, and future nodes).
+- **Known baseline (2026-07-19):** `NextcloudDeck` uses index `0`; `NextcloudFiles` uses index `i`; `NextcloudCalendar` has no `resource` parameter.
 
 ## Open Roadmap Questions
 

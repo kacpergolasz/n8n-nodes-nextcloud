@@ -130,6 +130,7 @@ export class NextcloudDeck implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
+			const outputCountBefore = returnData.length;
 			try {
 				const operation = this.getNodeParameter('operation', i) as string;
 
@@ -388,6 +389,14 @@ export class NextcloudDeck implements INodeType {
 					throw new NodeOperationError(this.getNode(), `Unsupported resource: ${resource}`, {
 						itemIndex: i,
 					});
+				}
+
+				if (returnData.length === outputCountBefore) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The resource "${resource}" with operation "${operation}" is not supported.`,
+						{ itemIndex: i },
+					);
 				}
 			} catch (error) {
 				const statusCode = getHttpStatusCode(error);
