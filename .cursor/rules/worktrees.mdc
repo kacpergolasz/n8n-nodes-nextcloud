@@ -1,0 +1,17 @@
+---
+description: Create agent worktrees as siblings of packages/nextcloud
+alwaysApply: true
+---
+
+# Worktree location
+
+When creating isolated git worktrees for parallel agent work in this repo:
+
+- **Do not** use `~/.cursor/worktrees/` for manually created worktrees.
+- **Do** use `.cursor/create-worktree.sh <change-id>` from the repo root.
+- Worktrees are created at: `../nextcloud-wt-<change-id>` (sibling of `packages/nextcloud/`).
+- Example: `shared-oauth2-credential` → `/home/kacper/Dev/n8n/packages/nextcloud-wt-shared-oauth2-credential`
+- Pass the resulting `WORKTREE_PATH` to subagents; do not write to the main tree unless merging via `/apply-worktree`.
+- Remove with: `git worktree remove <path>` after merging.
+
+Cursor's built-in `/worktree` and `/best-of-n` still use `~/.cursor/worktrees/` (not configurable). For those, symlink if you need them nearby.
