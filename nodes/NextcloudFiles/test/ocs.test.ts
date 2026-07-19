@@ -1,4 +1,5 @@
 import {
+	buildSharePermissionsBitmask,
 	buildShareUpdateBody,
 	parseShare,
 	parseShareId,
@@ -140,6 +141,15 @@ describe('Nextcloud Files OCS helpers', () => {
 			shareType: 3,
 			path: '/Documents/report.pdf',
 		});
+	});
+
+	it('buildSharePermissionsBitmask sanitizes public link defaults to read/create only', () => {
+		expect(
+			buildSharePermissionsBitmask(
+				['read', 'update', 'create', 'delete', 'share'],
+				OCS_SHARE_TYPE_PUBLIC,
+			),
+		).toBe(5);
 	});
 
 	it('sanitizeSharePermissionLabels limits public link shares to read/create', () => {

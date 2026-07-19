@@ -14,6 +14,7 @@ import {
 	buildDestinationHeader,
 	buildFilesUrl,
 	buildOverwriteHeader,
+	buildSharePermissionsBitmask,
 	buildShareUpdateBody,
 	contentTypeFromFileName,
 	fileNameFromPath,
@@ -24,7 +25,6 @@ import {
 	ocsRequest,
 	parseShare,
 	parseShareId,
-	permissionsToBitmask,
 	resolveUploadPath,
 	validateSharePassword,
 } from './GenericFunctions';
@@ -293,9 +293,15 @@ export class NextcloudFiles implements INodeType {
 						const sharePath = resolvePathFromInput(this, i);
 						const shareType = this.getNodeParameter('shareType', i) as number;
 						const shareWith = this.getNodeParameter('shareWith', i, '') as string;
-						const permissions = permissionsToBitmask(
-							this.getNodeParameter('permissions', i) as string[],
-						);
+						const permissionLabels = this.getNodeParameter('permissions', i) as string[];
+						let permissions: number;
+						try {
+							permissions = buildSharePermissionsBitmask(permissionLabels, shareType);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), (error as Error).message, {
+								itemIndex: i,
+							});
+						}
 						const password = this.getNodeParameter('password', i, '') as string;
 						const expireDate = this.getNodeParameter('expireDate', i, '') as string;
 						const publicUpload = this.getNodeParameter('publicUpload', i, false) as boolean;
