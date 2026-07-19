@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-07-19
+updated: 2026-07-19T21:37
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -38,6 +38,10 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-05 | nextcloud-talk | automate Nextcloud Talk | S-01 | FR-006 | proposed |
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | proposed |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | proposed |
+| S-11 | nextcloud-tasks | automate Nextcloud Tasks | S-01 | — | proposed |
+| S-12 | nextcloud-contacts | automate Nextcloud Contacts (port from core n8n Nextcloud node) | S-01 | FR-007 | proposed |
+| S-13 | suite-webhook-triggers | use webhook triggers for suite changes (especially Talk) | S-01, S-05 | FR-010 | proposed |
+| F-02 | validation-refactoring | (foundation) validated parameter/response parsing replaces `as Type` casts | S-01 | — | proposed |
 
 ## Streams
 
@@ -46,8 +50,9 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | Stream | Theme | Chain | Note |
 |---|---|---|---|
 | A | Credential & Calendar proof | `F-01` → `S-01` → `S-08` / `S-09` → `S-02` | Quality-first validation path; Calendar depth (Get Many / partial update) follows the north star; OAuth follows once Calendar proves the shared credential. |
-| B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` | Parallel after `S-01`; joins Stream A at the shared credential. |
-| C | Triggers | `S-07` | Polling after Calendar exists; expands as suite apps land. |
+| B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. |
+| C | Triggers | `S-07` / `S-13` | Polling after Calendar exists; webhooks after Talk (`S-05`) for FR-010 value. |
+| D | Quality / debt | `F-02` | Cross-cutting validation helpers; can run in parallel once `S-01` proves the node patterns. |
 
 ## Baseline
 
@@ -75,6 +80,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:** —
 - **Risk:** Sequenced first so Calendar quality work is never planned without a runnable local check; failure mode is shipping nodes that cannot be exercised in n8n.
 - **Status:** done
+
+### F-02: Validation refactoring (no `as Type` casts)
+
+- **Outcome:** (foundation) node parameter reads and API response shaping use explicit validation/parsing helpers (e.g. `parseShareId`-style functions) instead of `as Type` casts throughout the package.
+- **Change ID:** validation-refactoring
+- **PRD refs:** —
+- **Unlocks:** safer multi-item runs and expression-driven parameters across all suite nodes
+- **Prerequisites:** S-01
+- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-10, S-11, S-12, S-13
+- **Blockers:** —
+- **Unknowns:** Whether to standardize on hand-rolled guards, a shared helper module, or a schema library (e.g. Zod) for n8n parameter shapes.
+- **Risk:** Widespread `as boolean` / `as string` / `as IDataObject` casts today hide runtime type errors; leaving this untracked lets bad expression values fail late or silently misbehave.
+- **Status:** proposed
 
 ## Slices
 
@@ -171,7 +189,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-02, S-03, S-04, S-06, S-07
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Webhook-related value is parked (FR-010); Talk still ships as a must-have node without waiting on webhooks.
+- **Risk:** Talk ships as actions-first; webhook trigger value is tracked separately in S-13 (FR-010).
 - **Status:** proposed
 
 ### S-06: Nextcloud News
@@ -198,6 +216,42 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Top trigger priority in the PRD; starts once Calendar exists and expands as suite apps land — do not wait for every app before the first polling path.
 - **Status:** proposed
 
+### S-11: Nextcloud Tasks
+
+- **Outcome:** user can automate Nextcloud Tasks (task lists and tasks).
+- **Change ID:** nextcloud-tasks
+- **PRD refs:** —
+- **Prerequisites:** S-01
+- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-10, S-12, S-13, F-02
+- **Blockers:** —
+- **Unknowns:** Tasks REST/CalDAV surface on target Nextcloud versions; minimum viable operation set vs Google Tasks mirror.
+- **Risk:** No dedicated PRD FR yet; kept as a suite-app vertical slice so Tasks does not hide inside Deck or Calendar.
+- **Status:** proposed
+
+### S-12: Nextcloud Contacts
+
+- **Outcome:** user can automate Nextcloud Contacts by porting/adapting the Contacts surface from core n8n's `nodes-base` Nextcloud node into this community package (shared credential, resource pickers).
+- **Change ID:** nextcloud-contacts
+- **PRD refs:** FR-007
+- **Prerequisites:** S-01
+- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-10, S-11, S-13, F-02
+- **Blockers:** —
+- **Unknowns:** Which Contacts operations exist in core n8n today; CardDAV vs OCS/API coverage needed for parity.
+- **Risk:** PRD nice-to-have (FR-007); porting avoids re-inventing CardDAV contact ops but must align with the shared-credential contract.
+- **Status:** proposed
+
+### S-13: Suite webhook triggers
+
+- **Outcome:** user can use webhook triggers for suite changes, especially Talk-related events (FR-010).
+- **Change ID:** suite-webhook-triggers
+- **PRD refs:** FR-010
+- **Prerequisites:** S-01, S-05
+- **Parallel with:** S-02, S-03, S-04, S-06, S-07, S-08, S-09, S-10, S-11, S-12, F-02
+- **Blockers:** —
+- **Unknowns:** Nextcloud webhook registration model per app; Talk-specific payload shapes and HMAC/secret verification in n8n.
+- **Risk:** Lower priority than polling (S-07) in the PRD, but explicitly coupled to Talk value; sequenced after Talk actions exist.
+- **Status:** proposed
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID | Suggested issue title | Ready for `/10x-plan` | Notes |
@@ -210,9 +264,13 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-03 | nextcloud-files-drive | Nextcloud Files/Drive legacy-standard node | no | After S-01; parallel suite |
 | S-04 | nextcloud-deck | Nextcloud Deck boards/cards node | no | After S-01; parallel suite |
 | S-10 | deck-partial-update | Deck Update with whitelisted writable fields | no | After S-04; safe GET→merge→PUT |
-| S-05 | nextcloud-talk | Nextcloud Talk node | no | After S-01; webhooks parked |
+| S-05 | nextcloud-talk | Nextcloud Talk node | no | After S-01; webhook triggers in S-13 |
 | S-06 | nextcloud-news | Nextcloud News node | no | After S-01; parallel suite |
 | S-07 | suite-polling-triggers | Polling triggers for Nextcloud suite changes | no | After S-01; expands with apps |
+| S-11 | nextcloud-tasks | Nextcloud Tasks node | no | After S-01; parallel suite |
+| S-12 | nextcloud-contacts | Nextcloud Contacts node (port from core n8n) | no | After S-01; FR-007 nice-to-have |
+| S-13 | suite-webhook-triggers | Webhook triggers for Nextcloud suite (Talk-first) | no | After S-01 + S-05; FR-010 |
+| F-02 | validation-refactoring | Replace `as Type` casts with validation helpers | no | After S-01; cross-cutting quality |
 
 ## Investigations
 
@@ -229,8 +287,6 @@ Foundations below assume these are present and do NOT re-scaffold them.
 
 ## Parked
 
-- **Contacts automation (FR-007)** — Why parked: PRD nice-to-have; demoted during shaping.
-- **Webhook triggers (FR-010)** — Why parked: nice-to-have relative to polling; related to Talk but not required to ship Talk.
 - **npm publish as a primary gate** — Why parked: Secondary Success Criteria; local community-node verification comes first (FR-003).
 - **Google-only mirrors with no Nextcloud counterpart** — Why parked: PRD §Non-Goals.
 - **Replacing or patching core n8n `nodes-base` Nextcloud** — Why parked: PRD §Non-Goals; community package only.
