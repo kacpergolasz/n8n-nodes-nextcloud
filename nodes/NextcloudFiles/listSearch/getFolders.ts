@@ -2,11 +2,14 @@ import type { ILoadOptionsFunctions, INodeListSearchResult, JsonObject } from 'n
 import { NodeApiError } from 'n8n-workflow';
 
 import {
+	buildPathListSearchCacheKey,
 	collectPathEntriesRecursive,
 	directoryEntryToListOption,
+	getCachedPathListOptions,
 	getCredentials,
 	resolvePathListSearchScope,
 	paginatePathListOptions,
+	setCachedPathListOptions,
 } from '../GenericFunctions';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
 
@@ -27,15 +30,20 @@ export async function getFolders(
 		const resource = this.getNodeParameter('resource') as string | undefined;
 		const operation = this.getNodeParameter('operation') as string | undefined;
 		const scope = resolvePathListSearchScope(resource, operation);
-		const entries = await collectPathEntriesRecursive(this, credentials, {
-			...scope,
-			filter,
-		});
-		const options = entries.map(directoryEntryToListOption);
+		const cacheKey = buildPathListSearchCacheKey(credentials, resource, operation, filter);
 		const offset = parsePaginationOffset(paginationToken);
-		const page = paginatePathListOptions(options, offset);
 
-		return page;
+		let options = offset > 0 ? getCachedPathListOptions(cacheKey) : undefined;
+		if (!options) {
+			const entries = await collectPathEntriesRecursive(this, credentials, {
+				...scope,
+				filter,
+			});
+			options = entries.map(directoryEntryToListOption);
+			setCachedPathListOptions(cacheKey, options);
+		}
+
+		return paginatePathListOptions(options, offset);
 	} catch (error) {
 		let secrets = {};
 		try {

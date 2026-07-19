@@ -286,6 +286,46 @@ export function paginatePathListOptions<T extends { name: string; value: string 
 	return { results };
 }
 
+const PATH_LIST_SEARCH_CACHE = new Map<string, Array<{ name: string; value: string }>>();
+const PATH_LIST_SEARCH_CACHE_MAX = 32;
+
+export function buildPathListSearchCacheKey(
+	credentials: NextcloudCredentialData,
+	resource?: string,
+	operation?: string,
+	filter?: string,
+): string {
+	return [
+		credentials.baseUrl,
+		credentials.username,
+		resource ?? '',
+		operation ?? '',
+		filter?.trim() ?? '',
+	].join('\0');
+}
+
+export function getCachedPathListOptions(
+	cacheKey: string,
+): Array<{ name: string; value: string }> | undefined {
+	return PATH_LIST_SEARCH_CACHE.get(cacheKey);
+}
+
+export function setCachedPathListOptions(
+	cacheKey: string,
+	options: Array<{ name: string; value: string }>,
+): void {
+	if (!PATH_LIST_SEARCH_CACHE.has(cacheKey) && PATH_LIST_SEARCH_CACHE.size >= PATH_LIST_SEARCH_CACHE_MAX) {
+		const oldestKey = PATH_LIST_SEARCH_CACHE.keys().next().value;
+		if (oldestKey) PATH_LIST_SEARCH_CACHE.delete(oldestKey);
+	}
+
+	PATH_LIST_SEARCH_CACHE.set(cacheKey, options);
+}
+
+export function clearPathListSearchCache(): void {
+	PATH_LIST_SEARCH_CACHE.clear();
+}
+
 export async function collectPathEntriesRecursive(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 	credentials: NextcloudCredentialData,
@@ -332,6 +372,20 @@ export function fileNameFromPath(path: string): string {
 	return basenameFromPath(path);
 }
 
+export function parentPath(path: string): string {
+	const normalized = normalizeFilesPath(path);
+	if (normalized === '/') return '/';
+
+	const segments = normalized.split('/').filter(Boolean);
+	segments.pop();
+	return segments.length === 0 ? '/' : `/${segments.join('/')}`;
+}
+
+function pathBasenameLooksLikeFile(path: string): boolean {
+	const basename = basenameFromPath(path);
+	return /^[^./][^/]*\.[^/]+$/.test(basename);
+}
+
 export function joinPath(parent: string, child: string): string {
 	const normalizedParent = normalizeFilesPath(parent);
 	const trimmedChild = child.trim().replace(/^\/+/, '');
@@ -344,12 +398,20 @@ export function resolveUploadPath(
 	fileName?: string,
 ): string {
 	const normalized = normalizeFilesPath(targetPath);
-	if (!fileName?.trim()) return normalized;
-	if (normalized === '/') return `/${fileName.trim()}`;
-	if (normalized.endsWith(`/${fileName.trim()}`) || normalized.split('/').pop() === fileName.trim()) {
+	const trimmedFileName = fileName?.trim();
+	if (!trimmedFileName) return normalized;
+	if (normalized === '/') return `/${trimmedFileName}`;
+
+	const basename = basenameFromPath(normalized);
+	if (basename === trimmedFileName || normalized.endsWith(`/${trimmedFileName}`)) {
 		return normalized;
 	}
-	return joinPath(normalized, fileName.trim());
+
+	if (pathBasenameLooksLikeFile(normalized)) {
+		return joinPath(parentPath(normalized), trimmedFileName);
+	}
+
+	return joinPath(normalized, trimmedFileName);
 }
 
 export function contentTypeFromFileName(fileName: string): string {

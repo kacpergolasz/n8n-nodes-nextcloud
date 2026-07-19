@@ -2,13 +2,19 @@ import {
 	buildDestinationHeader,
 	buildFilesUrl,
 	buildOverwriteHeader,
+	buildPathListSearchCacheKey,
+	clearPathListSearchCache,
 	directoryEntryToListOption,
+	getCachedPathListOptions,
 	matchesPathListFilter,
 	normalizeFilesPath,
 	paginatePathListOptions,
 	parseDirectoryListingFromMultistatus,
+	parentPath,
 	relativePathFromFilesHref,
 	resolvePathListSearchScope,
+	resolveUploadPath,
+	setCachedPathListOptions,
 	sortDirectoryEntries,
 } from '../GenericFunctions';
 import type { DirectoryEntry } from '../FilesInterface';
@@ -173,6 +179,38 @@ describe('Nextcloud Files GenericFunctions', () => {
 	it('matchesPathListFilter matches basename and full path', () => {
 		expect(matchesPathListFilter('/Documents/report.pdf', 'report.pdf', 'report')).toBe(true);
 		expect(matchesPathListFilter('/Documents/report.pdf', 'report.pdf', 'archive')).toBe(false);
+	});
+
+	it('resolveUploadPath writes alongside a selected file when the upload name differs', () => {
+		expect(resolveUploadPath('/Documents/existing.pdf', 'newname.pdf')).toBe('/Documents/newname.pdf');
+		expect(resolveUploadPath('/Documents/existing.pdf', 'existing.pdf')).toBe(
+			'/Documents/existing.pdf',
+		);
+		expect(resolveUploadPath('/Documents', 'newname.pdf')).toBe('/Documents/newname.pdf');
+		expect(resolveUploadPath('/', 'newname.pdf')).toBe('/newname.pdf');
+	});
+
+	it('parentPath returns the parent directory for nested paths', () => {
+		expect(parentPath('/Documents/existing.pdf')).toBe('/Documents');
+		expect(parentPath('/')).toBe('/');
+	});
+
+	it('path list search cache reuses collected options across pagination offsets', () => {
+		clearPathListSearchCache();
+		const credentials = {
+			baseUrl: 'https://cloud.example.com',
+			username: 'alice',
+			appPassword: 'secret',
+		};
+		const cacheKey = buildPathListSearchCacheKey(credentials, 'file', 'upload', 'docs');
+		const options = [
+			{ name: '📁 Documents', value: '/Documents' },
+			{ name: '📄 report.pdf', value: '/Documents/report.pdf' },
+		];
+
+		expect(getCachedPathListOptions(cacheKey)).toBeUndefined();
+		setCachedPathListOptions(cacheKey, options);
+		expect(getCachedPathListOptions(cacheKey)).toEqual(options);
 	});
 
 	it('paginatePathListOptions returns next offset token', () => {
