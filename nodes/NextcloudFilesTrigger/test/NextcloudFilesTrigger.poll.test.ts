@@ -201,6 +201,29 @@ describe('runDirectoryPoll', () => {
 		expect(context.logger.debug).toHaveBeenCalledWith(
 			expect.stringContaining('soft-failing poll'),
 		);
+		const debugMessage = String(vi.mocked(context.logger.debug).mock.calls[0]?.[0] ?? '');
+		expect(debugMessage).not.toContain('secret-token');
+		expect(debugMessage).toContain('[REDACTED]');
+	});
+
+	it('keeps prior snapshot when a successful listing is empty after initialization', async () => {
+		const existing = fileEntry('/Documents/existing.pdf', { etag: '"existing"' });
+		const priorSnapshot = buildSnapshotFromListing([existing]);
+		const staticData: IDataObject = {
+			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
+			[SNAPSHOT_KEY]: priorSnapshot,
+		};
+
+		vi.mocked(loadDirectoryListing).mockResolvedValue([]);
+
+		const context = createPollContext({ staticData });
+		const result = await runDirectoryPoll(context);
+
+		expect(result).toBeNull();
+		expect(getSnapshot(staticData)).toEqual(priorSnapshot);
+		expect(context.logger.debug).toHaveBeenCalledWith(
+			expect.stringContaining('keeping prior snapshot'),
+		);
 	});
 
 	it('returns null in manual mode when the folder listing is empty', async () => {

@@ -168,7 +168,20 @@ export async function runDirectoryPoll(
 		return null;
 	}
 
-	const changes = classifyDirectoryChanges(getSnapshot(staticData), listing);
+	const priorSnapshot = getSnapshot(staticData);
+	const priorCount = Object.keys(priorSnapshot).length;
+
+	// A successful empty listing after we already tracked children is suspicious
+	// (transient parse/HTTP quirks). Advancing to {} would make the next real
+	// listing emit every child as created. Soft-fail: keep prior snapshot.
+	if (priorCount > 0 && listing.length === 0) {
+		context.logger.debug(
+			`Nextcloud Files Trigger: empty listing after ${priorCount} known children; keeping prior snapshot (soft-fail).`,
+		);
+		return null;
+	}
+
+	const changes = classifyDirectoryChanges(priorSnapshot, listing);
 	const filtered = changes.filter((change) => selectedEvents.includes(change.event));
 
 	setSnapshot(staticData, buildSnapshotFromListing(listing));
