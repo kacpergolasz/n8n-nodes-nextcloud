@@ -348,28 +348,28 @@ Align node metadata/docs links, update change status notes, and run the full loc
 
 #### Automated
 
-- [x] 1.1 Branch contains `nodes/shared/pollHelpers.ts` and `nodes/NextcloudFilesTrigger/`
-- [x] 1.2 `npm run build` succeeds
-- [x] 1.3 `npm test` passes including new pagination tests
-- [x] 1.4 `npm run lint` passes
+- [x] 1.1 Branch contains `nodes/shared/pollHelpers.ts` and `nodes/NextcloudFilesTrigger/` — d85bb7f
+- [x] 1.2 `npm run build` succeeds — d85bb7f
+- [x] 1.3 `npm test` passes including new pagination tests — d85bb7f
+- [x] 1.4 `npm run lint` passes — d85bb7f
 
 #### Manual
 
-- [x] 1.5 Confirm merge did not remove Files Trigger from the n8n panel list after a local build (spot-check `package.json` `n8n.nodes`)
+- [x] 1.5 Confirm merge did not remove Files Trigger from the n8n panel list after a local build (spot-check `package.json` `n8n.nodes`) — d85bb7f
 
 ### Phase 2: Nextcloud News actions scaffold (Folder + Feed + core Item)
 
 #### Automated
 
-- [ ] 2.1 `npm run build` succeeds
-- [ ] 2.2 `npm run lint` passes
-- [ ] 2.3 `npm test` passes
-- [ ] 2.4 `package.json` lists the News actions node
+- [x] 2.1 `npm run build` succeeds
+- [x] 2.2 `npm run lint` passes
+- [x] 2.3 `npm test` passes
+- [x] 2.4 `package.json` lists the News actions node
 
 #### Manual
 
-- [ ] 2.5 Local n8n (F-01) shows **Nextcloud News**; credential test still works
-- [ ] 2.6 Smoke: create folder, create feed, mark one item read, fetch favicon binary (News app enabled)
+- [x] 2.5 Local n8n (F-01) shows **Nextcloud News**; credential test still works
+- [x] 2.6 Smoke: create folder, create feed, mark one item read, fetch favicon binary (News app enabled)
 
 ### Phase 3: Item Get Many with real pagination
 
