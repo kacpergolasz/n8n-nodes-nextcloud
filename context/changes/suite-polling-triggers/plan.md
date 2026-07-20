@@ -436,8 +436,8 @@ Document how the next app triggers should copy this shape, and record explicit f
 
 #### Automated
 
-- [ ] 6.1 Follow-up note file exists (or `## Notes` in `change.md` populated with the checklist)
+- [x] 6.1 Follow-up note file exists (or `## Notes` in `change.md` populated with the checklist)
 
 #### Manual
 
-- [ ] 6.2 Notes are accurate vs the shipped Files Trigger (event names, Depth-1, soft-fail)
+- [x] 6.2 Notes are accurate vs the shipped Files Trigger (event names, Depth-1, soft-fail)
