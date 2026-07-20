@@ -408,22 +408,22 @@ Document how the next app triggers should copy this shape, and record explicit f
 
 #### Manual
 
-- [x] 3.4 After local community-node link / `n8n-node dev`, Nextcloud Files Trigger appears under triggers when searching “nextcloud”
-- [x] 3.5 Node shows Poll Times, credential, folder picker, event options, Depth-1 notice
+- [x] 3.4 After local community-node link / `n8n-node dev`, Nextcloud Files Trigger appears under triggers when searching “nextcloud” — c63dc7a
+- [x] 3.5 Node shows Poll Times, credential, folder picker, event options, Depth-1 notice — c63dc7a
 
 ### Phase 4: `poll()` wired to Files WebDAV
 
 #### Automated
 
-- [ ] 4.1 `npm run build` succeeds
-- [ ] 4.2 `npm run lint` passes
-- [ ] 4.3 Typecheck clean for trigger + imports from Files
+- [x] 4.1 `npm run build` succeeds
+- [x] 4.2 `npm run lint` passes
+- [x] 4.3 Typecheck clean for trigger + imports from Files
 
 #### Manual
 
-- [ ] 4.4 Test step on a non-empty folder returns one sample item
-- [ ] 4.5 Activate workflow: first period does not flood old files; creating/updating a direct child emits once
-- [ ] 4.6 Transient error (e.g. wrong folder after snapshot exists) does not wipe cursor / spam executions
+- [x] 4.4 Test step on a non-empty folder returns one sample item
+- [x] 4.5 Activate workflow: first period does not flood old files; creating/updating a direct child emits once
+- [x] 4.6 Transient error (e.g. wrong folder after snapshot exists) does not wipe cursor / spam executions
 
 ### Phase 5: End-to-end unit tests for `poll()`
 

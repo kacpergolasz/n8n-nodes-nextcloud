@@ -8,6 +8,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { getFolders } from './listSearch/getFolders';
 
+import { runDirectoryPoll } from './pollDirectory';
+
 export class NextcloudFilesTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud Files Trigger',
@@ -85,6 +87,6 @@ export class NextcloudFilesTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		return null;
+		return await runDirectoryPoll(this);
 	}
 }
