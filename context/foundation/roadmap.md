@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-07-20T12:49
+updated: 2026-07-20T17:39
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -38,7 +38,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-05 | nextcloud-talk | automate Nextcloud Talk | S-01 | FR-006 | proposed |
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | proposed |
 | S-14 | news-api-v2 | migrate Nextcloud News node to News API v2 when upstream is production-ready | S-06 | FR-008 | proposed |
-| S-15 | suite-pagination | retrofit Deck/Files/Calendar Get Many to the shared pagination helpers (cursor where the API allows) | S-06 | — | proposed |
+| S-15 | suite-pagination | get consistent Get Many across Deck/Files/Calendar matching News Item shape (`{ items, nextOffset }`, Limit + Offset) | S-06 | — | proposed |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | proposed |
 | S-11 | nextcloud-tasks | automate Nextcloud Tasks | S-01 | — | proposed |
 | S-12 | nextcloud-contacts | automate Nextcloud Contacts (port from core n8n Nextcloud node) | S-01 | FR-007 | proposed |
@@ -54,7 +54,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | A | Credential & Calendar proof | `F-01` → `S-01` → `S-08` / `S-09` → `S-02` | Quality-first validation path; Calendar depth (Get Many / partial update) follows the north star; OAuth follows once Calendar proves the shared credential. |
 | B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` → `S-14` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. News API v2 (`S-14`) follows the v1.3 News node. |
 | C | Triggers | `S-07` / `S-13` | Polling after Calendar exists; webhooks after Talk (`S-05`) for FR-010 value. |
-| D | Quality / debt | `F-02` / `S-15` | Cross-cutting validation helpers and pagination retrofit; can run in parallel once patterns exist (`S-01` / `S-06`). |
+| D | Quality / debt | `F-02` / `S-15` | Cross-cutting validation helpers and Get Many retrofit to the News Item pagination envelope; can run in parallel once patterns exist (`S-01` / `S-06`). |
 
 ## Baseline
 
@@ -218,16 +218,16 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Building S-06 on v2 today would target an incomplete API; parking the migration as an explicit follow-up keeps S-06 shippable on v1.3 without losing the upgrade path.
 - **Status:** proposed
 
-### S-15: Suite pagination retrofit
+### S-15: Suite Get Many refactor (News Item pattern)
 
-- **Outcome:** user gets consistent Get Many behavior across Deck/Files/Calendar using the shared pagination helpers introduced with News (real server cursor where the API supports it; documented client-limit only where it does not).
+- **Outcome:** user gets consistent Get Many across Deck/Files/Calendar that matches the **Nextcloud News → Item → Get Many** contract: one n8n item per call shaped as `{ items: [...], nextOffset: number | null }` (empty lists still return the envelope), UI **Limit** + **Offset** (cursor when the API allows), optional filters left empty mean “do not apply,” and shared pagination helpers — real server cursor where supported, documented client-limit only where not.
 - **Change ID:** suite-pagination
 - **PRD refs:** —
 - **Prerequisites:** S-06
 - **Parallel with:** S-02, S-05, S-07, S-08, S-09, S-10, S-11, S-12, S-13, S-14, F-02
 - **Blockers:** —
-- **Unknowns:** Which Deck/Files endpoints can expose a true cursor vs remain client-slice; Calendar still blocked on S-08 for reliable listing.
-- **Risk:** Today every suite `getAll` fetches all then `.slice(0, limit)`. News ships the solid shared module first; without this follow-up the rest of the suite stays inconsistent.
+- **Unknowns:** Which Deck/Files endpoints can expose a true cursor vs remain client-slice; Calendar still blocked on S-08 for reliable listing; whether folder/feed-style Get Many that are naturally small lists keep client-limit while still adopting the `{ items, nextOffset }` envelope (with `nextOffset: null`).
+- **Risk:** Today most suite `getAll` ops fetch-all then `.slice(0, limit)` and emit one n8n item per entity. News Item Get Many is the reference implementation for pagination UX; without this follow-up the rest of the suite stays inconsistent and awkward to page in workflows.
 - **Status:** proposed
 
 ### S-07: Suite polling triggers
@@ -293,7 +293,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-05 | nextcloud-talk | Nextcloud Talk node | no | After S-01; webhook triggers in S-13 |
 | S-06 | nextcloud-news | Nextcloud News node | yes | After S-01; parallel suite; API v1.3 (v2 → S-14) |
 | S-14 | news-api-v2 | Migrate Nextcloud News node to API v2 | no | After S-06; blocked on upstream v2 readiness |
-| S-15 | suite-pagination | Retrofit suite Get Many to shared pagination helpers | no | After S-06; News ships the module first |
+| S-15 | suite-pagination | Refactor suite Get Many to News Item envelope (`items` + `nextOffset`) | no | After S-06; News Item Get Many is the reference |
 | S-07 | suite-polling-triggers | Polling triggers for Nextcloud suite changes | no | After S-01; expands with apps |
 | S-11 | nextcloud-tasks | Nextcloud Tasks node | no | After S-01; parallel suite |
 | S-12 | nextcloud-contacts | Nextcloud Contacts node (port from core n8n) | no | After S-01; FR-007 nice-to-have |
