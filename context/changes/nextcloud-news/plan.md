@@ -348,14 +348,14 @@ Align node metadata/docs links, update change status notes, and run the full loc
 
 #### Automated
 
-- [ ] 1.1 Branch contains `nodes/shared/pollHelpers.ts` and `nodes/NextcloudFilesTrigger/`
-- [ ] 1.2 `npm run build` succeeds
-- [ ] 1.3 `npm test` passes including new pagination tests
-- [ ] 1.4 `npm run lint` passes
+- [x] 1.1 Branch contains `nodes/shared/pollHelpers.ts` and `nodes/NextcloudFilesTrigger/`
+- [x] 1.2 `npm run build` succeeds
+- [x] 1.3 `npm test` passes including new pagination tests
+- [x] 1.4 `npm run lint` passes
 
 #### Manual
 
-- [ ] 1.5 Confirm merge did not remove Files Trigger from the n8n panel list after a local build (spot-check `package.json` `n8n.nodes`)
+- [x] 1.5 Confirm merge did not remove Files Trigger from the n8n panel list after a local build (spot-check `package.json` `n8n.nodes`)
 
 ### Phase 2: Nextcloud News actions scaffold (Folder + Feed + core Item)
 
