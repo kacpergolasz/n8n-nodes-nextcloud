@@ -19,14 +19,14 @@ Reference implementation: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTrig
 
 | Topic | Implementation |
 |-------|----------------|
-| Change detection | Depth-1 PROPFIND via `loadDirectoryListing`; snapshot map `path → { etag, lastModified, isFolder }` in static data (`snapshot` key) |
+| Change detection | Depth-1 PROPFIND via `loadDirectoryListing`; snapshot map `path → { etag, lastModified, isFolder }` in static data (`snapshot` key); `watchedFolder` stores the seeded path |
 | Create vs update | `classifyDirectoryChanges(previous, current)` — path keys; prefer **etag** compare, fall back to `lastModified` |
 | Events | `fileCreated`, `fileUpdated`, `folderCreated`, `folderUpdated` (multiOptions `event`; default: file created + file updated) |
 | Depth | **Direct children only** — notice in UI; nested subfolder changes are not detected |
 | Output fields | `event`, `path`, `basename`, `isFolder`, `etag`, `lastModified`, plus `href`, `size`, `contentType` |
 | Poll entry | `pollDirectory.ts` → `runDirectoryPoll` |
 | Empty listing guard | After init, a successful `[]` listing keeps the prior snapshot (avoids create-flood); only thrown errors used soft-fail originally |
-| Init gate | “Already watching?” is keyed off `lastTimeChecked` (not empty vs non-empty snapshot). First poll seeds **both** cursor + snapshot together, so they stay in sync in the happy path. |
+| Init gate | Initialized only when **all** of `lastTimeChecked`, `snapshot`, and `watchedFolder` are present and `watchedFolder` matches the current `folderToWatch`. First poll (or folder change / missing piece) re-seeds cursor + snapshot + watched path and returns `null` (no history flood). |
 
 ### Files Trigger — deferred follow-ups
 
