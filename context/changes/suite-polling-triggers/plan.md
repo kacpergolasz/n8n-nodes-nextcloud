@@ -402,9 +402,9 @@ Document how the next app triggers should copy this shape, and record explicit f
 
 #### Automated
 
-- [x] 3.1 `npm run build` succeeds and emits the trigger dist file
-- [x] 3.2 `npm run lint` passes
-- [x] 3.3 `package.json` lists the new dist entry
+- [x] 3.1 `npm run build` succeeds and emits the trigger dist file — 1012134
+- [x] 3.2 `npm run lint` passes — 1012134
+- [x] 3.3 `package.json` lists the new dist entry — 1012134
 
 #### Manual
 
