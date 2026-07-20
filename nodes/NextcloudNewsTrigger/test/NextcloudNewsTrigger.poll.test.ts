@@ -159,6 +159,85 @@ describe('runNewsPoll', () => {
 		);
 	});
 
+	it('pages through seed listing so backlog beyond newest 100 is marked seen', async () => {
+		const page1 = Array.from({ length: 100 }, (_, i) => article(200 - i));
+		const page2 = [article(100), article(99)];
+		vi.mocked(newsRequest)
+			.mockResolvedValueOnce({ items: page1 })
+			.mockResolvedValueOnce({ items: page2 });
+
+		const staticData: IDataObject = {};
+		const result = await runNewsPoll(createPollContext({ staticData }));
+
+		expect(result).toBeNull();
+		expect(newsRequest).toHaveBeenCalledTimes(2);
+		expect(newsRequest).toHaveBeenNthCalledWith(
+			1,
+			expect.anything(),
+			'GET',
+			'/items',
+			expect.objectContaining({
+				qs: expect.objectContaining({ batchSize: 100, offset: 0 }),
+			}),
+		);
+		expect(newsRequest).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			'GET',
+			'/items',
+			expect.objectContaining({
+				qs: expect.objectContaining({ batchSize: 100, offset: 101 }),
+			}),
+		);
+		expect(getProcessedArticleIds(staticData)).toEqual(
+			expect.arrayContaining(['200', '101', '100', '99']),
+		);
+		expect(getProcessedArticleIds(staticData)).toHaveLength(102);
+	});
+
+	it('uses a single page for steady-state polls after initialization', async () => {
+		const existing = article(100);
+		const created = article(101, { title: 'Breaking news' });
+		const staticData = initializedStaticData([existing]);
+
+		vi.mocked(newsRequest).mockResolvedValue({ items: [created, existing] });
+
+		await runNewsPoll(createPollContext({ staticData }));
+
+		expect(newsRequest).toHaveBeenCalledTimes(1);
+	});
+
+	it('catch-up pages when a full newest page is all new (burst > 100)', async () => {
+		const seeded = [article(50), article(49), article(48)];
+		const staticData = initializedStaticData(seeded);
+		const page1 = Array.from({ length: 100 }, (_, i) => article(150 - i));
+		const page2 = [article(50), article(49), article(48)];
+
+		vi.mocked(newsRequest)
+			.mockResolvedValueOnce({ items: page1 })
+			.mockResolvedValueOnce({ items: page2 });
+
+		const result = await runNewsPoll(createPollContext({ staticData }));
+
+		expect(newsRequest).toHaveBeenCalledTimes(2);
+		expect(newsRequest).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			'GET',
+			'/items',
+			expect.objectContaining({
+				qs: expect.objectContaining({ offset: 51 }),
+			}),
+		);
+		expect(result?.[0]).toHaveLength(100);
+		expect(outputTitles(result)).toContain('Article 150');
+		expect(outputTitles(result)).toContain('Article 51');
+		expect(outputTitles(result)).not.toContain('Article 50');
+		expect(getProcessedArticleIds(staticData)).toEqual(
+			expect.arrayContaining(['150', '51', '50', '49', '48']),
+		);
+	});
+
 	it('re-seeds without emitting when feed scope changes', async () => {
 		const feedListing = [article(200, { feedId: 67 }), article(199, { feedId: 67 })];
 		const staticData = initializedStaticData([article(101)]);

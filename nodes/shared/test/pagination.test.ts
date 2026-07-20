@@ -60,9 +60,9 @@ describe('pagination', () => {
 		});
 
 		it('rejects non-positive batchSize other than -1', () => {
-			expect(normalizeNewsBatchSize(0)).toBe(DEFAULT_NEWS_BATCH_SIZE);
-			expect(normalizeNewsBatchSize(-5)).toBe(DEFAULT_NEWS_BATCH_SIZE);
-			expect(normalizeNewsBatchSize(Number.NaN)).toBe(DEFAULT_NEWS_BATCH_SIZE);
+			expect(normalizeNewsBatchSize(0)).toBe(DEFAULT_CLIENT_LIMIT);
+			expect(normalizeNewsBatchSize(-5)).toBe(DEFAULT_CLIENT_LIMIT);
+			expect(normalizeNewsBatchSize(Number.NaN)).toBe(DEFAULT_CLIENT_LIMIT);
 		});
 
 		it('defaults offset to 0', () => {
@@ -115,7 +115,7 @@ describe('pagination', () => {
 
 		it('normalizes invalid batchSize / offset in the query', () => {
 			expect(buildNewsItemsQueryParams({ batchSize: 0, offset: -9 })).toEqual({
-				batchSize: NEWS_BATCH_SIZE_ALL,
+				batchSize: DEFAULT_CLIENT_LIMIT,
 				offset: 0,
 			});
 		});

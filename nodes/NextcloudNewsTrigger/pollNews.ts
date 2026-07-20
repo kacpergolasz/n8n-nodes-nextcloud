@@ -18,9 +18,11 @@ import { itemToJson } from '../NextcloudNews/resources/shared/entityJson';
 import { scrubErrorMessage } from '../NextcloudNews/shared/scrubSecrets';
 import {
 	buildNewsItemsQueryParams,
+	nextNewsOffsetFromItems,
 	type NewsItemsQueryType,
 } from '../shared/pagination';
 import {
+	DEFAULT_MAX_PROCESSED_IDS,
 	LAST_TIME_CHECKED_KEY,
 	PROCESSED_IDS_KEY,
 	filterIdsInStaticData,
@@ -30,6 +32,20 @@ import {
 
 /** Bounded page of newest candidates per poll (avoids unbounded history pulls). */
 export const TRIGGER_ITEMS_BATCH_SIZE = 100;
+
+/**
+ * Seed/re-seed only: max pages when walking `offset` so huge inboxes cannot
+ * hang activation. Aligns with the processed-id window ceiling.
+ */
+export const TRIGGER_SEED_MAX_PAGES = Math.ceil(
+	DEFAULT_MAX_PROCESSED_IDS / TRIGGER_ITEMS_BATCH_SIZE,
+);
+
+/**
+ * Steady-state catch-up: max pages per poll when a burst of new articles fills
+ * the newest page (avoids permanently missing older new ids).
+ */
+export const TRIGGER_STEADY_MAX_PAGES = 10;
 
 /** Scope key the current ID window was seeded for (folder/feed/unread). */
 export const POLL_SCOPE_KEY = 'pollScope';
@@ -166,13 +182,43 @@ export function pollErrorNoticeItem(message: string): IDataObject {
 	};
 }
 
-export async function loadTriggerItems(
+/**
+ * Advance the News item-id cursor for the next page, or `undefined` when
+ * paging should stop (partial page / missing cursor / non-advancing cursor).
+ */
+export function nextTriggerPageOffset(
+	items: NewsItem[],
+	offset: number,
+	previousOffset: number | undefined,
+): number | undefined {
+	if (items.length < TRIGGER_ITEMS_BATCH_SIZE) {
+		return undefined;
+	}
+
+	const nextOffset = nextNewsOffsetFromItems(items);
+	if (nextOffset === undefined) {
+		return undefined;
+	}
+
+	// Inclusive cursors can repeat the boundary id; stop if we would not advance.
+	if (previousOffset !== undefined && nextOffset >= previousOffset) {
+		return undefined;
+	}
+	if (offset !== 0 && nextOffset >= offset) {
+		return undefined;
+	}
+
+	return nextOffset;
+}
+
+export async function loadTriggerItemsPage(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
+	offset: number = 0,
 ): Promise<NewsItem[]> {
 	const qs = buildNewsItemsQueryParams({
 		batchSize: TRIGGER_ITEMS_BATCH_SIZE,
-		offset: 0,
+		offset,
 		type: scope.type,
 		id: scope.id,
 		getRead: scope.getRead,
@@ -180,6 +226,91 @@ export async function loadTriggerItems(
 	});
 
 	return unwrapItems(await newsRequest(context, 'GET', '/items', { qs }));
+}
+
+/** Single newest page (offset 0) — used by manual mode. */
+export async function loadTriggerItems(
+	context: ILoadOptionsFunctions,
+	scope: NewsPollScopeResolved,
+): Promise<NewsItem[]> {
+	return loadTriggerItemsPage(context, scope, 0);
+}
+
+/**
+ * Seed/re-seed: walk News `offset` pages until a partial/empty page so the ID
+ * window covers the current backlog (not only the newest 100).
+ */
+export async function loadAllTriggerItemsForSeed(
+	context: ILoadOptionsFunctions,
+	scope: NewsPollScopeResolved,
+): Promise<NewsItem[]> {
+	const collected: NewsItem[] = [];
+	let offset = 0;
+	let previousOffset: number | undefined;
+
+	for (let page = 0; page < TRIGGER_SEED_MAX_PAGES; page++) {
+		const items = await loadTriggerItemsPage(context, scope, offset);
+		if (items.length === 0) {
+			break;
+		}
+
+		collected.push(...items);
+
+		if (collected.length >= DEFAULT_MAX_PROCESSED_IDS) {
+			return collected.slice(0, DEFAULT_MAX_PROCESSED_IDS);
+		}
+
+		const nextOffset = nextTriggerPageOffset(items, offset, previousOffset);
+		if (nextOffset === undefined) {
+			break;
+		}
+
+		previousOffset = offset;
+		offset = nextOffset;
+	}
+
+	return collected;
+}
+
+/**
+ * Steady-state: load the newest page, then keep paging while every item on a
+ * full page is unseen (burst larger than {@link TRIGGER_ITEMS_BATCH_SIZE}).
+ * Stop when a page includes an already-processed id, is partial/empty, or the
+ * per-poll page cap is hit.
+ */
+export async function loadTriggerItemsWithCatchUp(
+	context: ILoadOptionsFunctions,
+	scope: NewsPollScopeResolved,
+	staticData: IDataObject,
+): Promise<NewsItem[]> {
+	const processed = new Set(getProcessedIds(staticData));
+	const collected: NewsItem[] = [];
+	let offset = 0;
+	let previousOffset: number | undefined;
+
+	for (let page = 0; page < TRIGGER_STEADY_MAX_PAGES; page++) {
+		const items = await loadTriggerItemsPage(context, scope, offset);
+		if (items.length === 0) {
+			break;
+		}
+
+		collected.push(...items);
+
+		const hasSeen = items.some((item) => processed.has(String(item.id)));
+		if (hasSeen) {
+			break;
+		}
+
+		const nextOffset = nextTriggerPageOffset(items, offset, previousOffset);
+		if (nextOffset === undefined) {
+			break;
+		}
+
+		previousOffset = offset;
+		offset = nextOffset;
+	}
+
+	return collected;
 }
 
 export async function runNewsPoll(
@@ -205,7 +336,13 @@ export async function runNewsPoll(
 
 	let items: NewsItem[];
 	try {
-		items = await loadTriggerItems(requestContext, resolved);
+		if (!isManual && !isInitialized) {
+			items = await loadAllTriggerItemsForSeed(requestContext, resolved);
+		} else if (!isManual && isInitialized) {
+			items = await loadTriggerItemsWithCatchUp(requestContext, resolved, staticData);
+		} else {
+			items = await loadTriggerItemsPage(requestContext, resolved, 0);
+		}
 	} catch (error) {
 		const scrubbedMessage = scrubErrorMessage(error, credentials);
 

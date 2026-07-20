@@ -92,7 +92,7 @@ export class NextcloudNewsTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether to only watch unread articles (inbox-style). When off, newly seen article IDs still fire once.',
+					'Whether to only watch unread articles (inbox-style). When off, newly seen article IDs still fire once. Each poll loads up to 100 newest matches and catch-up-pages if a full page is all new (burst), capped per poll.',
 			},
 		],
 		usableAsTool: true,

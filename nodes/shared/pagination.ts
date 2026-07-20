@@ -38,8 +38,9 @@ export type NewsItemsQueryType = 0 | 1 | 2 | 3;
 
 export type NewsItemsCursorParams = {
 	/**
-	 * Page size. `-1` = all items (News default). Positive integers page.
-	 * Non-finite / zero values fall back to {@link DEFAULT_NEWS_BATCH_SIZE}.
+	 * Page size. `-1` = all items (News default when omitted). Positive integers page.
+	 * Non-finite / zero / other non-positive values fall back to
+	 * {@link DEFAULT_CLIENT_LIMIT} (never silently to `-1`).
 	 */
 	batchSize?: number;
 	/**
@@ -59,12 +60,17 @@ export type NewsItemsCursorParams = {
 };
 
 /**
- * Normalize News `batchSize`. Preserves `-1` (all). Invalid / non-positive
- * (except `-1`) values become {@link DEFAULT_NEWS_BATCH_SIZE}.
+ * Normalize News `batchSize`. Preserves explicit `-1` (all). Omitted →
+ * {@link DEFAULT_NEWS_BATCH_SIZE} (`-1`). Invalid values (`NaN`, `0`, other
+ * negatives) → {@link DEFAULT_CLIENT_LIMIT} so typos cannot unbounded-pull.
  */
 export function normalizeNewsBatchSize(batchSize?: number): number {
-	if (batchSize === undefined || batchSize === null || !Number.isFinite(batchSize)) {
+	if (batchSize === undefined || batchSize === null) {
 		return DEFAULT_NEWS_BATCH_SIZE;
+	}
+
+	if (!Number.isFinite(batchSize)) {
+		return DEFAULT_CLIENT_LIMIT;
 	}
 
 	const n = Math.trunc(batchSize);
@@ -73,7 +79,7 @@ export function normalizeNewsBatchSize(batchSize?: number): number {
 	}
 
 	if (n < 1) {
-		return DEFAULT_NEWS_BATCH_SIZE;
+		return DEFAULT_CLIENT_LIMIT;
 	}
 
 	return n;

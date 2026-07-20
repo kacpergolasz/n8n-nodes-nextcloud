@@ -64,7 +64,8 @@ Second suite poller after Files. Prefer this pattern when the app exposes stable
 | Filters | Optional folder locator, optional feed locator (feed wins), boolean **Unread only** (`getRead=false` when checked; default **true**) |
 | Output | One n8n item per new article — full News article JSON |
 | Soft-fail | After init: scrub + debug-log; emit **at most one** notice item (`event: 'pollError'`) per failure window; do not advance ID window; clear notice flag on next successful poll |
-| Init / scope gate | First production poll (or folder/feed filter change) seeds processed ids and returns `null` (no history flood) |
+| Init / scope gate | First production poll (or folder/feed filter change) **pages** to seed processed ids (not only newest 100) and returns `null` (no history flood) |
+| Steady catch-up | Page size 100; if a full newest page is all unseen, keep paging until a seen id / partial page / per-poll page cap |
 | Poll entry | `pollNews.ts` → `runNewsPoll` |
 | Docs | https://nextcloud.github.io/news/api/api-v1-3/ |
 

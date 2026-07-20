@@ -178,6 +178,8 @@ Wire Item Get Many to News `batchSize`/`offset` through shared pagination helper
 
 **Contract**: UI exposes `batchSize`, `offset` (item id cursor), `type` (Feed/Folder/Starred/All), `id`, `getRead`, `oldestFirst`, plus optional convenience presets that only set defaults. Calls `GET /items` with those params via shared helpers. Returns one n8n item per article (full JSON). Does **not** silently download the entire history when the author asked for a page.
 
+**Implementation addendum (impl-review F1, 2026-07-20):** Shipped shape is one n8n execution item `{ items, nextOffset }` (not one row per article). UI uses `limit` + folder/feed/`starredOnly`/`unreadOnly`/`oldestFirst` convenience filters that map to News `batchSize`/`type`/`id`/`getRead`. Authors who want one workflow item per article should Split Out on `items`. Cursor pagination via shared helpers is unchanged.
+
 #### 2. Pagination tests for News items
 
 **File**: `nodes/NextcloudNews/test/` + `nodes/shared/test/pagination.test.ts` (extend)

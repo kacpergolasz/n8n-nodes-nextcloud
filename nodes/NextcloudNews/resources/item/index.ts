@@ -42,7 +42,8 @@ export const itemDescription: INodeProperties[] = [
 		type: 'number',
 		typeOptions: { minValue: 1 },
 		default: 50,
-		description: 'Max number of results to return',
+		description:
+			'Max articles to return in this page (News batchSize). Output is one item: { items, nextOffset }. Split Out on items for one row per article.',
 		displayOptions: {
 			show: {
 				resource: ['item'],
