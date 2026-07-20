@@ -408,8 +408,8 @@ Document how the next app triggers should copy this shape, and record explicit f
 
 #### Manual
 
-- [ ] 3.4 After local community-node link / `n8n-node dev`, Nextcloud Files Trigger appears under triggers when searching “nextcloud”
-- [ ] 3.5 Node shows Poll Times, credential, folder picker, event options, Depth-1 notice
+- [x] 3.4 After local community-node link / `n8n-node dev`, Nextcloud Files Trigger appears under triggers when searching “nextcloud”
+- [x] 3.5 Node shows Poll Times, credential, folder picker, event options, Depth-1 notice
 
 ### Phase 4: `poll()` wired to Files WebDAV
 
