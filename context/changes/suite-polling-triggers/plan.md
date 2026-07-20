@@ -415,22 +415,22 @@ Document how the next app triggers should copy this shape, and record explicit f
 
 #### Automated
 
-- [x] 4.1 `npm run build` succeeds
-- [x] 4.2 `npm run lint` passes
-- [x] 4.3 Typecheck clean for trigger + imports from Files
+- [x] 4.1 `npm run build` succeeds — 3897729
+- [x] 4.2 `npm run lint` passes — 3897729
+- [x] 4.3 Typecheck clean for trigger + imports from Files — 3897729
 
 #### Manual
 
-- [x] 4.4 Test step on a non-empty folder returns one sample item
-- [x] 4.5 Activate workflow: first period does not flood old files; creating/updating a direct child emits once
-- [x] 4.6 Transient error (e.g. wrong folder after snapshot exists) does not wipe cursor / spam executions
+- [x] 4.4 Test step on a non-empty folder returns one sample item — 3897729
+- [x] 4.5 Activate workflow: first period does not flood old files; creating/updating a direct child emits once — 3897729
+- [x] 4.6 Transient error (e.g. wrong folder after snapshot exists) does not wipe cursor / spam executions — 3897729
 
 ### Phase 5: End-to-end unit tests for `poll()`
 
 #### Automated
 
-- [ ] 5.1 New poll tests pass under `npm test`
-- [ ] 5.2 Full `npm run build && npm run lint && npm test` green
+- [x] 5.1 New poll tests pass under `npm test` — a76c9f0
+- [x] 5.2 Full `npm run build && npm run lint && npm test` green — a76c9f0
 
 ### Phase 6: Suite pattern note
 
