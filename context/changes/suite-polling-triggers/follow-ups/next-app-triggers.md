@@ -11,7 +11,7 @@ Reference implementation: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTrig
 - **First production poll (empty cursor)** — seed `lastTimeChecked` + initial state, return `null` (no history flood on activation).
 - **Soft-fail** — if the listing/API throws **after** initialization, scrub secrets (`scrubSecrets`), log at debug, return `null` without advancing cursor/state (Outlook pattern).
 - **Pre-initialization errors** — rethrow (activation should fail loudly when credentials/path are wrong).
-- **Manual / Test step** (`getMode() === 'manual'`) — return up to **one** sample item matching selected events; throw a scrubbed error if nothing to show (Google Drive pattern).
+- **Manual / Test step** (`getMode() === 'manual'`) — return up to **one** sample item matching selected events; if nothing to show (empty folder or no matching event types), return `null` — do **not** throw (a thrown poll error can deregister crons / kill the schedule on some n8n versions).
 - **Credential** — shared `nextcloudApi` (Basic Auth); no per-trigger credential types unless a future app truly needs different auth.
 - **Tests** — co-located Vitest under `nodes/<Trigger>/test/`; mock HTTP / `IPollFunctions`; no live Nextcloud in CI.
 
@@ -25,6 +25,12 @@ Reference implementation: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTrig
 | Depth | **Direct children only** — notice in UI; nested subfolder changes are not detected |
 | Output fields | `event`, `path`, `basename`, `isFolder`, `etag`, `lastModified`, plus `href`, `size`, `contentType` |
 | Poll entry | `pollDirectory.ts` → `runDirectoryPoll` |
+| Empty listing guard | After init, a successful `[]` listing keeps the prior snapshot (avoids create-flood); only thrown errors used soft-fail originally |
+| Init gate | “Already watching?” is keyed off `lastTimeChecked` (not empty vs non-empty snapshot). First poll seeds **both** cursor + snapshot together, so they stay in sync in the happy path. |
+
+### Files Trigger — deferred follow-ups
+
+- **Large folders**: Poll Depth-1 listing has no entry cap (folder listSearch uses `LIST_SEARCH_MAX_ENTRIES`). Very large directories mean large PROPFIND responses and large static-data snapshots. Add a max-entries warn/cap or document folder-size guidance in a later change — out of scope for S-07.
 
 ## Follow-up triggers (not in this change)
 
