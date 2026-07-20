@@ -29,6 +29,7 @@ This package currently includes:
 
 - **[Nextcloud Calendar](nodes/NextcloudCalendar/)** - CalDAV event Create / Get / Get Many / Update / Delete with list-or-type calendar pickers
 - **[Nextcloud Files](nodes/NextcloudFiles/)** - WebDAV file and folder Upload / Download / Delete / Move / Copy / List, plus OCS Share Create / Get Many / Update / Delete with path pickers
+- **[Nextcloud Files Trigger](nodes/NextcloudFilesTrigger/)** - Polling trigger for file/folder created and updated events on direct children of a watched folder (Depth 1)
 - **[Nextcloud API credential](credentials/NextcloudApi.credentials.ts)** - Shared Basic Auth (`baseUrl` / `username` / `appPassword`) reused by suite nodes
 - **[Nextcloud OAuth2 API credential](credentials/NextcloudOAuth2Api.credentials.ts)** - Shared OAuth2 (`baseUrl` / `username` / client id & secret) reused by suite nodes
 

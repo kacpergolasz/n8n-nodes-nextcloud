@@ -19,6 +19,7 @@ import { getLastTimeChecked, seedLastTimeChecked } from '../shared/pollHelpers';
 
 import {
 	type DirectoryChange,
+	type DirectoryChangeEvent,
 	type DirectorySnapshot,
 	classifyDirectoryChanges,
 } from './classifyDirectoryChanges';
@@ -82,21 +83,30 @@ export function changeToOutputItem(change: DirectoryChange): IDataObject {
 	};
 }
 
-function createdEventForEntry(entry: DirectoryEntry): DirectoryChange['event'] {
-	return entry.isFolder ? 'folderCreated' : 'fileCreated';
-}
-
 function pickManualSample(
 	listing: DirectoryEntry[],
 	selectedEvents: string[],
-): DirectoryEntry | undefined {
+): DirectoryChange | undefined {
+	// Manual mode is used for "Test step" UX. If the folder is empty (or the
+	// selected event types don't match any entry type), returning `null` is
+	// safer than throwing — otherwise the error can destabilize polling.
 	for (const entry of listing) {
-		if (selectedEvents.includes(createdEventForEntry(entry))) {
-			return entry;
+		const createdEvent: DirectoryChangeEvent = entry.isFolder
+			? 'folderCreated'
+			: 'fileCreated';
+		if (selectedEvents.includes(createdEvent)) {
+			return { event: createdEvent, entry };
+		}
+
+		const updatedEvent: DirectoryChangeEvent = entry.isFolder
+			? 'folderUpdated'
+			: 'fileUpdated';
+		if (selectedEvents.includes(updatedEvent)) {
+			return { event: updatedEvent, entry };
 		}
 	}
 
-	return listing[0];
+	return undefined;
 }
 
 function throwPollError(context: IPollFunctions, message: string): never {
@@ -140,18 +150,15 @@ export async function runDirectoryPoll(
 	}
 
 	if (isManual) {
-		const sampleEntry = pickManualSample(listing, selectedEvents);
-		if (!sampleEntry) {
-			throwPollError(
-				context,
-				'The selected folder has no files or folders to use as a sample.',
+		const sample = pickManualSample(listing, selectedEvents);
+		if (!sample) {
+			context.logger.debug(
+				'Nextcloud Files Trigger: manual sample unavailable (empty folder or selected event types do not match). Returning null.',
 			);
+			return null;
 		}
 
-		const item = changeToOutputItem({
-			event: createdEventForEntry(sampleEntry),
-			entry: sampleEntry,
-		});
+		const item = changeToOutputItem(sample);
 		return [context.helpers.returnJsonArray([item])];
 	}
 

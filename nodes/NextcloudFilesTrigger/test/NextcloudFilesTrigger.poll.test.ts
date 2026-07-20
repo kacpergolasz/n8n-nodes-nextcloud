@@ -1,5 +1,4 @@
 import type { IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 
 import {
 	getCredentials,
@@ -204,15 +203,10 @@ describe('runDirectoryPoll', () => {
 		);
 	});
 
-	it('throws in manual mode when the folder listing is empty', async () => {
+	it('returns null in manual mode when the folder listing is empty', async () => {
 		vi.mocked(loadDirectoryListing).mockResolvedValue([]);
 
-		await expect(runDirectoryPoll(createPollContext({ mode: 'manual' }))).rejects.toBeInstanceOf(
-			NodeApiError,
-		);
-		await expect(runDirectoryPoll(createPollContext({ mode: 'manual' }))).rejects.toMatchObject({
-			message: 'The selected folder has no files or folders to use as a sample.',
-		});
+		await expect(runDirectoryPoll(createPollContext({ mode: 'manual' }))).resolves.toBeNull();
 	});
 
 	it('returns one sample item in manual mode', async () => {
