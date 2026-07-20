@@ -40,7 +40,8 @@
 			"dist/nodes/NextcloudDeck/NextcloudDeck.node.js",
 			"dist/nodes/NextcloudFiles/NextcloudFiles.node.js",
 			"dist/nodes/NextcloudFilesTrigger/NextcloudFilesTrigger.node.js",
-			"dist/nodes/NextcloudNews/NextcloudNews.node.js"
+			"dist/nodes/NextcloudNews/NextcloudNews.node.js",
+			"dist/nodes/NextcloudNewsTrigger/NextcloudNewsTrigger.node.js"
 		]
 	},
 	"devDependencies": {

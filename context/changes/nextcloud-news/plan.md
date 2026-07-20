@@ -387,16 +387,16 @@ Align node metadata/docs links, update change status notes, and run the full loc
 
 #### Automated
 
-- [ ] 4.1 `npm test` includes News Trigger poll tests
-- [ ] 4.2 `npm run build` + `npm run lint` pass
-- [ ] 4.3 Both News nodes listed in `package.json`
+- [x] 4.1 `npm test` includes News Trigger poll tests
+- [x] 4.2 `npm run build` + `npm run lint` pass
+- [x] 4.3 Both News nodes listed in `package.json`
 
 #### Manual
 
-- [ ] 4.4 Activate workflow with News Trigger: no flood on activate; new unread article fires full JSON item
-- [ ] 4.5 Toggle Unread only / feed filter; change feed re-seeds without flood
-- [ ] 4.6 Force API error after init → one notice item; recovery clears notice behavior on success
-- [ ] 4.7 Test step returns a sample or null without killing the schedule
+- [x] 4.4 Activate workflow with News Trigger: no flood on activate; new unread article fires full JSON item
+- [x] 4.5 Toggle Unread only / feed filter; change feed re-seeds without flood
+- [x] 4.6 Force API error after init → one notice item; recovery clears notice behavior on success
+- [x] 4.7 Test step returns a sample or null without killing the schedule
 
 ### Phase 5: Docs touch-ups + close-out verification
 
