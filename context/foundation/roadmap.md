@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-07-19T21:37
+updated: 2026-07-20T12:49
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -37,6 +37,8 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-10 | deck-partial-update | update a Deck card with only whitelisted writable fields (safe GET→merge→PUT) | S-04 | FR-005 | proposed |
 | S-05 | nextcloud-talk | automate Nextcloud Talk | S-01 | FR-006 | proposed |
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | proposed |
+| S-14 | news-api-v2 | migrate Nextcloud News node to News API v2 when upstream is production-ready | S-06 | FR-008 | proposed |
+| S-15 | suite-pagination | retrofit Deck/Files/Calendar Get Many to the shared pagination helpers (cursor where the API allows) | S-06 | — | proposed |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | proposed |
 | S-11 | nextcloud-tasks | automate Nextcloud Tasks | S-01 | — | proposed |
 | S-12 | nextcloud-contacts | automate Nextcloud Contacts (port from core n8n Nextcloud node) | S-01 | FR-007 | proposed |
@@ -50,9 +52,9 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | Stream | Theme | Chain | Note |
 |---|---|---|---|
 | A | Credential & Calendar proof | `F-01` → `S-01` → `S-08` / `S-09` → `S-02` | Quality-first validation path; Calendar depth (Get Many / partial update) follows the north star; OAuth follows once Calendar proves the shared credential. |
-| B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. |
+| B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` → `S-14` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. News API v2 (`S-14`) follows the v1.3 News node. |
 | C | Triggers | `S-07` / `S-13` | Polling after Calendar exists; webhooks after Talk (`S-05`) for FR-010 value. |
-| D | Quality / debt | `F-02` | Cross-cutting validation helpers; can run in parallel once `S-01` proves the node patterns. |
+| D | Quality / debt | `F-02` / `S-15` | Cross-cutting validation helpers and pagination retrofit; can run in parallel once patterns exist (`S-01` / `S-06`). |
 
 ## Baseline
 
@@ -201,7 +203,31 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-02, S-03, S-04, S-05, S-07
 - **Blockers:** —
 - **Unknowns:** —
-- **Risk:** Author-priority niche app; kept as its own vertical slice so it neither blocks nor hides inside Files.
+- **Risk:** Author-priority niche app; kept as its own vertical slice so it neither blocks nor hides inside Files. Ships against **News API v1.3** (fully implemented); API v2 is draft-only and tracked as follow-up **S-14**.
+- **Status:** proposed
+
+### S-14: Nextcloud News API v2 migration
+
+- **Outcome:** user can keep automating Nextcloud News after the node migrates from API v1.3 to News API v2 once upstream marks v2 production-ready (sync-oriented routes, ETag caching, reduced payloads).
+- **Change ID:** news-api-v2
+- **PRD refs:** FR-008
+- **Prerequisites:** S-06
+- **Parallel with:** S-02, S-05, S-07, S-08, S-09, S-10, S-11, S-12, S-13, S-15, F-02
+- **Blockers:** Upstream Nextcloud News API v2 remains a draft / incomplete (see https://nextcloud.github.io/news/developer/ and https://nextcloud.github.io/news/api/api-v2/).
+- **Unknowns:** When v2 is fully implemented; breaking vs additive migration path for existing workflows; whether dual-version support is needed during transition.
+- **Risk:** Building S-06 on v2 today would target an incomplete API; parking the migration as an explicit follow-up keeps S-06 shippable on v1.3 without losing the upgrade path.
+- **Status:** proposed
+
+### S-15: Suite pagination retrofit
+
+- **Outcome:** user gets consistent Get Many behavior across Deck/Files/Calendar using the shared pagination helpers introduced with News (real server cursor where the API supports it; documented client-limit only where it does not).
+- **Change ID:** suite-pagination
+- **PRD refs:** —
+- **Prerequisites:** S-06
+- **Parallel with:** S-02, S-05, S-07, S-08, S-09, S-10, S-11, S-12, S-13, S-14, F-02
+- **Blockers:** —
+- **Unknowns:** Which Deck/Files endpoints can expose a true cursor vs remain client-slice; Calendar still blocked on S-08 for reliable listing.
+- **Risk:** Today every suite `getAll` fetches all then `.slice(0, limit)`. News ships the solid shared module first; without this follow-up the rest of the suite stays inconsistent.
 - **Status:** proposed
 
 ### S-07: Suite polling triggers
@@ -265,7 +291,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-04 | nextcloud-deck | Nextcloud Deck boards/cards node | no | After S-01; parallel suite |
 | S-10 | deck-partial-update | Deck Update with whitelisted writable fields | no | After S-04; safe GET→merge→PUT |
 | S-05 | nextcloud-talk | Nextcloud Talk node | no | After S-01; webhook triggers in S-13 |
-| S-06 | nextcloud-news | Nextcloud News node | no | After S-01; parallel suite |
+| S-06 | nextcloud-news | Nextcloud News node | yes | After S-01; parallel suite; API v1.3 (v2 → S-14) |
+| S-14 | news-api-v2 | Migrate Nextcloud News node to API v2 | no | After S-06; blocked on upstream v2 readiness |
+| S-15 | suite-pagination | Retrofit suite Get Many to shared pagination helpers | no | After S-06; News ships the module first |
 | S-07 | suite-polling-triggers | Polling triggers for Nextcloud suite changes | no | After S-01; expands with apps |
 | S-11 | nextcloud-tasks | Nextcloud Tasks node | no | After S-01; parallel suite |
 | S-12 | nextcloud-contacts | Nextcloud Contacts node (port from core n8n) | no | After S-01; FR-007 nice-to-have |
