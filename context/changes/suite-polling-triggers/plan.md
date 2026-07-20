@@ -386,17 +386,17 @@ Document how the next app triggers should copy this shape, and record explicit f
 
 #### Automated
 
-- [x] 1.1 `nodes/shared/pollHelpers.ts` and `nodes/shared/test/pollHelpers.test.ts` exist
-- [x] 1.2 `npm test` passes (helpers suite green)
-- [x] 1.3 `npm run lint` passes for new files
+- [x] 1.1 `nodes/shared/pollHelpers.ts` and `nodes/shared/test/pollHelpers.test.ts` exist — fba4026
+- [x] 1.2 `npm test` passes (helpers suite green) — fba4026
+- [x] 1.3 `npm run lint` passes for new files — fba4026
 
 ### Phase 2: Listing snapshot + create/update classification
 
 #### Automated
 
-- [ ] 2.1 Classification module + tests exist
-- [ ] 2.2 `npm test` covers create, update, no-op, folder/file split
-- [ ] 2.3 `npm run lint` passes
+- [x] 2.1 Classification module + tests exist
+- [x] 2.2 `npm test` covers create, update, no-op, folder/file split
+- [x] 2.3 `npm run lint` passes
 
 ### Phase 3: Trigger node shell + registration
 
