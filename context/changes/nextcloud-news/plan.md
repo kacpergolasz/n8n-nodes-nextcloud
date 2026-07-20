@@ -375,13 +375,13 @@ Align node metadata/docs links, update change status notes, and run the full loc
 
 #### Automated
 
-- [x] 3.1 `npm test` covers item pagination helpers
-- [x] 3.2 `npm run build` + `npm run lint` pass
+- [x] 3.1 `npm test` covers item pagination helpers — caf1716
+- [x] 3.2 `npm run build` + `npm run lint` pass — caf1716
 
 #### Manual
 
-- [x] 3.3 Get Many with small `batchSize` returns that many items; next call with `offset` continues older items
-- [x] 3.4 Unread-only (`getRead=false`) works for type All
+- [x] 3.3 Get Many with small `batchSize` returns that many items; next call with `offset` continues older items — caf1716
+- [x] 3.4 Unread-only (`getRead=false`) works for type All — caf1716
 
 ### Phase 4: Nextcloud News Trigger
 
