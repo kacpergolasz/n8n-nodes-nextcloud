@@ -402,10 +402,10 @@ Align node metadata/docs links, update change status notes, and run the full loc
 
 #### Automated
 
-- [x] 5.1 `npm run build && npm run lint && npm test` all succeed
+- [x] 5.1 `npm run build && npm run lint && npm test` all succeed — 5aa4654
 
 #### Manual
 
-- [x] 5.2 Panel search finds Nextcloud News and Nextcloud News Trigger
-- [x] 5.3 End-to-end smoke: credential → folder/feed/item action → trigger fires on new article
-- [x] 5.4 Confirm secrets scrubbed in a forced error path
+- [x] 5.2 Panel search finds Nextcloud News and Nextcloud News Trigger — 5aa4654
+- [x] 5.3 End-to-end smoke: credential → folder/feed/item action → trigger fires on new article — 5aa4654
+- [x] 5.4 Confirm secrets scrubbed in a forced error path — 5aa4654
