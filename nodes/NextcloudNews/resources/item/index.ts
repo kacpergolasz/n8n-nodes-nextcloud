@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { createFeedSelect, createFolderSelect } from '../../shared/descriptions';
+
 const showOnlyForItem = {
 	resource: ['item'],
 };
@@ -35,12 +37,12 @@ export const itemDescription: INodeProperties[] = [
 		default: 'getAll',
 	},
 	{
-		displayName: 'Batch Size',
-		name: 'batchSize',
+		displayName: 'Limit',
+		name: 'limit',
 		type: 'number',
+		typeOptions: { minValue: 1 },
 		default: 50,
-		description:
-			'Number of items to return. Use -1 for all matching items (can be very large).',
+		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
 				resource: ['item'],
@@ -49,12 +51,12 @@ export const itemDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Offset',
+		displayName: 'Offset (Item ID)',
 		name: 'offset',
 		type: 'number',
 		default: 0,
 		description:
-			'Item ID cursor: return older items with ID less than or equal to this value. Use 0 for the newest page; then pass nextOffset from the previous page.',
+			'Item ID cursor: return older items with ID less than or equal to this value. Use 0 for the newest page; then pass nextOffset from the previous response (null when there is no next page).',
 		displayOptions: {
 			show: {
 				resource: ['item'],
@@ -63,17 +65,13 @@ export const itemDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Scope',
-		name: 'itemsType',
-		type: 'options',
-		options: [
-			{ name: 'All', value: 3 },
-			{ name: 'Feed', value: 0 },
-			{ name: 'Folder', value: 1 },
-			{ name: 'Starred', value: 2 },
-		],
-		default: 3,
-		description: 'Which items to list',
+		...createFolderSelect({
+			name: 'folderFilter',
+			displayName: 'Folder Filter',
+			required: false,
+			description: 'Optional folder to list items from. Leave empty to skip.',
+			default: { mode: 'list', value: '' },
+		}),
 		displayOptions: {
 			show: {
 				resource: ['item'],
@@ -82,11 +80,16 @@ export const itemDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Scope ID',
-		name: 'scopeId',
-		type: 'number',
-		default: 0,
-		description: 'Feed or folder ID when Scope is Feed or Folder; use 0 for All or Starred',
+		...createFeedSelect({
+			name: 'feedFilter',
+			displayName: 'Feed Filter',
+			required: false,
+			description: 'Optional feed to list items from. Leave empty to skip. Takes precedence over Folder Filter.',
+			default: { mode: 'list', value: '' },
+			typeOptions: {
+				loadOptionsDependsOn: ['folderFilter.value'],
+			},
+		}),
 		displayOptions: {
 			show: {
 				resource: ['item'],
@@ -95,11 +98,25 @@ export const itemDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Include Read',
-		name: 'getRead',
+		displayName: 'Starred Only',
+		name: 'starredOnly',
 		type: 'boolean',
-		default: true,
-		description: 'Whether to include already-read items (false = unread only)',
+		default: false,
+		description:
+			'Whether to list only starred items. Applied only when Feed Filter and Folder Filter are empty.',
+		displayOptions: {
+			show: {
+				resource: ['item'],
+				operation: getAllOps,
+			},
+		},
+	},
+	{
+		displayName: 'Unread Only',
+		name: 'unreadOnly',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return only unread items',
 		displayOptions: {
 			show: {
 				resource: ['item'],

@@ -135,5 +135,32 @@ describe('pagination', () => {
 		it('handles a single-item page', () => {
 			expect(nextNewsOffsetFromItems([{ id: 7 }])).toBe(7);
 		});
+
+		it('documents News autopaging: next page uses lowest id as offset', () => {
+			// Mirror https://nextcloud.github.io/news/api/api-v1-3/ Get items example.
+			const firstPage = [
+				{ id: 62 },
+				{ id: 55 },
+				{ id: 43 },
+			];
+			const nextOffset = nextNewsOffsetFromItems(firstPage);
+			expect(nextOffset).toBe(43);
+
+			expect(
+				buildNewsItemsQueryParams({
+					batchSize: 20,
+					offset: nextOffset,
+					type: 1,
+					id: 12,
+					getRead: false,
+				}),
+			).toEqual({
+				batchSize: 20,
+				offset: 43,
+				type: 1,
+				id: 12,
+				getRead: false,
+			});
+		});
 	});
 });

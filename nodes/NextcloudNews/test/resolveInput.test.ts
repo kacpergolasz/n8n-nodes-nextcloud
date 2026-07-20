@@ -4,7 +4,9 @@ import {
 	getLocatorValue,
 	resolveFeedFromInput,
 	resolveFolderFromInput,
+	resolveOptionalFeedId,
 	resolveOptionalFolderId,
+	resolveOptionalFolderIdFilter,
 } from '../resources/shared/resolveInput';
 
 function mockContext(param: unknown): IExecuteFunctions {
@@ -47,6 +49,14 @@ describe('resolveInput locators', () => {
 	it('treats empty optional folder as root (null)', () => {
 		expect(resolveOptionalFolderId(mockContext(''), 0)).toBeNull();
 		expect(resolveOptionalFolderId(mockContext({ mode: 'id', value: '' }), 0)).toBeNull();
+	});
+
+	it('treats empty optional filters as undefined (do not apply)', () => {
+		expect(resolveOptionalFeedId(mockContext(''), 0)).toBeUndefined();
+		expect(resolveOptionalFeedId(mockContext({ mode: 'list', value: '' }), 0)).toBeUndefined();
+		expect(resolveOptionalFolderIdFilter(mockContext(''), 0)).toBeUndefined();
+		expect(resolveOptionalFeedId(mockContext({ mode: 'id', value: 67 }), 0)).toBe(67);
+		expect(resolveOptionalFolderIdFilter(mockContext({ mode: 'id', value: 12 }), 0)).toBe(12);
 	});
 
 	it('getLocatorValue stringifies extracted values', () => {

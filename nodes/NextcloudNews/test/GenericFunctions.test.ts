@@ -20,6 +20,7 @@ import {
 	resolveItemId,
 	unwrapFeeds,
 	unwrapFolders,
+	unwrapItems,
 } from '../GenericFunctions';
 
 const BASE = 'https://cloud.example.com';
@@ -105,15 +106,19 @@ describe('parseItemIds', () => {
 });
 
 describe('unwrap helpers', () => {
-	it('unwraps folders and feeds envelopes', () => {
+	it('unwraps folders, feeds, and items envelopes', () => {
 		expect(unwrapFolders({ folders: [{ id: 1, name: 'Tech' }] })).toEqual([
 			{ id: 1, name: 'Tech' },
 		]);
 		expect(unwrapFeeds({ feeds: [{ id: 2, url: 'https://a', title: 'A' }] })).toEqual([
 			{ id: 2, url: 'https://a', title: 'A' },
 		]);
+		expect(unwrapItems({ items: [{ id: 9, title: 'Article' }] })).toEqual([
+			{ id: 9, title: 'Article' },
+		]);
 		expect(unwrapFolders([])).toEqual([]);
 		expect(unwrapFeeds(null)).toEqual([]);
+		expect(unwrapItems(null)).toEqual([]);
 	});
 
 	it('picks first created entity', () => {

@@ -361,27 +361,27 @@ Align node metadata/docs links, update change status notes, and run the full loc
 
 #### Automated
 
-- [x] 2.1 `npm run build` succeeds
-- [x] 2.2 `npm run lint` passes
-- [x] 2.3 `npm test` passes
-- [x] 2.4 `package.json` lists the News actions node
+- [x] 2.1 `npm run build` succeeds — 9d327cc
+- [x] 2.2 `npm run lint` passes — 9d327cc
+- [x] 2.3 `npm test` passes — 9d327cc
+- [x] 2.4 `package.json` lists the News actions node — 9d327cc
 
 #### Manual
 
-- [x] 2.5 Local n8n (F-01) shows **Nextcloud News**; credential test still works
-- [x] 2.6 Smoke: create folder, create feed, mark one item read, fetch favicon binary (News app enabled)
+- [x] 2.5 Local n8n (F-01) shows **Nextcloud News**; credential test still works — 9d327cc
+- [x] 2.6 Smoke: create folder, create feed, mark one item read, fetch favicon binary (News app enabled) — 9d327cc
 
 ### Phase 3: Item Get Many with real pagination
 
 #### Automated
 
-- [ ] 3.1 `npm test` covers item pagination helpers
-- [ ] 3.2 `npm run build` + `npm run lint` pass
+- [x] 3.1 `npm test` covers item pagination helpers
+- [x] 3.2 `npm run build` + `npm run lint` pass
 
 #### Manual
 
-- [ ] 3.3 Get Many with small `batchSize` returns that many items; next call with `offset` continues older items
-- [ ] 3.4 Unread-only (`getRead=false`) works for type All
+- [x] 3.3 Get Many with small `batchSize` returns that many items; next call with `offset` continues older items
+- [x] 3.4 Unread-only (`getRead=false`) works for type All
 
 ### Phase 4: Nextcloud News Trigger
 

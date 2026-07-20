@@ -70,3 +70,42 @@ export function resolveOptionalFolderFilter(
 	const value = raw.trim();
 	return value || undefined;
 }
+
+/** Optional feed locator → numeric id, or `undefined` when empty (do not filter). */
+export function resolveOptionalFeedId(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	paramName = 'feedFilter',
+): number | undefined {
+	const raw = getLocatorValue(context, paramName, itemIndex, '');
+	if (!raw.trim()) {
+		return undefined;
+	}
+
+	const id = Number(resolveFeedId(raw));
+	if (!Number.isFinite(id)) {
+		throw new Error(`Feed id is invalid: ${raw}`);
+	}
+	return Math.trunc(id);
+}
+
+/**
+ * Optional folder locator → numeric id, or `undefined` when empty (do not filter).
+ * Distinct from {@link resolveOptionalFolderId}, which maps empty → `null` (API root).
+ */
+export function resolveOptionalFolderIdFilter(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	paramName = 'folderFilter',
+): number | undefined {
+	const raw = getLocatorValue(context, paramName, itemIndex, '');
+	if (!raw.trim()) {
+		return undefined;
+	}
+
+	const id = Number(resolveFolderId(raw));
+	if (!Number.isFinite(id)) {
+		throw new Error(`Folder id is invalid: ${raw}`);
+	}
+	return Math.trunc(id);
+}
