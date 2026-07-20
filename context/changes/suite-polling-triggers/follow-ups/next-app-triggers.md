@@ -1,6 +1,6 @@
 # Next suite polling triggers — pattern checklist
 
-Reference implementation: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTrigger/`). Use this checklist when adding Calendar, Deck, Talk, or other app triggers so packaging and poll conventions stay consistent.
+Reference implementations: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTrigger/`, S-07) and **Nextcloud News Trigger** (`nodes/NextcloudNewsTrigger/`, S-06 — second shipped poller). Use this checklist when adding Calendar, Deck, Talk, or other app triggers so packaging and poll conventions stay consistent.
 
 ## Shared conventions (every app trigger)
 
@@ -53,9 +53,24 @@ Reference implementation: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTrig
 - **Target pattern**: Gmail Trigger — poll messages/rooms, ID-window dedupe via `filterIdsInStaticData`, soft-fail on transient API errors.
 - **Depends on**: Talk action node / API surface landing first.
 
-### News and other apps
+## News Trigger (shipped — S-06)
 
-- Evaluate per app: is there a list endpoint with `lastModified` or stable ids? If neither, defer or scope to create-only with ID dedupe.
+Second suite poller after Files. Prefer this pattern when the app exposes stable item ids but no reliable “since” timestamp for create detection.
+
+| Topic | Implementation |
+|-------|----------------|
+| Change detection | `GET /items` with scope (`type`/`id` from optional folder/feed); ID-window via `filterIdsInStaticData` on article `id` strings |
+| Events | New articles only (no delete / update detection in MVP) |
+| Filters | Optional folder locator, optional feed locator (feed wins), boolean **Unread only** (`getRead=false` when checked; default **true**) |
+| Output | One n8n item per new article — full News article JSON |
+| Soft-fail | After init: scrub + debug-log; emit **at most one** notice item (`event: 'pollError'`) per failure window; do not advance ID window; clear notice flag on next successful poll |
+| Init / scope gate | First production poll (or folder/feed filter change) seeds processed ids and returns `null` (no history flood) |
+| Poll entry | `pollNews.ts` → `runNewsPoll` |
+| Docs | https://nextcloud.github.io/news/api/api-v1-3/ |
+
+### Other apps
+
+- Evaluate per app: is there a list endpoint with `lastModified` or stable ids? If neither, defer or scope to create-only with ID dedupe. News is the reference for ID-window + optional unread/scope filters.
 
 ## File layout template
 
@@ -77,4 +92,4 @@ Shared helpers stay in `nodes/shared/pollHelpers.ts` — do not copy cursor boil
 
 - Plan: `context/changes/suite-polling-triggers/plan.md`
 - Research: `context/changes/suite-polling-triggers/research.md`
-- Roadmap: S-07 (Files trigger), S-08 (Calendar listing), FR-009
+- Roadmap: S-06 (News actions + trigger), S-07 (Files trigger), S-08 (Calendar listing), FR-009

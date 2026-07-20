@@ -387,25 +387,25 @@ Align node metadata/docs links, update change status notes, and run the full loc
 
 #### Automated
 
-- [x] 4.1 `npm test` includes News Trigger poll tests
-- [x] 4.2 `npm run build` + `npm run lint` pass
-- [x] 4.3 Both News nodes listed in `package.json`
+- [x] 4.1 `npm test` includes News Trigger poll tests — bdcca0a
+- [x] 4.2 `npm run build` + `npm run lint` pass — bdcca0a
+- [x] 4.3 Both News nodes listed in `package.json` — bdcca0a
 
 #### Manual
 
-- [x] 4.4 Activate workflow with News Trigger: no flood on activate; new unread article fires full JSON item
-- [x] 4.5 Toggle Unread only / feed filter; change feed re-seeds without flood
-- [x] 4.6 Force API error after init → one notice item; recovery clears notice behavior on success
-- [x] 4.7 Test step returns a sample or null without killing the schedule
+- [x] 4.4 Activate workflow with News Trigger: no flood on activate; new unread article fires full JSON item — bdcca0a
+- [x] 4.5 Toggle Unread only / feed filter; change feed re-seeds without flood — bdcca0a
+- [x] 4.6 Force API error after init → one notice item; recovery clears notice behavior on success — bdcca0a
+- [x] 4.7 Test step returns a sample or null without killing the schedule — bdcca0a
 
 ### Phase 5: Docs touch-ups + close-out verification
 
 #### Automated
 
-- [ ] 5.1 `npm run build && npm run lint && npm test` all succeed
+- [x] 5.1 `npm run build && npm run lint && npm test` all succeed
 
 #### Manual
 
-- [ ] 5.2 Panel search finds Nextcloud News and Nextcloud News Trigger
-- [ ] 5.3 End-to-end smoke: credential → folder/feed/item action → trigger fires on new article
-- [ ] 5.4 Confirm secrets scrubbed in a forced error path
+- [x] 5.2 Panel search finds Nextcloud News and Nextcloud News Trigger
+- [x] 5.3 End-to-end smoke: credential → folder/feed/item action → trigger fires on new article
+- [x] 5.4 Confirm secrets scrubbed in a forced error path
