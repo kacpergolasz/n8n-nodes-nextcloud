@@ -73,6 +73,6 @@
 - **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
 - **Dimension**: Plan Adherence
 - **Location**: nodes/NextcloudFilesTrigger/pollDirectory.ts:134
-- **Detail**: Plan wording says empty/existing snapshot; implementation uses `getLastTimeChecked !== undefined`. Seed writes both together, so happy path is equivalent. Edge case: cursor present without snapshot would skip re-seed.
-- **Fix**: Accept as equivalent, or document the cursor-as-init-gate convention in follow-ups.
-- **Decision**: FIXED — documented cursor-as-init-gate in next-app-triggers.md
+- **Detail**: Plan wording says empty/existing snapshot; implementation initially used `getLastTimeChecked !== undefined` only. Cursor without snapshot (or a `folderToWatch` change with a stale path-keyed snapshot) could skip re-seed and emit a create flood.
+- **Fix**: Require cursor **and** snapshot **and** a matching `watchedFolder` before treating the poll as initialized; re-seed all three on mismatch.
+- **Decision**: FIXED — `isDirectoryPollInitialized` / `seedDirectoryPollState`; follow-ups updated; poll tests cover folder change and missing cursor/snapshot

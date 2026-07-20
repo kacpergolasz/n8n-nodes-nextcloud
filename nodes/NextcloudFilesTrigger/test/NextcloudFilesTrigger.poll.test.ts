@@ -8,8 +8,10 @@ import type { DirectoryEntry, NextcloudCredentialData } from '../../NextcloudFil
 import { LAST_TIME_CHECKED_KEY } from '../../shared/pollHelpers';
 
 import {
+	WATCHED_FOLDER_KEY,
 	buildSnapshotFromListing,
 	getSnapshot,
+	getWatchedFolder,
 	runDirectoryPoll,
 	SNAPSHOT_KEY,
 } from '../pollDirectory';
@@ -92,13 +94,24 @@ function outputEvents(result: INodeExecutionData[][] | null): string[] {
 	return (result?.[0] ?? []).map((item) => String(item.json.event));
 }
 
+function initializedStaticData(
+	entries: DirectoryEntry[],
+	folderPath = '/Documents',
+): IDataObject {
+	return {
+		[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
+		[SNAPSHOT_KEY]: buildSnapshotFromListing(entries),
+		[WATCHED_FOLDER_KEY]: folderPath,
+	};
+}
+
 describe('runDirectoryPoll', () => {
 	beforeEach(() => {
 		vi.mocked(getCredentials).mockResolvedValue(CREDENTIALS);
 		vi.mocked(loadDirectoryListing).mockReset();
 	});
 
-	it('seeds snapshot and returns null on first poll with empty static data', async () => {
+	it('seeds snapshot, cursor, and watched folder on first poll with empty static data', async () => {
 		const listing = [fileEntry('/Documents/existing.pdf', { etag: '"existing"' })];
 		vi.mocked(loadDirectoryListing).mockResolvedValue(listing);
 
@@ -108,6 +121,7 @@ describe('runDirectoryPoll', () => {
 		expect(result).toBeNull();
 		expect(staticData[LAST_TIME_CHECKED_KEY]).toBeDefined();
 		expect(getSnapshot(staticData)).toEqual(buildSnapshotFromListing(listing));
+		expect(getWatchedFolder(staticData)).toBe('/Documents');
 		expect(loadDirectoryListing).toHaveBeenCalledWith(
 			expect.anything(),
 			CREDENTIALS,
@@ -115,13 +129,70 @@ describe('runDirectoryPoll', () => {
 		);
 	});
 
+	it('re-seeds without emitting when the watched folder changes', async () => {
+		const photosListing = [
+			fileEntry('/Photos/vacation.jpg', { etag: '"vacation"' }),
+			fileEntry('/Photos/family.jpg', { etag: '"family"' }),
+		];
+		const staticData = initializedStaticData([
+			fileEntry('/Documents/existing.pdf', { etag: '"existing"' }),
+		]);
+
+		vi.mocked(loadDirectoryListing).mockResolvedValue(photosListing);
+
+		const result = await runDirectoryPoll(
+			createPollContext({
+				staticData,
+				folderToWatch: '/Photos',
+				events: ['fileCreated'],
+			}),
+		);
+
+		expect(result).toBeNull();
+		expect(getWatchedFolder(staticData)).toBe('/Photos');
+		expect(getSnapshot(staticData)).toEqual(buildSnapshotFromListing(photosListing));
+		expect(staticData[LAST_TIME_CHECKED_KEY]).toBeDefined();
+	});
+
+	it('re-seeds when cursor exists but snapshot is missing', async () => {
+		const listing = [fileEntry('/Documents/existing.pdf', { etag: '"existing"' })];
+		const staticData: IDataObject = {
+			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
+			[WATCHED_FOLDER_KEY]: '/Documents',
+		};
+
+		vi.mocked(loadDirectoryListing).mockResolvedValue(listing);
+
+		const result = await runDirectoryPoll(
+			createPollContext({ staticData, events: ['fileCreated'] }),
+		);
+
+		expect(result).toBeNull();
+		expect(getSnapshot(staticData)).toEqual(buildSnapshotFromListing(listing));
+	});
+
+	it('re-seeds when snapshot exists but cursor is missing', async () => {
+		const listing = [fileEntry('/Documents/existing.pdf', { etag: '"existing"' })];
+		const staticData: IDataObject = {
+			[SNAPSHOT_KEY]: buildSnapshotFromListing([]),
+			[WATCHED_FOLDER_KEY]: '/Documents',
+		};
+
+		vi.mocked(loadDirectoryListing).mockResolvedValue(listing);
+
+		const result = await runDirectoryPoll(
+			createPollContext({ staticData, events: ['fileCreated'] }),
+		);
+
+		expect(result).toBeNull();
+		expect(staticData[LAST_TIME_CHECKED_KEY]).toBeDefined();
+		expect(getSnapshot(staticData)).toEqual(buildSnapshotFromListing(listing));
+	});
+
 	it('emits created events for new children after initialization', async () => {
 		const existing = fileEntry('/Documents/existing.pdf', { etag: '"existing"' });
 		const created = fileEntry('/Documents/new.pdf', { etag: '"new"' });
-		const staticData: IDataObject = {
-			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
-			[SNAPSHOT_KEY]: buildSnapshotFromListing([existing]),
-		};
+		const staticData = initializedStaticData([existing]);
 
 		vi.mocked(loadDirectoryListing).mockResolvedValue([existing, created]);
 
@@ -140,12 +211,9 @@ describe('runDirectoryPoll', () => {
 	});
 
 	it('emits updated events when etag changes', async () => {
-		const staticData: IDataObject = {
-			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
-			[SNAPSHOT_KEY]: buildSnapshotFromListing([
-				fileEntry('/Documents/report.pdf', { etag: '"old"' }),
-			]),
-		};
+		const staticData = initializedStaticData([
+			fileEntry('/Documents/report.pdf', { etag: '"old"' }),
+		]);
 
 		vi.mocked(loadDirectoryListing).mockResolvedValue([
 			fileEntry('/Documents/report.pdf', { etag: '"new"' }),
@@ -168,10 +236,7 @@ describe('runDirectoryPoll', () => {
 			etag: '"same"',
 			lastModified: 'Mon, 10 May 2026 09:00:00 GMT',
 		});
-		const staticData: IDataObject = {
-			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
-			[SNAPSHOT_KEY]: buildSnapshotFromListing([unchanged]),
-		};
+		const staticData = initializedStaticData([unchanged]);
 
 		vi.mocked(loadDirectoryListing).mockResolvedValue([unchanged]);
 
@@ -184,10 +249,7 @@ describe('runDirectoryPoll', () => {
 	it('soft-fails and returns null when listing throws after initialization', async () => {
 		const existing = fileEntry('/Documents/existing.pdf', { etag: '"existing"' });
 		const priorSnapshot = buildSnapshotFromListing([existing]);
-		const staticData: IDataObject = {
-			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
-			[SNAPSHOT_KEY]: priorSnapshot,
-		};
+		const staticData = initializedStaticData([existing]);
 
 		vi.mocked(loadDirectoryListing).mockRejectedValue(
 			new Error('Request failed: secret-token'),
@@ -209,10 +271,7 @@ describe('runDirectoryPoll', () => {
 	it('keeps prior snapshot when a successful listing is empty after initialization', async () => {
 		const existing = fileEntry('/Documents/existing.pdf', { etag: '"existing"' });
 		const priorSnapshot = buildSnapshotFromListing([existing]);
-		const staticData: IDataObject = {
-			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
-			[SNAPSHOT_KEY]: priorSnapshot,
-		};
+		const staticData = initializedStaticData([existing]);
 
 		vi.mocked(loadDirectoryListing).mockResolvedValue([]);
 
@@ -256,10 +315,7 @@ describe('runDirectoryPoll', () => {
 		const existing = fileEntry('/Documents/existing.pdf', { etag: '"existing"' });
 		const newFile = fileEntry('/Documents/new.pdf', { etag: '"new-file"' });
 		const newFolder = folderEntry('/Documents/NewFolder', { etag: '"new-folder"' });
-		const staticData: IDataObject = {
-			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
-			[SNAPSHOT_KEY]: buildSnapshotFromListing([existing]),
-		};
+		const staticData = initializedStaticData([existing]);
 
 		vi.mocked(loadDirectoryListing).mockResolvedValue([existing, newFile, newFolder]);
 

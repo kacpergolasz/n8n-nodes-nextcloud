@@ -15,7 +15,7 @@ import {
 } from '../NextcloudFiles/GenericFunctions';
 import type { DirectoryEntry, NextcloudCredentialData } from '../NextcloudFiles/FilesInterface';
 import { scrubErrorMessage } from '../NextcloudFiles/shared/scrubSecrets';
-import { getLastTimeChecked, seedLastTimeChecked } from '../shared/pollHelpers';
+import { LAST_TIME_CHECKED_KEY, getLastTimeChecked } from '../shared/pollHelpers';
 
 import {
 	type DirectoryChange,
@@ -25,6 +25,8 @@ import {
 } from './classifyDirectoryChanges';
 
 export const SNAPSHOT_KEY = 'snapshot';
+/** Normalized path of the folder the current snapshot was seeded for. */
+export const WATCHED_FOLDER_KEY = 'watchedFolder';
 
 function asLoadOptionsContext(context: IPollFunctions): ILoadOptionsFunctions {
 	return context as unknown as ILoadOptionsFunctions;
@@ -40,6 +42,11 @@ export function resolveFolderToWatch(context: IPollFunctions): string {
 	return normalizeFilesPath(String(value));
 }
 
+export function hasSnapshot(staticData: IDataObject): boolean {
+	const raw = staticData[SNAPSHOT_KEY];
+	return raw !== undefined && raw !== null && typeof raw === 'object' && !Array.isArray(raw);
+}
+
 export function getSnapshot(staticData: IDataObject): DirectorySnapshot {
 	const raw = staticData[SNAPSHOT_KEY];
 	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -51,6 +58,40 @@ export function getSnapshot(staticData: IDataObject): DirectorySnapshot {
 
 export function setSnapshot(staticData: IDataObject, snapshot: DirectorySnapshot): void {
 	staticData[SNAPSHOT_KEY] = snapshot as IDataObject;
+}
+
+export function getWatchedFolder(staticData: IDataObject): string | undefined {
+	const value = staticData[WATCHED_FOLDER_KEY];
+	if (value === undefined || value === null || value === '') {
+		return undefined;
+	}
+	return String(value);
+}
+
+/**
+ * Initialized only when cursor, snapshot, and watched-folder path all match the
+ * current poll target. Missing any piece (or a folder change) triggers re-seed.
+ */
+export function isDirectoryPollInitialized(
+	staticData: IDataObject,
+	folderPath: string,
+): boolean {
+	return (
+		getLastTimeChecked(staticData) !== undefined &&
+		hasSnapshot(staticData) &&
+		getWatchedFolder(staticData) === folderPath
+	);
+}
+
+export function seedDirectoryPollState(
+	staticData: IDataObject,
+	folderPath: string,
+	listing: DirectoryEntry[],
+	now: number = Date.now(),
+): void {
+	staticData[LAST_TIME_CHECKED_KEY] = new Date(now).toISOString();
+	setSnapshot(staticData, buildSnapshotFromListing(listing));
+	staticData[WATCHED_FOLDER_KEY] = folderPath;
 }
 
 export function buildSnapshotFromListing(entries: DirectoryEntry[]): DirectorySnapshot {
@@ -131,7 +172,7 @@ export async function runDirectoryPoll(
 		throwPollError(context, scrubErrorMessage(error));
 	}
 
-	const isInitialized = getLastTimeChecked(staticData) !== undefined;
+	const isInitialized = isDirectoryPollInitialized(staticData, folderPath);
 
 	let listing: DirectoryEntry[];
 	try {
@@ -163,8 +204,7 @@ export async function runDirectoryPoll(
 	}
 
 	if (!isInitialized) {
-		seedLastTimeChecked(staticData, Date.now());
-		setSnapshot(staticData, buildSnapshotFromListing(listing));
+		seedDirectoryPollState(staticData, folderPath, listing);
 		return null;
 	}
 

@@ -219,8 +219,8 @@ Implement real polling: list watched folder, classify against static-data snapsh
 **Contract**:
 - Resolve `folderToWatch` via normalized path (same rules as Files `resolvePathFromInput` / `normalizeFilesPath`)
 - `getCredentials` + `loadDirectoryListing` from `../NextcloudFiles/GenericFunctions`
-- Static data key namespace under `getWorkflowStaticData('node')`: `lastTimeChecked`, `snapshot` (path → meta)
-- First poll (empty snapshot): seed helpers + write snapshot + return `null`
+- Static data key namespace under `getWorkflowStaticData('node')`: `lastTimeChecked`, `snapshot` (path → meta), `watchedFolder` (normalized path the snapshot was seeded for)
+- First poll (missing cursor, snapshot, or matching watched folder): seed helpers + write snapshot + watched folder + return `null`
 - Subsequent: `classifyDirectoryChanges` → filter by selected events → `return [this.helpers.returnJsonArray(items)]` or `null`
 - Output JSON: at least `event`, `path`, `basename`, `isFolder`, `etag`, `lastModified` (plus useful Fields entry fields)
 - `getMode() === 'manual'`: return one sample item; throw scrubbed error if none
