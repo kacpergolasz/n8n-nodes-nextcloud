@@ -37,7 +37,8 @@
 		"nodes": [
 			"dist/nodes/NextcloudCalendar/NextcloudCalendar.node.js",
 			"dist/nodes/NextcloudDeck/NextcloudDeck.node.js",
-			"dist/nodes/NextcloudFiles/NextcloudFiles.node.js"
+			"dist/nodes/NextcloudFiles/NextcloudFiles.node.js",
+			"dist/nodes/NextcloudFilesTrigger/NextcloudFilesTrigger.node.js"
 		]
 	},
 	"devDependencies": {

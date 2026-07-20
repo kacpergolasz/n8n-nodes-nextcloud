@@ -394,17 +394,17 @@ Document how the next app triggers should copy this shape, and record explicit f
 
 #### Automated
 
-- [x] 2.1 Classification module + tests exist
-- [x] 2.2 `npm test` covers create, update, no-op, folder/file split
-- [x] 2.3 `npm run lint` passes
+- [x] 2.1 Classification module + tests exist — 66e2d5a
+- [x] 2.2 `npm test` covers create, update, no-op, folder/file split — 66e2d5a
+- [x] 2.3 `npm run lint` passes — 66e2d5a
 
 ### Phase 3: Trigger node shell + registration
 
 #### Automated
 
-- [ ] 3.1 `npm run build` succeeds and emits the trigger dist file
-- [ ] 3.2 `npm run lint` passes
-- [ ] 3.3 `package.json` lists the new dist entry
+- [x] 3.1 `npm run build` succeeds and emits the trigger dist file
+- [x] 3.2 `npm run lint` passes
+- [x] 3.3 `package.json` lists the new dist entry
 
 #### Manual
 
