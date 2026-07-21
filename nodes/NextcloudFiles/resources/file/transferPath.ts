@@ -7,6 +7,7 @@ import {
 	nextcloudRequest,
 	normalizeFilesPath,
 } from '../../GenericFunctions';
+import { parseRequiredBoolean, parseRequiredString } from '../../../shared/parse';
 import { resolvePathFromInput } from '../shared/resolveInput';
 import type { FileOperationContext } from './types';
 
@@ -18,9 +19,12 @@ export async function fileTransferPath(
 	const { itemIndex, credentials } = ctx;
 	const sourcePath = resolvePathFromInput(context, itemIndex);
 	const destinationPath = normalizeFilesPath(
-		context.getNodeParameter('destinationPath', itemIndex) as string,
+		parseRequiredString(context.getNodeParameter('destinationPath', itemIndex), 'Destination path'),
 	);
-	const overwrite = context.getNodeParameter('overwrite', itemIndex, false) as boolean;
+	const overwrite = parseRequiredBoolean(
+		context.getNodeParameter('overwrite', itemIndex, false),
+		'Overwrite',
+	);
 	const sourceUrl = buildFilesUrl(credentials.baseUrl, credentials.username, sourcePath);
 	await nextcloudRequest(context, method, sourceUrl, undefined, {
 		Destination: buildDestinationHeader(

@@ -1,4 +1,4 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult, JsonObject } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import {
@@ -12,6 +12,7 @@ import {
 	setCachedPathListOptions,
 } from '../GenericFunctions';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
+import { nodeApiErrorPayload, parseOptionalString } from '../../shared/parse';
 
 function parsePaginationOffset(paginationToken?: string): number {
 	if (!paginationToken?.trim()) return 0;
@@ -27,8 +28,8 @@ export async function getFolders(
 ): Promise<INodeListSearchResult> {
 	try {
 		const credentials = await getCredentials(this);
-		const resource = this.getNodeParameter('resource') as string | undefined;
-		const operation = this.getNodeParameter('operation') as string | undefined;
+		const resource = parseOptionalString(this.getNodeParameter('resource'), 'Resource');
+		const operation = parseOptionalString(this.getNodeParameter('operation'), 'Operation');
 		const scope = resolvePathListSearchScope(resource, operation);
 		const cacheKey = buildPathListSearchCacheKey(credentials, resource, operation, filter);
 		const offset = parsePaginationOffset(paginationToken);
@@ -52,6 +53,6 @@ export async function getFolders(
 			// ignore credential load failures while scrubbing
 		}
 		const scrubbedMessage = scrubErrorMessage(error, secrets);
-		throw new NodeApiError(this.getNode(), { message: scrubbedMessage } as JsonObject);
+		throw new NodeApiError(this.getNode(), nodeApiErrorPayload(scrubbedMessage));
 	}
 }

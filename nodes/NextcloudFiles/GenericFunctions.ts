@@ -4,11 +4,19 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
-import type { DirectoryEntry, NextcloudCredentialData, OcsEnvelope, ParsedShare } from './FilesInterface';
+import {
+	isPlainObject,
+	parseNextcloudCredentials,
+	type NextcloudCredentialData,
+} from '../shared/parse';
+import type { DirectoryEntry, ParsedShare } from './FilesInterface';
 
 /** n8n's IHttpRequestMethods omits WebDAV verbs like PROPFIND, MKCOL, MOVE, and COPY. */
 export type NextcloudHttpMethod = IHttpRequestMethods | 'PROPFIND' | 'MKCOL' | 'MOVE' | 'COPY';
+
+export type { NextcloudCredentialData };
 
 const FILES_ROOT_MARKER = '/remote.php/dav/files/';
 
@@ -157,7 +165,7 @@ export function parseDirectoryListingFromMultistatus(
 export async function getCredentials(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<NextcloudCredentialData> {
-	const credentials = (await context.getCredentials('nextcloudApi')) as NextcloudCredentialData;
+	const credentials = parseNextcloudCredentials(await context.getCredentials('nextcloudApi'));
 
 	return {
 		baseUrl: normalizeBaseUrl(credentials.baseUrl),
@@ -541,24 +549,55 @@ export function buildShareUpdateBody(options: {
 	return body;
 }
 
-interface OcsPasswordValidationData {
-	passed?: boolean;
-	reason?: string;
+const ocsMetaSchema = z.object({
+	status: z.string(),
+	statuscode: z.number(),
+	message: z.union([z.string(), z.null()]).optional(),
+});
+
+const ocsEnvelopeSchema = z.object({
+	ocs: z.object({
+		meta: ocsMetaSchema,
+		data: z.unknown(),
+	}),
+});
+
+const ocsPasswordValidationDataSchema = z
+	.object({
+		passed: z.boolean().optional(),
+		reason: z.string().optional(),
+	})
+	.passthrough();
+
+export class OcsRequestError extends Error {
+	statusCode: number;
+
+	constructor(message: string, statusCode: number) {
+		super(message);
+		this.name = 'OcsRequestError';
+		this.statusCode = statusCode;
+	}
 }
 
 /** Parse the password_policy validate response; returns an error message when validation fails. */
 export function parseSharePasswordValidationResult(response: unknown): string | undefined {
-	const envelope = response as OcsEnvelope<OcsPasswordValidationData>;
-	const statusCode = envelope?.ocs?.meta?.statuscode;
-	const message = envelope?.ocs?.meta?.message;
+	const parsed = ocsEnvelopeSchema.safeParse(response);
+	if (!parsed.success) {
+		return undefined;
+	}
 
-	if (statusCode !== undefined && statusCode !== 100 && statusCode !== 200) {
+	const { meta, data } = parsed.data.ocs;
+	const statusCode = meta.statuscode;
+	const message = meta.message;
+
+	if (statusCode !== 100 && statusCode !== 200) {
 		return message?.trim() || `Password policy request failed with status ${statusCode}`;
 	}
 
-	if (envelope?.ocs?.data?.passed === false) {
+	const validation = ocsPasswordValidationDataSchema.safeParse(data);
+	if (validation.success && validation.data.passed === false) {
 		return (
-			envelope.ocs.data.reason?.trim() ||
+			validation.data.reason?.trim() ||
 			'Password does not meet the server password policy for public link shares'
 		);
 	}
@@ -630,20 +669,20 @@ function asBoolean(value: unknown): boolean | undefined {
 }
 
 /** Normalize OCS share payloads that may be a single object or a one-element array (GET by ID). */
-export function normalizeOcsSharePayload(data: unknown): IDataObject {
+export function normalizeOcsSharePayload(data: unknown): Record<string, unknown> {
 	if (Array.isArray(data)) {
 		if (data.length === 0) {
 			throw new Error('Invalid OCS share payload');
 		}
 		const first = data[0];
-		if (typeof first === 'object' && first !== null && !Array.isArray(first)) {
-			return first as IDataObject;
+		if (isPlainObject(first)) {
+			return first;
 		}
 		throw new Error('Invalid OCS share payload');
 	}
 
-	if (typeof data === 'object' && data !== null) {
-		return data as IDataObject;
+	if (isPlainObject(data)) {
+		return data;
 	}
 
 	throw new Error('Invalid OCS share payload');
@@ -703,23 +742,23 @@ export function buildOcsFormBody(body?: IDataObject): string | undefined {
 }
 
 export function unwrapOcsResponse(response: unknown): unknown {
-	const envelope = response as OcsEnvelope;
-	const statusCode = envelope?.ocs?.meta?.statuscode;
-	const message = envelope?.ocs?.meta?.message;
-
-	if (statusCode === undefined) {
+	const parsed = ocsEnvelopeSchema.safeParse(response);
+	if (!parsed.success) {
 		throw new Error('Invalid OCS response envelope');
 	}
 
+	const { meta, data } = parsed.data.ocs;
+	const statusCode = meta.statuscode;
+	const message = meta.message;
+
 	if (statusCode !== 100 && statusCode !== 200) {
-		const ocsError = new Error(
+		throw new OcsRequestError(
 			message?.trim() || `OCS request failed with status ${statusCode}`,
-		) as Error & { statusCode: number };
-		ocsError.statusCode = statusCode;
-		throw ocsError;
+			statusCode,
+		);
 	}
 
-	return envelope.ocs.data;
+	return data;
 }
 
 /**

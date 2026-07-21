@@ -3,7 +3,6 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -31,6 +30,7 @@ import { shareUpdate } from './resources/share/update';
 import type { ShareOperationContext } from './resources/share/types';
 import { getHttpStatusCode } from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
+import { nodeApiErrorPayload, parseRequiredString } from '../shared/parse';
 
 export class NextcloudFiles implements INodeType {
 	description: INodeTypeDescription = {
@@ -81,8 +81,8 @@ export class NextcloudFiles implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			const outputCountBefore = returnData.length;
 			try {
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = parseRequiredString(this.getNodeParameter('resource', i), 'Resource');
+				const operation = parseRequiredString(this.getNodeParameter('operation', i), 'Operation');
 
 				if (resource === 'file') {
 					const opCtx: FileOperationContext = { itemIndex: i, credentials };
@@ -172,7 +172,10 @@ export class NextcloudFiles implements INodeType {
 				}
 				throw new NodeApiError(
 					this.getNode(),
-					{ message, ...(statusCode !== undefined ? { httpCode: statusCode } : {}) } as JsonObject,
+					nodeApiErrorPayload(
+						message,
+						statusCode !== undefined ? { httpCode: statusCode } : undefined,
+					),
 					{
 						itemIndex: i,
 						...(statusCode !== undefined ? { httpCode: String(statusCode) } : {}),

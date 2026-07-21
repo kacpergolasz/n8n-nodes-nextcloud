@@ -8,6 +8,12 @@ import {
 	parseShareId,
 	validateSharePassword,
 } from '../../GenericFunctions';
+import {
+	getErrorMessage,
+	parseRequiredBoolean,
+	parseString,
+	parseStringArray,
+} from '../../../shared/parse';
 import type { ShareOperationContext } from './types';
 
 export async function shareUpdate(
@@ -19,7 +25,7 @@ export async function shareUpdate(
 	try {
 		shareId = parseShareId(context.getNodeParameter('shareId', itemIndex));
 	} catch (error) {
-		throw new NodeOperationError(context.getNode(), (error as Error).message, {
+		throw new NodeOperationError(context.getNode(), getErrorMessage(error), {
 			itemIndex,
 		});
 	}
@@ -27,11 +33,20 @@ export async function shareUpdate(
 	const existingData = await ocsRequest(context, 'GET', `shares/${shareId}`);
 	const existingShare = parseShare(existingData);
 
-	const updateFields = context.getNodeParameter('updateFields', itemIndex, []) as string[];
-	const updatePermissions = context.getNodeParameter('updatePermissions', itemIndex, []) as string[];
-	const password = context.getNodeParameter('password', itemIndex, '') as string;
-	const expireDate = context.getNodeParameter('expireDate', itemIndex, '') as string;
-	const publicUpload = context.getNodeParameter('publicUpload', itemIndex, false) as boolean;
+	const updateFields = parseStringArray(
+		context.getNodeParameter('updateFields', itemIndex, []),
+		'Update fields',
+	);
+	const updatePermissions = parseStringArray(
+		context.getNodeParameter('updatePermissions', itemIndex, []),
+		'Update permissions',
+	);
+	const password = parseString(context.getNodeParameter('password', itemIndex, ''), 'Password');
+	const expireDate = parseString(context.getNodeParameter('expireDate', itemIndex, ''), 'Expire date');
+	const publicUpload = parseRequiredBoolean(
+		context.getNodeParameter('publicUpload', itemIndex, false),
+		'Public upload',
+	);
 
 	let body: IDataObject;
 	try {
@@ -44,7 +59,7 @@ export async function shareUpdate(
 			shareType: existingShare.shareType,
 		});
 	} catch (error) {
-		throw new NodeOperationError(context.getNode(), (error as Error).message, {
+		throw new NodeOperationError(context.getNode(), getErrorMessage(error), {
 			itemIndex,
 		});
 	}
@@ -65,7 +80,7 @@ export async function shareUpdate(
 	const data = await ocsRequest(context, 'PUT', `shares/${shareId}`, body);
 	const share = parseShare(data);
 	return {
-		json: share as unknown as IDataObject,
+		json: share,
 		pairedItem: { item: itemIndex },
 	};
 }

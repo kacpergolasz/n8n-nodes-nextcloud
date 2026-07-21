@@ -7,6 +7,7 @@ import {
 	nextcloudRequest,
 	resolveUploadPath,
 } from '../../GenericFunctions';
+import { parseRequiredString, parseString } from '../../../shared/parse';
 import { resolvePathFromInput } from '../shared/resolveInput';
 import type { FileOperationContext } from './types';
 
@@ -16,8 +17,11 @@ export async function fileUpload(
 ): Promise<INodeExecutionData> {
 	const { itemIndex, credentials } = ctx;
 	const targetPath = resolvePathFromInput(context, itemIndex);
-	const binaryPropertyName = context.getNodeParameter('binaryPropertyName', itemIndex) as string;
-	const fileNameParam = context.getNodeParameter('fileName', itemIndex, '') as string;
+	const binaryPropertyName = parseRequiredString(
+		context.getNodeParameter('binaryPropertyName', itemIndex),
+		'Binary property',
+	);
+	const fileNameParam = parseString(context.getNodeParameter('fileName', itemIndex, ''), 'File name');
 	const inputItem = context.getInputData()[itemIndex];
 	const binaryMeta = inputItem.binary?.[binaryPropertyName];
 	const resolvedFileName =

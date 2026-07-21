@@ -1,6 +1,6 @@
-import type { NextcloudCredentialData } from '../../FilesInterface';
+import type { NextcloudCredentialData } from '../../GenericFunctions';
 
-export interface FileOperationContext {
+export type FileOperationContext = {
 	itemIndex: number;
 	credentials: NextcloudCredentialData;
-}
+};
