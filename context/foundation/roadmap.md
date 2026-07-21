@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-07-20T17:39
+updated: 2026-07-21
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -36,7 +36,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | done |
 | S-10 | deck-partial-update | update a Deck card with only whitelisted writable fields (safe GET→merge→PUT) | S-04 | FR-005 | proposed |
 | S-05 | nextcloud-talk | automate Nextcloud Talk | S-01 | FR-006 | proposed |
-| S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | proposed |
+| S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | done |
 | S-14 | news-api-v2 | migrate Nextcloud News node to News API v2 when upstream is production-ready | S-06 | FR-008 | proposed |
 | S-15 | suite-pagination | get consistent Get Many across Deck/Files/Calendar matching News Item shape (`{ items, nextOffset }`, Limit + Offset) | S-06 | — | proposed |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | proposed |
@@ -204,7 +204,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Author-priority niche app; kept as its own vertical slice so it neither blocks nor hides inside Files. Ships against **News API v1.3** (fully implemented); API v2 is draft-only and tracked as follow-up **S-14**.
-- **Status:** proposed
+- **Status:** done
 
 ### S-14: Nextcloud News API v2 migration
 
@@ -326,3 +326,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-01: user can create a shared Nextcloud Basic Auth credential, run Calendar event operations with useful workflow outputs, and pick remote resources via loaded lists with manual-input fallback — without secrets in outputs or errors.** — Archived 2026-07-18 → `context/archive/2026-07-18-shared-basic-auth-calendar/`. Lesson: —.
 - **S-04: user can automate Nextcloud Deck boards and cards.** — Archived 2026-07-18 → `context/archive/2026-07-18-nextcloud-deck/`. Lesson: —.
 - **S-03: user can automate Nextcloud Files/Drive at legacy-standard coverage (file/folder/share-style operations).** — Archived 2026-07-18 → `context/archive/2026-07-18-nextcloud-files-drive/`. Lesson: —.
+- **S-06: user can automate Nextcloud News.** — Archived 2026-07-21 → `context/archive/2026-07-20-nextcloud-news/`. Lesson: —.
