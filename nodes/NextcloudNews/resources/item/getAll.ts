@@ -3,9 +3,11 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import {
 	buildNewsItemsQueryParams,
 	nextNewsOffsetFromItems,
+	normalizeNewsBatchSize,
 	type NewsItemsQueryType,
 } from '../../../shared/pagination';
 import { newsRequest, unwrapItems } from '../../GenericFunctions';
+import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
 import { itemToJson } from '../shared/entityJson';
 import {
 	resolveOptionalFeedId,
@@ -62,11 +64,11 @@ export async function itemGetAll(
 	ctx: ItemOperationContext,
 ): Promise<INodeExecutionData[]> {
 	const { itemIndex } = ctx;
-	const limit = context.getNodeParameter('limit', itemIndex, 50) as number;
-	const offset = context.getNodeParameter('offset', itemIndex, 0) as number;
-	const starredOnly = context.getNodeParameter('starredOnly', itemIndex, false) as boolean;
-	const unreadOnly = context.getNodeParameter('unreadOnly', itemIndex, false) as boolean;
-	const oldestFirst = context.getNodeParameter('oldestFirst', itemIndex, false) as boolean;
+	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 50), 'Limit');
+	const offset = parseRequiredNumber(context.getNodeParameter('offset', itemIndex, 0), 'Offset');
+	const starredOnly = parseRequiredBoolean(context.getNodeParameter('starredOnly', itemIndex, false), 'Starred Only');
+	const unreadOnly = parseRequiredBoolean(context.getNodeParameter('unreadOnly', itemIndex, false), 'Unread Only');
+	const oldestFirst = parseRequiredBoolean(context.getNodeParameter('oldestFirst', itemIndex, false), 'Oldest First');
 
 	const { type, id } = resolveNewsItemsListScope({
 		feedId: resolveOptionalFeedId(context, itemIndex, 'feedFilter'),
@@ -74,8 +76,9 @@ export async function itemGetAll(
 		starredOnly,
 	});
 
+	const effectiveBatchSize = normalizeNewsBatchSize(limit);
 	const qs = buildNewsItemsQueryParams({
-		batchSize: limit,
+		batchSize: effectiveBatchSize,
 		offset,
 		type,
 		id,
@@ -84,7 +87,7 @@ export async function itemGetAll(
 	});
 
 	const items = unwrapItems(await newsRequest(context, 'GET', '/items', { qs }));
-	const nextOffset = newsItemsNextOffsetHint(items, qs.batchSize as number);
+	const nextOffset = newsItemsNextOffsetHint(items, effectiveBatchSize);
 
 	return [
 		{

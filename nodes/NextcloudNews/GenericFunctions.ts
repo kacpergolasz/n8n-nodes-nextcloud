@@ -6,17 +6,20 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type {
 	NewsFeed,
-	NewsFeedsResponse,
 	NewsFolder,
-	NewsFoldersResponse,
 	NewsItem,
-	NewsItemsResponse,
 	NewsPickerOption,
-	NextcloudCredentialData,
 } from './NewsInterface';
+import {
+	isPlainObject,
+	parseNextcloudCredentials,
+	throwParseError,
+	type NextcloudCredentialData,
+} from '../shared/parse';
 
 export type NewsRequestEncoding =
 	| 'json'
@@ -98,7 +101,7 @@ export function feedUrlHash(feedUrl: string): string {
 export async function getCredentials(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<NextcloudCredentialData> {
-	const credentials = (await context.getCredentials('nextcloudApi')) as NextcloudCredentialData;
+	const credentials = parseNextcloudCredentials(await context.getCredentials('nextcloudApi'));
 
 	return {
 		baseUrl: normalizeBaseUrl(credentials.baseUrl),
@@ -132,41 +135,118 @@ export async function newsRequest(
 	});
 }
 
+const newsFolderSchema = z
+	.object({
+		id: z.coerce.number(),
+		name: z.string(),
+	})
+	.passthrough();
+
+const newsFeedSchema = z
+	.object({
+		id: z.coerce.number(),
+		url: z.string(),
+		title: z.string(),
+		faviconLink: z.union([z.string(), z.null()]).optional(),
+		added: z.number().optional(),
+		folderId: z.union([z.number(), z.null()]).optional(),
+		unreadCount: z.number().optional(),
+		link: z.union([z.string(), z.null()]).optional(),
+		pinned: z.boolean().optional(),
+	})
+	.passthrough();
+
+const newsItemSchema = z
+	.object({
+		id: z.coerce.number(),
+		guid: z.string().optional(),
+		guidHash: z.string().optional(),
+		url: z.union([z.string(), z.null()]).optional(),
+		title: z.union([z.string(), z.null()]).optional(),
+		author: z.union([z.string(), z.null()]).optional(),
+		pubDate: z.number().optional(),
+		body: z.union([z.string(), z.null()]).optional(),
+		feedId: z.number().optional(),
+		unread: z.boolean().optional(),
+		starred: z.boolean().optional(),
+		lastModified: z.number().optional(),
+	})
+	.passthrough();
+
+function parseNewsFolder(data: unknown): NewsFolder {
+	try {
+		return newsFolderSchema.parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid News folder payload');
+	}
+}
+
+function parseNewsFeed(data: unknown): NewsFeed {
+	try {
+		return newsFeedSchema.parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid News feed payload');
+	}
+}
+
+function parseNewsItem(data: unknown): NewsItem {
+	try {
+		return newsItemSchema.parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid News item payload');
+	}
+}
+
 export function unwrapFolders(response: unknown): NewsFolder[] {
 	if (Array.isArray(response)) {
-		return response as NewsFolder[];
+		return response.map(parseNewsFolder);
 	}
-	const wrapped = response as NewsFoldersResponse | null | undefined;
-	return Array.isArray(wrapped?.folders) ? wrapped.folders : [];
+	if (isPlainObject(response)) {
+		const folders = response.folders;
+		if (Array.isArray(folders)) {
+			return folders.map(parseNewsFolder);
+		}
+	}
+	return [];
 }
 
 export function unwrapFeeds(response: unknown): NewsFeed[] {
 	if (Array.isArray(response)) {
-		return response as NewsFeed[];
+		return response.map(parseNewsFeed);
 	}
-	const wrapped = response as NewsFeedsResponse | null | undefined;
-	return Array.isArray(wrapped?.feeds) ? wrapped.feeds : [];
+	if (isPlainObject(response)) {
+		const feeds = response.feeds;
+		if (Array.isArray(feeds)) {
+			return feeds.map(parseNewsFeed);
+		}
+	}
+	return [];
 }
 
 export function unwrapItems(response: unknown): NewsItem[] {
 	if (Array.isArray(response)) {
-		return response as NewsItem[];
+		return response.map(parseNewsItem);
 	}
-	const wrapped = response as NewsItemsResponse | null | undefined;
-	return Array.isArray(wrapped?.items) ? wrapped.items : [];
+	if (isPlainObject(response)) {
+		const items = response.items;
+		if (Array.isArray(items)) {
+			return items.map(parseNewsItem);
+		}
+	}
+	return [];
 }
 
 /** Prefer a single created entity; fall back to first list entry. */
 export function firstFolder(response: unknown): NewsFolder | undefined {
-	if (response && typeof response === 'object' && 'id' in response && 'name' in response) {
-		return response as NewsFolder;
+	if (isPlainObject(response) && 'id' in response && 'name' in response) {
+		return parseNewsFolder(response);
 	}
 	return unwrapFolders(response)[0];
 }
 
 export function firstFeed(response: unknown): NewsFeed | undefined {
-	if (response && typeof response === 'object' && 'id' in response && 'url' in response) {
-		return response as NewsFeed;
+	if (isPlainObject(response) && 'id' in response && 'url' in response) {
+		return parseNewsFeed(response);
 	}
 	return unwrapFeeds(response)[0];
 }
@@ -247,7 +327,7 @@ export function parseItemIds(raw: unknown): number[] {
 	}
 
 	if (text.startsWith('[')) {
-		const parsed = JSON.parse(text) as unknown;
+		const parsed: unknown = JSON.parse(text);
 		return parseItemIds(parsed);
 	}
 

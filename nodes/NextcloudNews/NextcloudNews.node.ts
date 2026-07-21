@@ -3,11 +3,11 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getCredentials } from './GenericFunctions';
+import { nodeApiErrorPayload, parseRequiredString } from '../shared/parse';
 import { getFeeds } from './listSearch/getFeeds';
 import { getFolders } from './listSearch/getFolders';
 import { feedDescription } from './resources/feed';
@@ -82,8 +82,8 @@ export class NextcloudNews implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = parseRequiredString(this.getNodeParameter('resource', i), 'Resource');
+				const operation = parseRequiredString(this.getNodeParameter('operation', i), 'Operation');
 				let handled = false;
 
 				if (resource === 'folder') {
@@ -211,7 +211,7 @@ export class NextcloudNews implements INodeType {
 				}
 				throw new NodeApiError(
 					this.getNode(),
-					{ message, ...(statusCode !== undefined ? { httpCode: statusCode } : {}) } as JsonObject,
+					nodeApiErrorPayload(message, statusCode !== undefined ? { httpCode: statusCode } : undefined),
 					{
 						itemIndex: i,
 						...(statusCode !== undefined ? { httpCode: String(statusCode) } : {}),

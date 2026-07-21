@@ -2,6 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { firstFeed, newsRequest } from '../../GenericFunctions';
+import { parseRequiredString } from '../../../shared/parse';
 import { feedToJson } from '../shared/entityJson';
 import { resolveOptionalFolderId } from '../shared/resolveInput';
 import type { FeedOperationContext } from './types';
@@ -11,7 +12,7 @@ export async function feedCreate(
 	ctx: FeedOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex } = ctx;
-	const feedUrl = context.getNodeParameter('feedUrl', itemIndex) as string;
+	const feedUrl = parseRequiredString(context.getNodeParameter('feedUrl', itemIndex), 'Feed URL');
 	if (!feedUrl.trim()) {
 		throw new NodeOperationError(context.getNode(), 'Feed URL is required when creating a feed', {
 			itemIndex,

@@ -2,6 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { firstFolder, newsRequest } from '../../GenericFunctions';
+import { parseRequiredString } from '../../../shared/parse';
 import { folderToJson } from '../shared/entityJson';
 import type { FolderOperationContext } from './types';
 
@@ -10,7 +11,7 @@ export async function folderCreate(
 	ctx: FolderOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex } = ctx;
-	const name = context.getNodeParameter('name', itemIndex) as string;
+	const name = parseRequiredString(context.getNodeParameter('name', itemIndex), 'Name');
 	if (!name.trim()) {
 		throw new NodeOperationError(context.getNode(), 'Name is required when creating a folder', {
 			itemIndex,
