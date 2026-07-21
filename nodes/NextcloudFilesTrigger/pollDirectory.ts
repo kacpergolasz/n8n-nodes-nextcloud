@@ -2,7 +2,6 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeParameterResourceLocator,
 	IPollFunctions,
 } from 'n8n-workflow';
 
@@ -13,12 +12,14 @@ import {
 } from '../NextcloudFiles/GenericFunctions';
 import type { DirectoryEntry } from '../NextcloudFiles/FilesInterface';
 import { scrubErrorMessage } from '../NextcloudFiles/shared/scrubSecrets';
+import { isPlainObject, parseStringArray } from '../shared/parse';
 import { LAST_TIME_CHECKED_KEY, getLastTimeChecked } from '../shared/pollHelpers';
 import {
 	handlePollListingFailure,
 	returnManualSampleOrNull,
 	runPollBootstrap,
 } from '../shared/pollOrchestration';
+import { parseLocatorParamValue } from '../NextcloudFiles/resources/shared/resolveInput';
 
 import {
 	type DirectoryChange,
@@ -36,13 +37,13 @@ function asLoadOptionsContext(context: IPollFunctions): ILoadOptionsFunctions {
 }
 
 export function resolveFolderToWatch(context: IPollFunctions): string {
-	const locator = context.getNodeParameter('folderToWatch') as INodeParameterResourceLocator;
-	const value = locator?.value;
-	if (value === undefined || value === null || String(value).trim() === '') {
+	const raw = context.getNodeParameter('folderToWatch', undefined);
+	const value = parseLocatorParamValue(raw);
+	if (!value) {
 		throw new Error('Folder to Watch is required');
 	}
 
-	return normalizeFilesPath(String(value));
+	return normalizeFilesPath(value);
 }
 
 export function hasSnapshot(staticData: IDataObject): boolean {
@@ -52,15 +53,37 @@ export function hasSnapshot(staticData: IDataObject): boolean {
 
 export function getSnapshot(staticData: IDataObject): DirectorySnapshot {
 	const raw = staticData[SNAPSHOT_KEY];
-	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+	if (!isPlainObject(raw)) {
 		return {};
 	}
 
-	return raw as DirectorySnapshot;
+	const snapshot: DirectorySnapshot = {};
+	for (const [path, entry] of Object.entries(raw)) {
+		if (!isPlainObject(entry)) continue;
+		const isFolder = entry['isFolder'];
+		if (typeof isFolder !== 'boolean') continue;
+		const etag = entry['etag'];
+		const lastModified = entry['lastModified'];
+		snapshot[path] = {
+			isFolder,
+			...(typeof etag === 'string' ? { etag } : {}),
+			...(typeof lastModified === 'string' ? { lastModified } : {}),
+		};
+	}
+	return snapshot;
 }
 
 export function setSnapshot(staticData: IDataObject, snapshot: DirectorySnapshot): void {
-	staticData[SNAPSHOT_KEY] = snapshot as IDataObject;
+	const record: IDataObject = {};
+	for (const [path, entry] of Object.entries(snapshot)) {
+		const snapshotEntry: IDataObject = {
+			isFolder: entry.isFolder,
+			...(entry.etag !== undefined ? { etag: entry.etag } : {}),
+			...(entry.lastModified !== undefined ? { lastModified: entry.lastModified } : {}),
+		};
+		record[path] = snapshotEntry;
+	}
+	staticData[SNAPSHOT_KEY] = record;
 }
 
 export function getWatchedFolder(staticData: IDataObject): string | undefined {
@@ -158,7 +181,7 @@ export async function runDirectoryPoll(
 ): Promise<INodeExecutionData[][] | null> {
 	const staticData = context.getWorkflowStaticData('node');
 	const isManual = context.getMode() === 'manual';
-	const selectedEvents = context.getNodeParameter('event') as string[];
+	const selectedEvents = parseStringArray(context.getNodeParameter('event'), 'Events');
 	const requestContext = asLoadOptionsContext(context);
 
 	const { credentials, folderPath } = await runPollBootstrap(

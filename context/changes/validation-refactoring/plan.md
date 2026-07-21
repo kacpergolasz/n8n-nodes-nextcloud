@@ -528,25 +528,25 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [x] 5.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [x] 5.2 `npm test` succeeds
-- [x] 5.3 `npm lint` succeeds
+- [x] 5.1 `npm exec tsc --noEmit` / `npm build` succeeds — d3c3c98
+- [x] 5.2 `npm test` succeeds — d3c3c98
+- [x] 5.3 `npm lint` succeeds — d3c3c98
 
 #### Manual
 
-- [x] 5.4 Grep Calendar prod for remaining ` as `
+- [x] 5.4 Grep Calendar prod for remaining ` as ` — d3c3c98
 
 ### Phase 6: FilesTrigger
 
 #### Automated
 
-- [ ] 6.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [ ] 6.2 `npm test` succeeds
-- [ ] 6.3 `npm lint` succeeds
+- [x] 6.1 `npm exec tsc --noEmit` / `npm build` succeeds
+- [x] 6.2 `npm test` succeeds
+- [x] 6.3 `npm lint` succeeds
 
 #### Manual
 
-- [ ] 6.4 Grep FilesTrigger prod for remaining ` as `
+- [x] 6.4 Grep FilesTrigger prod for remaining ` as `
 
 ### Phase 7: Boundary allowlist polish (next-to-last)
 
