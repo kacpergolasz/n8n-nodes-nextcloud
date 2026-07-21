@@ -30,22 +30,64 @@ import {
 	getProcessedIds,
 } from '../shared/pollHelpers';
 
-/** Bounded page of newest candidates per poll (avoids unbounded history pulls). */
-export const TRIGGER_ITEMS_BATCH_SIZE = 100;
+/** Default page size for trigger item fetches (News `batchSize`). */
+export const DEFAULT_TRIGGER_PAGE_SIZE = 100;
+
+/**
+ * Default steady-state catch-up page budget per poll. Lower than the historical
+ * hardcoded 10 to reduce worst-case API load; unfinished work resumes next poll.
+ */
+export const DEFAULT_TRIGGER_MAX_PAGES_PER_POLL = 5;
+
+/** @deprecated Prefer {@link DEFAULT_TRIGGER_PAGE_SIZE}. */
+export const TRIGGER_ITEMS_BATCH_SIZE = DEFAULT_TRIGGER_PAGE_SIZE;
 
 /**
  * Seed/re-seed only: max pages when walking `offset` so huge inboxes cannot
- * hang activation. Aligns with the processed-id window ceiling.
+ * hang activation. Aligns with the processed-id window ceiling at default page size.
  */
 export const TRIGGER_SEED_MAX_PAGES = Math.ceil(
-	DEFAULT_MAX_PROCESSED_IDS / TRIGGER_ITEMS_BATCH_SIZE,
+	DEFAULT_MAX_PROCESSED_IDS / DEFAULT_TRIGGER_PAGE_SIZE,
 );
 
-/**
- * Steady-state catch-up: max pages per poll when a burst of new articles fills
- * the newest page (avoids permanently missing older new ids).
- */
-export const TRIGGER_STEADY_MAX_PAGES = 10;
+/** @deprecated Prefer {@link DEFAULT_TRIGGER_MAX_PAGES_PER_POLL}. */
+export const TRIGGER_STEADY_MAX_PAGES = DEFAULT_TRIGGER_MAX_PAGES_PER_POLL;
+
+export type NewsPollLimits = {
+	pageSize: number;
+	maxPagesPerPoll: number;
+};
+
+export function seedMaxPagesForPageSize(pageSize: number): number {
+	const size = pageSize >= 1 ? Math.trunc(pageSize) : DEFAULT_TRIGGER_PAGE_SIZE;
+	return Math.ceil(DEFAULT_MAX_PROCESSED_IDS / size);
+}
+
+function readPositiveIntParam(
+	context: IPollFunctions,
+	paramName: string,
+	fallback: number,
+): number {
+	const raw = context.getNodeParameter(paramName) as unknown;
+	const coerced =
+		typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN;
+	if (!Number.isFinite(coerced) || coerced < 1) {
+		return fallback;
+	}
+	return Math.trunc(coerced);
+}
+
+/** Read configured poll bounds from node parameters (safe defaults on bad values). */
+export function resolveNewsPollLimits(context: IPollFunctions): NewsPollLimits {
+	return {
+		pageSize: readPositiveIntParam(context, 'pageSize', DEFAULT_TRIGGER_PAGE_SIZE),
+		maxPagesPerPoll: readPositiveIntParam(
+			context,
+			'maxPagesPerPoll',
+			DEFAULT_TRIGGER_MAX_PAGES_PER_POLL,
+		),
+	};
+}
 
 /** Scope key the current ID window was seeded for (folder/feed/unread). */
 export const POLL_SCOPE_KEY = 'pollScope';
@@ -61,7 +103,7 @@ export const POLL_ERROR_NOTICE_SHOWN_KEY = 'pollErrorNoticeShown';
 export const MAX_PROCESSED_ID_KEY = 'maxProcessedId';
 
 /**
- * When a per-poll catch-up hits {@link TRIGGER_STEADY_MAX_PAGES} before reaching
+ * When a per-poll catch-up hits the configured page budget before reaching
  * the watermark, resume from this offset on the next poll so mid-burst articles
  * are not permanently skipped. Cleared only after catch-up observes an id ≤ W
  * (or the list is exhausted). Survives soft-fail.
@@ -299,8 +341,9 @@ export function pollErrorNoticeItem(message: string): IDataObject {
 export function nextTriggerPageOffset(
 	items: NewsItem[],
 	offset: number,
+	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): number | undefined {
-	if (items.length < TRIGGER_ITEMS_BATCH_SIZE) {
+	if (items.length < pageSize) {
 		return undefined;
 	}
 
@@ -321,9 +364,10 @@ export async function loadTriggerItemsPage(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
 	offset: number = 0,
+	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): Promise<NewsItem[]> {
 	const qs = buildNewsItemsQueryParams({
-		batchSize: TRIGGER_ITEMS_BATCH_SIZE,
+		batchSize: pageSize,
 		offset,
 		type: scope.type,
 		id: scope.id,
@@ -354,8 +398,9 @@ export function appendUniqueNewsItems(
 export async function loadTriggerItems(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
+	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): Promise<NewsItem[]> {
-	return loadTriggerItemsPage(context, scope, 0);
+	return loadTriggerItemsPage(context, scope, 0, pageSize);
 }
 
 /**
@@ -366,29 +411,33 @@ export async function loadTriggerItems(
 export async function loadScopeMaxArticleId(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
+	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): Promise<number> {
 	const newestAll = await loadTriggerItemsPage(
 		context,
 		{ ...scope, getRead: true },
 		0,
+		pageSize,
 	);
 	return maxArticleId(newestAll);
 }
 
 /**
  * Seed/re-seed: walk News `offset` pages until a partial/empty page so the ID
- * window covers the current backlog (not only the newest 100).
+ * window covers the current backlog (not only the newest page).
  */
 export async function loadAllTriggerItemsForSeed(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
+	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): Promise<NewsItem[]> {
 	const collected: NewsItem[] = [];
 	const seenIds = new Set<string>();
 	let offset = 0;
+	const maxPages = seedMaxPagesForPageSize(pageSize);
 
-	for (let page = 0; page < TRIGGER_SEED_MAX_PAGES; page++) {
-		const items = await loadTriggerItemsPage(context, scope, offset);
+	for (let page = 0; page < maxPages; page++) {
+		const items = await loadTriggerItemsPage(context, scope, offset, pageSize);
 		if (items.length === 0) {
 			break;
 		}
@@ -399,7 +448,7 @@ export async function loadAllTriggerItemsForSeed(
 			return collected.slice(0, DEFAULT_MAX_PROCESSED_IDS);
 		}
 
-		const nextOffset = nextTriggerPageOffset(items, offset);
+		const nextOffset = nextTriggerPageOffset(items, offset, pageSize);
 		if (nextOffset === undefined) {
 			break;
 		}
@@ -423,6 +472,10 @@ export async function loadTriggerItemsWithCatchUp(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
 	staticData: IDataObject,
+	limits: NewsPollLimits = {
+		pageSize: DEFAULT_TRIGGER_PAGE_SIZE,
+		maxPagesPerPoll: DEFAULT_TRIGGER_MAX_PAGES_PER_POLL,
+	},
 ): Promise<NewsItem[]> {
 	const watermark = getMaxProcessedId(staticData);
 	const priorOffset = getCatchUpOffset(staticData);
@@ -430,7 +483,7 @@ export async function loadTriggerItemsWithCatchUp(
 
 	const collected: NewsItem[] = [];
 	const seenIds = new Set<string>();
-	let pagesLeft = TRIGGER_STEADY_MAX_PAGES;
+	let pagesLeft = limits.maxPagesPerPoll;
 
 	const newest = await collectCatchUpPages(context, scope, collected, seenIds, {
 		startOffset: 0,
@@ -438,6 +491,7 @@ export async function loadTriggerItemsWithCatchUp(
 		resumeFrontier: priorOffset,
 		processedIds,
 		maxPages: pagesLeft,
+		pageSize: limits.pageSize,
 	});
 	pagesLeft -= newest.pagesUsed;
 
@@ -466,6 +520,7 @@ export async function loadTriggerItemsWithCatchUp(
 			stopAtOrBelowId: watermark,
 			processedIds,
 			maxPages: pagesLeft,
+			pageSize: limits.pageSize,
 		});
 		if (resumed.status === 'incomplete') {
 			setCatchUpOffset(staticData, resumed.nextOffset);
@@ -498,9 +553,10 @@ async function collectCatchUpPages(
 		resumeFrontier?: number;
 		processedIds: Set<string>;
 		maxPages: number;
+		pageSize: number;
 	},
 ): Promise<CatchUpPageResult> {
-	const { stopAtOrBelowId, resumeFrontier, processedIds, maxPages } = options;
+	const { stopAtOrBelowId, resumeFrontier, processedIds, maxPages, pageSize } = options;
 	let offset = options.startOffset;
 
 	if (maxPages <= 0) {
@@ -508,7 +564,7 @@ async function collectCatchUpPages(
 	}
 
 	for (let page = 0; page < maxPages; page++) {
-		const items = await loadTriggerItemsPage(context, scope, offset);
+		const items = await loadTriggerItemsPage(context, scope, offset, pageSize);
 		const pagesUsed = page + 1;
 
 		if (items.length === 0) {
@@ -531,7 +587,7 @@ async function collectCatchUpPages(
 			}
 		}
 
-		const nextOffset = nextTriggerPageOffset(items, offset);
+		const nextOffset = nextTriggerPageOffset(items, offset, pageSize);
 		if (nextOffset === undefined) {
 			return { status: 'complete', reason: 'exhausted', pagesUsed };
 		}
@@ -556,11 +612,13 @@ export async function runNewsPoll(
 	let credentials: NextcloudCredentialData;
 	let pollScope: NewsPollScope;
 	let resolved: NewsPollScopeResolved;
+	let limits: NewsPollLimits;
 
 	try {
 		credentials = await getCredentials(requestContext);
 		pollScope = readPollScopeFromNode(context);
 		resolved = resolveNewsPollScope(pollScope);
+		limits = resolveNewsPollLimits(context);
 	} catch (error) {
 		let secrets = {};
 		try {
@@ -578,15 +636,24 @@ export async function runNewsPoll(
 	let seedScopeMaxId: number | undefined;
 	try {
 		if (!isManual && !isInitialized) {
-			items = await loadAllTriggerItemsForSeed(requestContext, resolved);
+			items = await loadAllTriggerItemsForSeed(requestContext, resolved, limits.pageSize);
 			// Unread listings omit read articles; raise W from newest all-items page.
 			if (!resolved.getRead) {
-				seedScopeMaxId = await loadScopeMaxArticleId(requestContext, resolved);
+				seedScopeMaxId = await loadScopeMaxArticleId(
+					requestContext,
+					resolved,
+					limits.pageSize,
+				);
 			}
 		} else if (!isManual && isInitialized) {
-			items = await loadTriggerItemsWithCatchUp(requestContext, resolved, staticData);
+			items = await loadTriggerItemsWithCatchUp(
+				requestContext,
+				resolved,
+				staticData,
+				limits,
+			);
 		} else {
-			items = await loadTriggerItemsPage(requestContext, resolved, 0);
+			items = await loadTriggerItemsPage(requestContext, resolved, 0, limits.pageSize);
 		}
 	} catch (error) {
 		const scrubbedMessage = scrubErrorMessage(error, credentials);

@@ -59,6 +59,8 @@ type PollContextOptions = {
 	/** When true, folder/feed parameters are bare numbers/strings (expression results). */
 	bareLocatorValues?: boolean;
 	unreadOnly?: boolean;
+	pageSize?: number;
+	maxPagesPerPoll?: number;
 };
 
 function createPollContext(options: PollContextOptions = {}): IPollFunctions {
@@ -81,6 +83,12 @@ function createPollContext(options: PollContextOptions = {}): IPollFunctions {
 			}
 			if (name === 'unreadOnly') {
 				return options.unreadOnly ?? true;
+			}
+			if (name === 'pageSize') {
+				return options.pageSize ?? 100;
+			}
+			if (name === 'maxPagesPerPoll') {
+				return options.maxPagesPerPoll ?? 5;
 			}
 			throw new Error(`Unknown parameter: ${name}`);
 		},
@@ -428,7 +436,8 @@ describe('runNewsPoll', () => {
 	it('resumes catch-up on the next poll after hitting the per-poll page cap', async () => {
 		const seeded = [article(50)];
 		const staticData = initializedStaticData(seeded);
-		// 10 full pages above the watermark; next cursor after page 10 is 151.
+		// Default max pages of full pages above the watermark; next cursor is 151.
+		const newestId = 50 + (TRIGGER_STEADY_MAX_PAGES + 1) * 100;
 		const pages = Array.from({ length: TRIGGER_STEADY_MAX_PAGES }, (_, page) =>
 			Array.from({ length: 100 }, (_, i) =>
 				article(50 + (TRIGGER_STEADY_MAX_PAGES - page + 1) * 100 - i),
@@ -445,7 +454,7 @@ describe('runNewsPoll', () => {
 		expect(getCatchUpOffset(staticData)).toBe(151);
 		expect(getMaxProcessedId(staticData)).toBe(50);
 		const firstIds = (first?.[0] ?? []).map((row) => row.json.id);
-		expect(firstIds).toContain(1150);
+		expect(firstIds).toContain(newestId);
 		expect(firstIds).toContain(151);
 		expect(firstIds).not.toContain(50);
 		// Oldest-new-first within the poll.
@@ -473,7 +482,7 @@ describe('runNewsPoll', () => {
 			}),
 		);
 		expect(staticData[CATCH_UP_OFFSET_KEY]).toBeUndefined();
-		expect(getMaxProcessedId(staticData)).toBeGreaterThanOrEqual(1150);
+		expect(getMaxProcessedId(staticData)).toBeGreaterThanOrEqual(newestId);
 		const secondIds = (second?.[0] ?? []).map((row) => row.json.id);
 		expect(secondIds).toContain(100);
 		expect(secondIds).toContain(51);
@@ -530,6 +539,7 @@ describe('runNewsPoll', () => {
 	it('does not drop an older catch-up gap when a second burst hits the page cap', async () => {
 		const seeded = [article(50)];
 		const staticData = initializedStaticData(seeded);
+		const firstNewest = 50 + (TRIGGER_STEADY_MAX_PAGES + 1) * 100;
 		const firstBurst = Array.from({ length: TRIGGER_STEADY_MAX_PAGES }, (_, page) =>
 			Array.from({ length: 100 }, (_, i) =>
 				article(50 + (TRIGGER_STEADY_MAX_PAGES - page + 1) * 100 - i),
@@ -544,7 +554,10 @@ describe('runNewsPoll', () => {
 		expect(getCatchUpOffset(staticData)).toBe(151);
 		expect(getMaxProcessedId(staticData)).toBe(50);
 
-		// Second burst of 10 full pages (newer than the first frontier).
+		// Second burst of full pages (newer than the first frontier).
+		const secondNewest = 50 + (TRIGGER_STEADY_MAX_PAGES * 2 + 1) * 100;
+		const secondFrontier =
+			50 + (TRIGGER_STEADY_MAX_PAGES * 2 - (TRIGGER_STEADY_MAX_PAGES - 1) + 1) * 100 - 99;
 		const secondBurst = Array.from({ length: TRIGGER_STEADY_MAX_PAGES }, (_, page) =>
 			Array.from({ length: 100 }, (_, i) =>
 				article(50 + (TRIGGER_STEADY_MAX_PAGES * 2 - page + 1) * 100 - i),
@@ -558,15 +571,16 @@ describe('runNewsPoll', () => {
 		const mid = await runNewsPoll(createPollContext({ staticData }));
 		expect(newsRequest).toHaveBeenCalledTimes(TRIGGER_STEADY_MAX_PAGES);
 		// Frontier advances into the newer burst; watermark stays until W is observed.
-		expect(getCatchUpOffset(staticData)).toBe(1151);
+		expect(getCatchUpOffset(staticData)).toBe(secondFrontier);
 		expect(getMaxProcessedId(staticData)).toBe(50);
 		const midIds = (mid?.[0] ?? []).map((row) => row.json.id);
-		expect(midIds).toContain(2150);
-		expect(midIds).toContain(1151);
+		expect(midIds).toContain(secondNewest);
+		expect(midIds).toContain(secondFrontier);
+		expect(firstNewest).toBeLessThan(secondNewest);
 
-		// Continue from 1151 through the older gap down to W (includes prior 151..51 range).
-		const resumePage = Array.from({ length: 100 }, (_, i) => article(1151 - i));
-		const hitWatermark = [article(1052), article(51), article(50)];
+		// Continue from secondFrontier through the older gap down to W.
+		const resumePage = Array.from({ length: 100 }, (_, i) => article(secondFrontier - i));
+		const hitWatermark = [article(secondFrontier - 99), article(51), article(50)];
 		vi.mocked(newsRequest).mockReset();
 		vi.mocked(newsRequest)
 			.mockResolvedValueOnce({ items: secondBurst[0]! })
@@ -575,7 +589,7 @@ describe('runNewsPoll', () => {
 
 		const finished = await runNewsPoll(createPollContext({ staticData }));
 		expect(staticData[CATCH_UP_OFFSET_KEY]).toBeUndefined();
-		expect(getMaxProcessedId(staticData)).toBeGreaterThanOrEqual(2150);
+		expect(getMaxProcessedId(staticData)).toBeGreaterThanOrEqual(secondNewest);
 		const finishedIds = (finished?.[0] ?? []).map((row) => row.json.id);
 		expect(finishedIds).toContain(51);
 		expect(finishedIds).not.toContain(50);
@@ -584,6 +598,7 @@ describe('runNewsPoll', () => {
 	it('keeps catch-up resume across soft-fail and continues afterward', async () => {
 		const seeded = [article(50)];
 		const staticData = initializedStaticData(seeded);
+		const newestId = 50 + (TRIGGER_STEADY_MAX_PAGES + 1) * 100;
 		const pages = Array.from({ length: TRIGGER_STEADY_MAX_PAGES }, (_, page) =>
 			Array.from({ length: 100 }, (_, i) =>
 				article(50 + (TRIGGER_STEADY_MAX_PAGES - page + 1) * 100 - i),
@@ -613,9 +628,92 @@ describe('runNewsPoll', () => {
 
 		const recovered = await runNewsPoll(createPollContext({ staticData }));
 		expect(staticData[CATCH_UP_OFFSET_KEY]).toBeUndefined();
-		expect(getMaxProcessedId(staticData)).toBeGreaterThanOrEqual(1150);
+		expect(getMaxProcessedId(staticData)).toBeGreaterThanOrEqual(newestId);
 		const recoveredIds = (recovered?.[0] ?? []).map((row) => row.json.id);
 		expect(recoveredIds).toContain(51);
+	});
+
+	it('honors custom pageSize and maxPagesPerPoll across a multi-poll catch-up', async () => {
+		const pageSize = 10;
+		const maxPagesPerPoll = 2;
+		const seeded = [article(50)];
+		const staticData = initializedStaticData(seeded);
+
+		// Two full pages (20 ids) above watermark — hits cap; resume offset = 61.
+		const page1 = Array.from({ length: pageSize }, (_, i) => article(80 - i));
+		const page2 = Array.from({ length: pageSize }, (_, i) => article(70 - i));
+		vi.mocked(newsRequest).mockReset();
+		vi.mocked(newsRequest)
+			.mockResolvedValueOnce({ items: page1 })
+			.mockResolvedValueOnce({ items: page2 });
+
+		const first = await runNewsPoll(
+			createPollContext({ staticData, pageSize, maxPagesPerPoll }),
+		);
+		expect(newsRequest).toHaveBeenCalledTimes(2);
+		expect(newsRequest).toHaveBeenNthCalledWith(
+			1,
+			expect.anything(),
+			'GET',
+			'/items',
+			expect.objectContaining({
+				qs: expect.objectContaining({ batchSize: pageSize, offset: 0 }),
+			}),
+		);
+		expect(getCatchUpOffset(staticData)).toBe(61);
+		expect(getMaxProcessedId(staticData)).toBe(50);
+		const firstIds = (first?.[0] ?? []).map((row) => row.json.id);
+		expect(firstIds).toEqual([61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80]);
+
+		// Peek is a short newer page (exhausted), then resume from 61 down to W.
+		const peek = [article(90), article(89)];
+		const resume = [article(61), article(55), article(50)];
+		vi.mocked(newsRequest).mockReset();
+		vi.mocked(newsRequest)
+			.mockResolvedValueOnce({ items: peek })
+			.mockResolvedValueOnce({ items: resume });
+
+		const second = await runNewsPoll(
+			createPollContext({ staticData, pageSize, maxPagesPerPoll }),
+		);
+		expect(newsRequest).toHaveBeenCalledTimes(2);
+		expect(newsRequest).toHaveBeenNthCalledWith(
+			2,
+			expect.anything(),
+			'GET',
+			'/items',
+			expect.objectContaining({
+				qs: expect.objectContaining({ batchSize: pageSize, offset: 61 }),
+			}),
+		);
+		expect(staticData[CATCH_UP_OFFSET_KEY]).toBeUndefined();
+		expect(getMaxProcessedId(staticData)).toBe(90);
+		const secondIds = (second?.[0] ?? []).map((row) => row.json.id);
+		expect(secondIds).toContain(90);
+		expect(secondIds).toContain(89);
+		expect(secondIds).toContain(55);
+		expect(secondIds).not.toContain(50);
+		expect(secondIds).not.toContain(61);
+	});
+
+	it('falls back to defaults when pageSize / maxPagesPerPoll are invalid', async () => {
+		const existing = article(100);
+		const created = article(101, { title: 'Breaking news' });
+		const staticData = initializedStaticData([existing]);
+		vi.mocked(newsRequest).mockResolvedValue({ items: [created, existing] });
+
+		await runNewsPoll(
+			createPollContext({ staticData, pageSize: 0, maxPagesPerPoll: -3 }),
+		);
+
+		expect(newsRequest).toHaveBeenCalledWith(
+			expect.anything(),
+			'GET',
+			'/items',
+			expect.objectContaining({
+				qs: expect.objectContaining({ batchSize: 100 }),
+			}),
+		);
 	});
 
 	it('emits newly seen articles in ascending id order', async () => {

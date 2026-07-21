@@ -92,7 +92,29 @@ export class NextcloudNewsTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether to only watch unread articles (inbox-style). When off, newly seen article IDs still fire once. Each poll loads up to 100 newest matches and catch-up-pages if a full page is all new (burst), capped per poll.',
+					'Whether to only watch unread articles (inbox-style). When off, newly seen article IDs still fire once. Each poll loads up to Page Size newest matches and catch-up-pages if a full page is all new (burst), capped by Max Pages Per Poll.',
+			},
+			{
+				displayName: 'Page Size',
+				name: 'pageSize',
+				type: 'number',
+				default: 100,
+				typeOptions: {
+					minValue: 1,
+				},
+				description:
+					'How many articles to request per News API page (batchSize). Larger values reduce requests but raise memory/latency per poll.',
+			},
+			{
+				displayName: 'Max Pages Per Poll',
+				name: 'maxPagesPerPoll',
+				type: 'number',
+				default: 5,
+				typeOptions: {
+					minValue: 1,
+				},
+				description:
+					'Maximum pages walked toward older articles in one poll when catching up after a burst. Unfinished catch-up resumes on the next poll (no permanent skips).',
 			},
 		],
 		usableAsTool: true,

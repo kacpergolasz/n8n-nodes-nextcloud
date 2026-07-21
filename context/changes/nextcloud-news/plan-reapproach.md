@@ -249,30 +249,30 @@ Extract minimal reusable lifecycle/orchestration helpers from Files + News while
 
 #### Automated
 
-- [x] 1.1 Trigger poll tests pass after B1 fix
-- [x] 1.2 Shared pagination tests pass
-- [x] 1.3 Type checking passes
-- [x] 1.4 Linting passes
+- [x] 1.1 Trigger poll tests pass after B1 fix — d24170a
+- [x] 1.2 Shared pagination tests pass — d24170a
+- [x] 1.3 Type checking passes — d24170a
+- [x] 1.4 Linting passes — d24170a
 
 #### Manual
 
-- [x] 1.5 Pending-resume + exhausted-peek scenario no longer loses gap
-- [x] 1.6 Trigger emits only IDs newer than prior watermark
-- [x] 1.7 Unread-only seed protections still hold
+- [x] 1.5 Pending-resume + exhausted-peek scenario no longer loses gap — d24170a
+- [x] 1.6 Trigger emits only IDs newer than prior watermark — d24170a
+- [x] 1.7 Unread-only seed protections still hold — d24170a
 
 ### Phase 2: Configurable Poll Limits (Default 100 / 5)
 
 #### Automated
 
-- [ ] 2.1 Trigger tests validate default and overridden limits
-- [ ] 2.2 Type checking passes with new node params
-- [ ] 2.3 Linting passes for trigger and tests
+- [x] 2.1 Trigger tests validate default and overridden limits
+- [x] 2.2 Type checking passes with new node params
+- [x] 2.3 Linting passes for trigger and tests
 
 #### Manual
 
-- [ ] 2.4 Default-limit behavior remains backward-compatible
-- [ ] 2.5 Smaller-limit runs resume correctly across polls
-- [ ] 2.6 Node UI exposes clear advanced polling controls
+- [x] 2.4 Default-limit behavior remains backward-compatible
+- [x] 2.5 Smaller-limit runs resume correctly across polls
+- [x] 2.6 Node UI exposes clear advanced polling controls
 
 ### Phase 3: Extract Shared Poll Lifecycle Harness
 
