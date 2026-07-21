@@ -36,7 +36,7 @@ export class NextcloudFiles implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud Files',
 		name: 'nextcloudFiles',
-		icon: 'file:nextcloudFiles.svg',
+		icon: { light: 'file:nextcloudFiles.svg', dark: 'file:nextcloudFiles.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

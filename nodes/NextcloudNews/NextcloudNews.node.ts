@@ -37,7 +37,7 @@ export class NextcloudNews implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud News',
 		name: 'nextcloudNews',
-		icon: 'file:nextcloudNews.svg',
+		icon: { light: 'file:nextcloudNews.svg', dark: 'file:nextcloudNews.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

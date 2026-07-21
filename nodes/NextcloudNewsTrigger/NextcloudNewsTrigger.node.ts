@@ -14,7 +14,7 @@ export class NextcloudNewsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud News Trigger',
 		name: 'nextcloudNewsTrigger',
-		icon: 'file:nextcloudNews.svg',
+		icon: { light: 'file:nextcloudNews.svg', dark: 'file:nextcloudNews.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle:

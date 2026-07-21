@@ -11,7 +11,7 @@ export class NextcloudApi implements ICredentialType {
 
 	displayName = 'Nextcloud API';
 
-	icon: Icon = 'file:nextcloudApi.svg';
+	icon: Icon = { light: 'file:nextcloudApi.svg', dark: 'file:nextcloudApi.dark.svg' };
 
 	documentationUrl =
 		'https://docs.nextcloud.com/server/latest/developer_manual/client_apis/WebDAV/basic.html';

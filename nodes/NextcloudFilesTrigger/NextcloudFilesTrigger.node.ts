@@ -14,7 +14,7 @@ export class NextcloudFilesTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud Files Trigger',
 		name: 'nextcloudFilesTrigger',
-		icon: 'file:nextcloudFiles.svg',
+		icon: { light: 'file:nextcloudFiles.svg', dark: 'file:nextcloudFiles.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["folderToWatch"].value || "Select folder"}}',
