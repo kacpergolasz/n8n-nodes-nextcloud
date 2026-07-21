@@ -21,9 +21,10 @@
 		"dev": "n8n-node dev",
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
+		"lint:safety": "eslint -c eslint.safety.config.mjs .",
 		"test": "vitest run",
 		"release": "n8n-node release",
-		"prepublishOnly": "n8n-node prerelease"
+		"prepublishOnly": "npm run lint:safety && n8n-node prerelease"
 	},
 	"files": [
 		"dist"

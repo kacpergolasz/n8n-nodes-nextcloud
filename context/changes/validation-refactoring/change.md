@@ -32,11 +32,12 @@ Inventory (prod `nodes/**` + `credentials/**`, excluding tests). Prefer eliminat
 
 **Credentials:** zero `as` casts under `credentials/`.
 
-**Allowlisted remaining casts** (`CAST-ALLOWLIST` reason comments; Phase 8 converts to `eslint-disable-next-line` when `no-restricted-syntax` is active — avoids unused-disable warnings on current `npm lint`):
+**Allowlisted remaining casts:** none. WebDAV/CalDAV methods are narrowed via
+`assertHttpMethodIsValid` in `nodes/shared/assertHttpMethodIsValid.ts` (assertion
+predicate, no `as`). Files and Calendar `nextcloudRequest` call it before passing
+`method` to n8n's HTTP helper.
 
-| Path | Reason |
-|------|--------|
-| `nodes/NextcloudFiles/GenericFunctions.ts` (`nextcloudRequest` method) | WebDAV: n8n `IHttpRequestMethods` omits `PROPFIND` / `MKCOL` / `MOVE` / `COPY` |
-| `nodes/NextcloudCalendar/GenericFunctions.ts` (`nextcloudRequest` method) | CalDAV: n8n `IHttpRequestMethods` omits `PROPFIND` |
-
-`as const` elsewhere is intentionally allowed (not an assertion ban target).
+- **Allowlist shape (Phase 8):** No cast allowlist / file overrides. Rule:
+  `@typescript-eslint/consistent-type-assertions` with `assertionStyle: 'never'`
+  (`as const` still allowed). Enforced by `npm run lint:safety` + CI /
+  `prepublishOnly`.
