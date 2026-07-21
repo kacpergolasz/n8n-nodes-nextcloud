@@ -327,12 +327,16 @@ export function parseItemIds(raw: unknown): number[] {
 	}
 
 	if (text.startsWith('[')) {
+		let parsed: unknown;
 		try {
-			const parsed: unknown = JSON.parse(text);
-			return parseItemIds(parsed);
+			parsed = JSON.parse(text);
 		} catch {
-			throw new Error(`Item ids must be a valid JSON array or comma-separated list`);
+			parsed = undefined;
 		}
+		if (parsed === undefined) {
+			throw new Error('Item ids must be a valid JSON array or comma-separated list');
+		}
+		return parseItemIds(parsed);
 	}
 
 	return text.split(/[\s,]+/).filter(Boolean).map((part) => {

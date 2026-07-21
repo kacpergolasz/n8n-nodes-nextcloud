@@ -2,6 +2,7 @@ import {
 	buildCalendarHomeUrl,
 	buildEventUrl,
 	buildICalendarPayload,
+	escapeIcsTextValue,
 	eventIdFromCalDavHref,
 	getCredentials,
 	parseCalendarsFromXml,
@@ -123,6 +124,25 @@ describe('Nextcloud Calendar GenericFunctions', () => {
 		expect(payload).toContain('SUMMARY:Team Sync');
 		expect(payload).toContain('DESCRIPTION:Weekly sync');
 		expect(payload).toContain('END:VCALENDAR');
+	});
+
+	it('escapes RFC 5545 TEXT specials in iCalendar payload fields', () => {
+		const payload = buildICalendarPayload({
+			summary: 'A, B; C\\D',
+			description: 'line1\r\nline2',
+			location: 'Room\n1',
+			start: '2026-05-10T09:00:00Z',
+			end: '2026-05-10T09:30:00Z',
+		});
+
+		expect(payload).toContain('SUMMARY:A\\, B\\; C\\\\D');
+		expect(payload).toContain('DESCRIPTION:line1\\nline2');
+		expect(payload).toContain('LOCATION:Room\\n1');
+	});
+
+	it('round-trips escapeIcsTextValue with unescapeIcsText', () => {
+		const raw = 'a,b;c\\d\ne\rf';
+		expect(unescapeIcsText(escapeIcsTextValue(raw))).toBe('a,b;c\\d\ne\nf');
 	});
 
 	it('parses calendars from CalDAV multistatus XML fixture', () => {
