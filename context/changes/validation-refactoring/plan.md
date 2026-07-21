@@ -76,6 +76,8 @@ Add Zod as a peer, create suite-wide parse helpers (including credentials and `N
 
 **Contract**: `"peerDependencies": { "n8n-workflow": "*", "zod": "^3.25.67" }` (and ensure install still resolves via existing toolchain). Do not add `dependencies.zod`.
 
+**Adaptation (implemented):** Zod is in `devDependencies` (`^3.25.67`), not `peerDependencies` / `dependencies`. Community-node lint only allows `n8n-workflow` (and optionally AI SDK) as peers and forbids runtime `dependencies`. Runtime still resolves host-provided Zod (Cloud allowlisted via `n8n-workflow`). See `change.md` §Implementation adaptations.
+
 #### 2. Shared parse module
 
 **File**: `nodes/shared/parse.ts` (new)
@@ -540,13 +542,13 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [x] 6.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [x] 6.2 `npm test` succeeds
-- [x] 6.3 `npm lint` succeeds
+- [x] 6.1 `npm exec tsc --noEmit` / `npm build` succeeds — a4e0375
+- [x] 6.2 `npm test` succeeds — a4e0375
+- [x] 6.3 `npm lint` succeeds — a4e0375
 
 #### Manual
 
-- [x] 6.4 Grep FilesTrigger prod for remaining ` as `
+- [x] 6.4 Grep FilesTrigger prod for remaining ` as ` — a4e0375
 
 ### Phase 7: Boundary allowlist polish (next-to-last)
 

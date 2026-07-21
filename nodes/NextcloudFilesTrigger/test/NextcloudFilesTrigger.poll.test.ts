@@ -326,3 +326,40 @@ describe('runDirectoryPoll', () => {
 		expect(outputEvents(result)).toEqual(['fileCreated']);
 	});
 });
+
+describe('getSnapshot', () => {
+	it('drops entries with non-boolean isFolder and logs the drop count', () => {
+		const logger = { debug: vi.fn() };
+		const staticData: IDataObject = {
+			[SNAPSHOT_KEY]: {
+				'/Documents/ok.pdf': { isFolder: false, etag: '"ok"' },
+				'/Documents/bad.pdf': { isFolder: 'false', etag: '"bad"' },
+			},
+		};
+
+		expect(getSnapshot(staticData, logger)).toEqual({
+			'/Documents/ok.pdf': { isFolder: false, etag: '"ok"' },
+		});
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Nextcloud Files Trigger: dropped 1 invalid snapshot entry (expected object with boolean isFolder).',
+		);
+	});
+
+	it('drops non-object entries and logs a plural drop count', () => {
+		const logger = { debug: vi.fn() };
+		const staticData: IDataObject = {
+			[SNAPSHOT_KEY]: {
+				'/Documents/ok.pdf': { isFolder: false },
+				'/Documents/string': 'not-an-entry',
+				'/Documents/null': null,
+			},
+		};
+
+		expect(getSnapshot(staticData, logger)).toEqual({
+			'/Documents/ok.pdf': { isFolder: false },
+		});
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Nextcloud Files Trigger: dropped 2 invalid snapshot entries (expected object with boolean isFolder).',
+		);
+	});
+});

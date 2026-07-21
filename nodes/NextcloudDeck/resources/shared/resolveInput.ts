@@ -1,7 +1,6 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { resolveBoardId, resolveStackId } from '../../GenericFunctions';
-import { isPlainObject } from '../../../shared/parse';
 
 /**
  * Read a resourceLocator value, coercing numeric expression results
@@ -27,29 +26,6 @@ export function getLocatorValue(
 	}
 
 	return String(value);
-}
-
-/** Extract a locator `value` from `getCurrentNodeParameter` (full RLC or scalar). */
-export function parseLocatorParamValue(raw: unknown): string | undefined {
-	if (raw === undefined || raw === null || raw === '') {
-		return undefined;
-	}
-
-	if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
-		const text = String(raw).trim();
-		return text || undefined;
-	}
-
-	if (isPlainObject(raw) && 'value' in raw) {
-		const value = raw.value;
-		if (value === undefined || value === null || value === '') {
-			return undefined;
-		}
-		const text = String(value).trim();
-		return text || undefined;
-	}
-
-	return undefined;
 }
 
 export function resolveBoardFromInput(context: IExecuteFunctions, itemIndex: number): string {

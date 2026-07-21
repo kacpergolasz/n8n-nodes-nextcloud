@@ -1,6 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { isPlainObject } from '../../../shared/parse';
 import { normalizeFilesPath } from '../../GenericFunctions';
 
 /**
@@ -27,29 +26,6 @@ export function getLocatorValue(
 	}
 
 	return String(value);
-}
-
-/** Extract a locator `value` from a raw param (full RLC object or scalar). */
-export function parseLocatorParamValue(raw: unknown): string | undefined {
-	if (raw === undefined || raw === null || raw === '') {
-		return undefined;
-	}
-
-	if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
-		const text = String(raw).trim();
-		return text || undefined;
-	}
-
-	if (isPlainObject(raw) && 'value' in raw) {
-		const value = raw.value;
-		if (value === undefined || value === null || value === '') {
-			return undefined;
-		}
-		const text = String(value).trim();
-		return text || undefined;
-	}
-
-	return undefined;
 }
 
 export function resolvePathFromInput(

@@ -2,9 +2,10 @@ import type {
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
-	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
+import { nodeApiErrorPayload } from './parse';
 
 /** True after a soft-fail notice item was emitted for the current failure window. */
 export const POLL_ERROR_NOTICE_SHOWN_KEY = 'pollErrorNoticeShown';
@@ -21,7 +22,7 @@ export type SoftFailPolicy =
 	  };
 
 export function throwPollError(context: IPollFunctions, message: string): never {
-	throw new NodeApiError(context.getNode(), { message } as JsonObject);
+	throw new NodeApiError(context.getNode(), nodeApiErrorPayload(message));
 }
 
 export function isPollErrorNoticeShown(
