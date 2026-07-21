@@ -554,15 +554,15 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [ ] 7.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [ ] 7.2 `npm test` succeeds
-- [ ] 7.3 `npm lint` succeeds
-- [ ] 7.4 Grep confirms zero ` as ` under `credentials/`
+- [x] 7.1 `npm exec tsc --noEmit` / `npm build` succeeds
+- [x] 7.2 `npm test` succeeds
+- [x] 7.3 `npm lint` succeeds
+- [x] 7.4 Grep confirms zero ` as ` under `credentials/`
 
 #### Manual
 
-- [ ] 7.5 `change.md` lists every remaining allowlisted cast with rationale
-- [ ] 7.6 Human confirms no credential or avoidable param/response cast remains
+- [x] 7.5 `change.md` lists every remaining allowlisted cast with rationale
+- [x] 7.6 Human confirms no credential or avoidable param/response cast remains
 
 ### Phase 8: ESLint safety overlay (last)
 

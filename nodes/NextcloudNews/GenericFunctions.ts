@@ -1,11 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-} from 'n8n-workflow';
+import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type {
@@ -20,6 +15,7 @@ import {
 	throwParseError,
 	type NextcloudCredentialData,
 } from '../shared/parse';
+import type { NextcloudRequestContext } from '../shared/requestContext';
 
 export type NewsRequestEncoding =
 	| 'json'
@@ -99,7 +95,7 @@ export function feedUrlHash(feedUrl: string): string {
 }
 
 export async function getCredentials(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 ): Promise<NextcloudCredentialData> {
 	const credentials = parseNextcloudCredentials(await context.getCredentials('nextcloudApi'));
 
@@ -111,7 +107,7 @@ export async function getCredentials(
 }
 
 export async function newsRequest(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	method: IHttpRequestMethods,
 	path: string,
 	options: NewsRequestOptions = {},
@@ -252,7 +248,7 @@ export function firstFeed(response: unknown): NewsFeed | undefined {
 }
 
 export async function loadFolders(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 ): Promise<NewsPickerOption[]> {
 	const folders = unwrapFolders(await newsRequest(context, 'GET', '/folders'));
 
@@ -263,7 +259,7 @@ export async function loadFolders(
 }
 
 export async function loadFeeds(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	folderId?: string,
 ): Promise<NewsPickerOption[]> {
 	let feeds = unwrapFeeds(await newsRequest(context, 'GET', '/feeds'));
@@ -279,7 +275,7 @@ export async function loadFeeds(
 }
 
 export async function findFeedById(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
+	context: NextcloudRequestContext,
 	feedId: string,
 ): Promise<NewsFeed | undefined> {
 	const feeds = unwrapFeeds(await newsRequest(context, 'GET', '/feeds'));

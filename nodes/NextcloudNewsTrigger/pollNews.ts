@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	IPollFunctions,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
 
 import {
 	getCredentials,
@@ -14,6 +9,7 @@ import type { NewsItem } from '../NextcloudNews/NewsInterface';
 import { itemToJson } from '../NextcloudNews/resources/shared/entityJson';
 import { scrubErrorMessage } from '../NextcloudNews/shared/scrubSecrets';
 import { parseLocatorParamValue, parseRequiredBoolean, type NextcloudCredentialData } from '../shared/parse';
+import type { NextcloudRequestContext } from '../shared/requestContext';
 import {
 	buildNewsItemsQueryParams,
 	nextNewsOffsetFromItems,
@@ -138,10 +134,6 @@ export type NewsPollScopeResolved = {
 	getRead: boolean;
 	scopeKey: string;
 };
-
-function asLoadOptionsContext(context: IPollFunctions): ILoadOptionsFunctions {
-	return context as unknown as ILoadOptionsFunctions;
-}
 
 /**
  * Map optional folder/feed filters to News `GET /items` type/id.
@@ -343,7 +335,7 @@ export function nextTriggerPageOffset(
 }
 
 export async function loadTriggerItemsPage(
-	context: ILoadOptionsFunctions,
+	context: NextcloudRequestContext,
 	scope: NewsPollScopeResolved,
 	offset: number = 0,
 	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
@@ -378,7 +370,7 @@ export function appendUniqueNewsItems(
 
 /** Single newest page (offset 0) — used by manual mode. */
 export async function loadTriggerItems(
-	context: ILoadOptionsFunctions,
+	context: NextcloudRequestContext,
 	scope: NewsPollScopeResolved,
 	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): Promise<NewsItem[]> {
@@ -391,7 +383,7 @@ export async function loadTriggerItems(
  * (avoids false-fire when those are later marked unread).
  */
 export async function loadScopeMaxArticleId(
-	context: ILoadOptionsFunctions,
+	context: NextcloudRequestContext,
 	scope: NewsPollScopeResolved,
 	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): Promise<number> {
@@ -409,7 +401,7 @@ export async function loadScopeMaxArticleId(
  * window covers the current backlog (not only the newest page).
  */
 export async function loadAllTriggerItemsForSeed(
-	context: ILoadOptionsFunctions,
+	context: NextcloudRequestContext,
 	scope: NewsPollScopeResolved,
 	pageSize: number = DEFAULT_TRIGGER_PAGE_SIZE,
 ): Promise<NewsItem[]> {
@@ -451,7 +443,7 @@ export async function loadAllTriggerItemsForSeed(
  * from R toward W so already-fetched pages are not re-walked within the budget.
  */
 export async function loadTriggerItemsWithCatchUp(
-	context: ILoadOptionsFunctions,
+	context: NextcloudRequestContext,
 	scope: NewsPollScopeResolved,
 	staticData: IDataObject,
 	limits: NewsPollLimits = {
@@ -524,7 +516,7 @@ type CatchUpPageResult =
 	| { status: 'incomplete'; nextOffset: number; pagesUsed: number };
 
 async function collectCatchUpPages(
-	context: ILoadOptionsFunctions,
+	context: NextcloudRequestContext,
 	scope: NewsPollScopeResolved,
 	collected: NewsItem[],
 	seenIds: Set<string>,
@@ -589,12 +581,11 @@ export async function runNewsPoll(
 ): Promise<INodeExecutionData[][] | null> {
 	const staticData = context.getWorkflowStaticData('node');
 	const isManual = context.getMode() === 'manual';
-	const requestContext = asLoadOptionsContext(context);
 
 	const { credentials, resolved, limits } = await runPollBootstrap(
 		context,
 		async () => {
-			const credentials = await getCredentials(requestContext);
+			const credentials = await getCredentials(context);
 			const pollScope = readPollScopeFromNode(context);
 			const resolved = resolveNewsPollScope(pollScope);
 			const limits = resolveNewsPollLimits(context);
@@ -603,7 +594,7 @@ export async function runNewsPoll(
 		async (error) => {
 			let secrets: NextcloudCredentialData | Record<string, never> = {};
 			try {
-				secrets = await getCredentials(requestContext);
+				secrets = await getCredentials(context);
 			} catch {
 				// ignore credential load failures while scrubbing
 			}
@@ -618,24 +609,24 @@ export async function runNewsPoll(
 	let seedScopeMaxId: number | undefined;
 	try {
 		if (!isManual && !isInitialized) {
-			items = await loadAllTriggerItemsForSeed(requestContext, resolved, limits.pageSize);
+			items = await loadAllTriggerItemsForSeed(context, resolved, limits.pageSize);
 			// Unread listings omit read articles; raise W from newest all-items page.
 			if (!resolved.getRead) {
 				seedScopeMaxId = await loadScopeMaxArticleId(
-					requestContext,
+					context,
 					resolved,
 					limits.pageSize,
 				);
 			}
 		} else if (!isManual && isInitialized) {
 			items = await loadTriggerItemsWithCatchUp(
-				requestContext,
+				context,
 				resolved,
 				staticData,
 				limits,
 			);
 		} else {
-			items = await loadTriggerItemsPage(requestContext, resolved, 0, limits.pageSize);
+			items = await loadTriggerItemsPage(context, resolved, 0, limits.pageSize);
 		}
 	} catch (error) {
 		return handlePollListingFailure(context, {
