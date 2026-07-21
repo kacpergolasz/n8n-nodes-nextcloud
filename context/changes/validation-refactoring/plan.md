@@ -476,15 +476,15 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [ ] 1.1 Package installs / resolves `zod` for TypeScript imports from `nodes/shared/parse.ts`
-- [ ] 1.2 `npm exec tsc --noEmit` (or `npm build`) succeeds with the new module
-- [ ] 1.3 `npm lint` succeeds (`eslint.config.mjs` unchanged)
-- [ ] 1.4 `npm test` succeeds (no mandatory new tests)
+- [x] 1.1 Package installs / resolves `zod` for TypeScript imports from `nodes/shared/parse.ts`
+- [x] 1.2 `npm exec tsc --noEmit` (or `npm build`) succeeds with the new module
+- [x] 1.3 `npm lint` succeeds (`eslint.config.mjs` unchanged)
+- [x] 1.4 `npm test` succeeds (no mandatory new tests)
 
 #### Manual
 
-- [ ] 1.5 Confirm `package.json` has no `dependencies.zod` and `n8n.strict` still `true`
-- [ ] 1.6 Spot-check `parse.ts` exports are importable from a node file path (no circular import with pagination/poll modules)
+- [x] 1.5 Confirm `package.json` has no `dependencies.zod` and `n8n.strict` still `true`
+- [x] 1.6 Spot-check `parse.ts` exports are importable from a node file path (no circular import with pagination/poll modules)
 
 ### Phase 2: Files node
 

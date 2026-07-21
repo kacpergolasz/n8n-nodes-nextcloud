@@ -1,7 +1,7 @@
 ---
 change_id: validation-refactoring
 title: Validation refactoring
-status: planned
+status: implementing
 created: 2026-07-21
 updated: 2026-07-21
 archived_at: null
@@ -17,3 +17,7 @@ archived_at: null
 ### Output DTO convention
 
 Export JSON/output shapes as `type` (not `interface`) without `[key: string]: unknown` so they assign to `IDataObject` without casts.
+
+### Implementation adaptations
+
+- **Zod placement (Phase 1):** Declared in `devDependencies` (`^3.25.67`), not `peerDependencies` / `dependencies`. Community-node lint only allows `n8n-workflow` (and optionally AI SDK) as peers, and forbids runtime `dependencies`. Runtime still uses host-provided Zod (Cloud allowlisted via `n8n-workflow`).
