@@ -75,41 +75,60 @@ describe('pollOrchestration', () => {
 	});
 
 	describe('handlePollListingFailure', () => {
-		it('throws when not initialized', () => {
+		const scrubSecret = (error: unknown) =>
+			String(error instanceof Error ? error.message : error).replace(
+				'secret-token',
+				'[REDACTED]',
+			);
+
+		it('throws when not initialized, after scrubbing', () => {
 			const context = createPollContext();
 			expect(() =>
 				handlePollListingFailure(context, {
 					isInitialized: false,
-					scrubbedMessage: 'pre-init failure',
+					error: new Error('pre-init secret-token'),
+					scrubError: scrubSecret,
 					logLabel: 'Test Trigger',
 					softFail: { mode: 'silent' },
 				}),
-			).toThrow(/pre-init failure/);
+			).toThrow(/\[REDACTED\]/);
+			expect(() =>
+				handlePollListingFailure(context, {
+					isInitialized: false,
+					error: new Error('pre-init secret-token'),
+					scrubError: scrubSecret,
+					logLabel: 'Test Trigger',
+					softFail: { mode: 'silent' },
+				}),
+			).not.toThrow(/secret-token/);
 		});
 
-		it('returns null for silent soft-fail after init', () => {
+		it('returns null for silent soft-fail after init and logs scrubbed message', () => {
 			const debug = vi.fn();
 			const context = createPollContext({ debug });
 			const result = handlePollListingFailure(context, {
 				isInitialized: true,
-				scrubbedMessage: 'transient',
+				error: new Error('transient secret-token'),
+				scrubError: scrubSecret,
 				logLabel: 'Test Trigger',
 				softFail: { mode: 'silent' },
 			});
 
 			expect(result).toBeNull();
 			expect(debug).toHaveBeenCalledWith(
-				expect.stringContaining('soft-failing poll (transient)'),
+				expect.stringContaining('soft-failing poll (transient [REDACTED])'),
 			);
+			expect(String(debug.mock.calls[0]?.[0] ?? '')).not.toContain('secret-token');
 		});
 
-		it('emits one notice then null on repeated oneShotNotice soft-fail', () => {
+		it('emits one scrubbed notice then null on repeated oneShotNotice soft-fail', () => {
 			const staticData: IDataObject = {};
 			const context = createPollContext();
 
 			const first = handlePollListingFailure(context, {
 				isInitialized: true,
-				scrubbedMessage: 'down',
+				error: new Error('down secret-token'),
+				scrubError: scrubSecret,
 				logLabel: 'Test Trigger',
 				softFail: {
 					mode: 'oneShotNotice',
@@ -118,12 +137,16 @@ describe('pollOrchestration', () => {
 				},
 			});
 
-			expect(first?.[0]?.[0]?.json).toEqual({ event: 'pollError', message: 'down' });
+			expect(first?.[0]?.[0]?.json).toEqual({
+				event: 'pollError',
+				message: 'down [REDACTED]',
+			});
 			expect(isPollErrorNoticeShown(staticData)).toBe(true);
 
 			const second = handlePollListingFailure(context, {
 				isInitialized: true,
-				scrubbedMessage: 'still down',
+				error: new Error('still down secret-token'),
+				scrubError: scrubSecret,
 				logLabel: 'Test Trigger',
 				softFail: {
 					mode: 'oneShotNotice',

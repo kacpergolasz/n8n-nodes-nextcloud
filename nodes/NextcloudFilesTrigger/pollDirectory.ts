@@ -179,7 +179,8 @@ export async function runDirectoryPoll(
 	} catch (error) {
 		return handlePollListingFailure(context, {
 			isInitialized,
-			scrubbedMessage: scrubErrorMessage(error, credentials),
+			error,
+			scrubError: (err) => scrubErrorMessage(err, credentials),
 			logLabel: 'Nextcloud Files Trigger',
 			softFail: { mode: 'silent' },
 		});

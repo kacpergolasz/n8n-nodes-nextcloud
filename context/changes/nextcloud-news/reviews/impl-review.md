@@ -1,17 +1,17 @@
 <!-- IMPL-REVIEW-REPORT -->
-# Implementation Review: Nextcloud News (actions + polling trigger)
+# Implementation Review: Nextcloud News Trigger Simplification
 
-- **Plan**: context/changes/nextcloud-news/plan.md
-- **Scope**: Phase 1–5 of 5 (full plan)
-- **Date**: 2026-07-20
+- **Plan**: `context/changes/nextcloud-news/plan-reapproach.md`
+- **Scope**: Phases 1–3 of 3 (full plan)
+- **Date**: 2026-07-21
 - **Verdict**: NEEDS ATTENTION
-- **Findings**: 0 critical 4 warnings 3 observations
+- **Findings**: 0 critical, 2 warnings, 3 observations
 
 ## Verdicts
 
 | Dimension | Verdict |
 |-----------|---------|
-| Plan Adherence | FAIL |
+| Plan Adherence | PASS |
 | Scope Discipline | PASS |
 | Safety & Quality | WARNING |
 | Architecture | PASS |
@@ -20,102 +20,108 @@
 
 ## Findings
 
-### F1 — Item Get Many returns envelope, not one item per article
+### F1 — Unbounded pageSize / maxPagesPerPoll
+
+- **Severity**: ⚠️ WARNING
+- **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
+- **Dimension**: Safety & Quality
+- **Location**: `nodes/NextcloudNewsTrigger/NextcloudNewsTrigger.node.ts:99-117`, `pollNews.ts:79-102`, `pollNews.ts:74-76` / `424-426`
+- **Detail**: Plan added configurable bounds with defaults 100/5 and `minValue: 1`, but no upper clamp. Operators (or bad expressions) can set huge `pageSize` (memory/latency) or huge `maxPagesPerPoll` (API hammering). Tiny `pageSize` also explodes seed work via `seedMaxPagesForPageSize = ceil(10000 / pageSize)` (up to 10k sequential GETs on activation).
+- **Fix A ⭐ Recommended**: Add `maxValue` on both node params and clamp in `resolveNewsPollLimits` / seed helper (e.g. pageSize ≤ 200, maxPagesPerPoll ≤ 20, seed pages hard-capped independently).
+  - Strength: Matches “safe numeric constraints” intent in Phase 2; closes DoS-by-config without changing defaults.
+  - Tradeoff: Picks arbitrary caps; high-volume operators may need docs to raise carefully.
+  - Confidence: HIGH — UI `typeOptions.maxValue` + runtime clamp is the existing n8n pattern.
+  - Blind spot: Exact News API max batchSize not re-verified against live docs in this review.
+- **Fix B**: Document only (node description + next-app-triggers) and leave uncapped.
+  - Strength: Zero code risk; preserves full operator freedom.
+  - Tradeoff: Misconfiguration still hurts activation/runtime.
+  - Confidence: MEDIUM — relies on operators reading help text.
+  - Blind spot: Expression-driven params bypass “I typed carefully in UI” assumptions.
+- **Decision**: Fixed via Fix B — document only; upper bounds left to Nextcloud News server / operator
 
 - **Severity**: ⚠️ WARNING
 - **Impact**: 🔬 HIGH — architectural stakes; think carefully before deciding
-- **Dimension**: Plan Adherence
-- **Location**: nodes/NextcloudNews/resources/item/getAll.ts:57-97
-- **Detail**: Phase 3 contract and Desired End State require one n8n item per article (full JSON). Implementation returns a single execution item `{ items: [...], nextOffset }` and tests lock that shape. Cursor pagination itself is correct (real `GET /items` via shared helpers, not fetch-all-slice). UI also replaces raw `batchSize`/`type`/`id`/`getRead` with `limit` + folder/feed/`starredOnly`/`unreadOnly` convenience filters (plan allowed presets that set defaults; raw API fields are not exposed).
-- **Fix A ⭐ Recommended**: Keep the envelope (better paging UX / never-empty execution) and document the intentional drift as a plan addendum / node description note so future reviews treat it as accepted.
-  - Strength: Preserves working pagination UX and `nextOffset` hand-off; avoids churn for already-smoked workflows.
-  - Tradeoff: Diverges from suite “one row per entity” Get Many convention.
-  - Confidence: HIGH — envelope is deliberate (comment at getAll.ts:57-58) and covered by tests.
-  - Blind spot: Downstream workflows expecting Split Out / item-linked pairing on Get Many.
-- **Fix B**: Change `itemGetAll` to return one n8n item per article and put `nextOffset` in paired metadata or a second output / binary companion field.
-  - Strength: Matches plan and suite Get Many norms.
-  - Tradeoff: Breaks any workflow relying on the envelope; empty pages become zero items.
-  - Confidence: MEDIUM — need a clear place for `nextOffset` without the envelope.
-  - Blind spot: Whether manual smoke workflows already depend on `{ items, nextOffset }`.
-- **Decision**: Fixed via Fix A
-
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
 - **Dimension**: Safety & Quality
-- **Location**: nodes/NextcloudNewsTrigger/pollNews.ts:31-32, 169-183, 243-245
-- **Detail**: Init/re-seed and steady polls share `TRIGGER_ITEMS_BATCH_SIZE = 100`. With Unread Only (default) and >100 unread items, only the newest 100 IDs are seeded. When newer unread items are marked read elsewhere, older pre-existing unread IDs enter the newest-100 window and can fire as new — a delayed history flood vs “no history flood on activate.”
-- **Fix A ⭐ Recommended**: On seed/re-seed only, page with `offset` until exhausted (or a larger one-shot batch), keeping `100` for steady-state polls.
-  - Strength: Closes the late-flood class without making every poll expensive.
-  - Tradeoff: Activation can be slower on huge unread inboxes.
-  - Confidence: HIGH — matches plan Performance guidance (bounded steady poll; seed completeness separate).
-  - Blind spot: Upper bound / timeout if unread history is enormous (`batchSize=-1` risk).
-- **Fix B**: Document the newest-100 seed ceiling in the node description and accept the limitation for MVP.
-  - Strength: No code change; honest author guidance.
-  - Tradeoff: Leaves the late-flood bug class live for large inboxes.
-  - Confidence: MEDIUM — acceptable only if typical News inboxes stay small.
-  - Blind spot: Real inbox sizes on target instances.
-- **Decision**: Fixed via Fix A
+- **Location**: `nodes/NextcloudNewsTrigger/pollNews.ts:680-691` (with ring at `677`, catch-up budget at `475-488`)
+- **Detail**: While `catchUpOffset` is set, `maxProcessedId` is intentionally not raised (no permanent skip). Fetched ids still enter the ring and may emit (`id > watermark`). If backlog stays above `pageSize × maxPagesPerPoll` for many polls, catch-up may never reach W; after `processedIds` exceeds 10 000, earlier mid-catch-up ids are evicted. A later resume re-fetch of those ids is again “unseen” and still `> W`, so they can fire twice. Continuous newest-burst peeks amplify lag. This is a design edge case of delayed-W + bounded ring, not a Phase 1 B1 regression (B1 itself matches plan).
 
-### F3 — Steady-state poll can permanently miss bursts larger than 100 new articles
+#### F2 explained (why this can happen)
 
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
-- **Dimension**: Safety & Quality
-- **Location**: nodes/NextcloudNewsTrigger/pollNews.ts:31-32, 173-180
-- **Detail**: Each production poll only lists the newest 100 matching items. If more than 100 new articles arrive between ticks, older new IDs never appear in later newest-100 pages and are never emitted.
-- **Fix A ⭐ Recommended**: Document the per-poll burst ceiling (100) in the trigger description / follow-ups note.
-  - Strength: Cheap; matches the plan’s intentional bounded candidate fetch.
-  - Tradeoff: Does not recover missed IDs.
-  - Confidence: HIGH — plan explicitly wanted bounded polls.
-  - Blind spot: Whether high-volume feeds are in scope for S-06 users.
-- **Fix B**: Catch up by paging while unseen IDs remain, with a per-poll page cap.
-  - Strength: Reduces false negatives under bursty feeds.
-  - Tradeoff: More API load; more complex poll loop/tests.
-  - Confidence: MEDIUM — needs careful interaction with ID-window max size.
-  - Blind spot: Interaction with `filterIdsInStaticData` window eviction.
-- **Decision**: Fixed via Fix B
+Two stores decide “have we seen this article?”:
 
-### F4 — Invalid `batchSize` normalizes to `-1` (fetch all)
+| Store | Role | Durable across long catch-up? |
+|-------|------|-------------------------------|
+| **Watermark** (`maxProcessedId`) | Authoritative “already accounted for” boundary; emit only if `id > W` | Yes — but **frozen** until catch-up finishes (so mid-burst older pages are not skipped) |
+| **Ring** (`processedIds`, max 10 000) | In-poll / short-window dedupe | No — oldest ids fall off once >10k new ids are recorded |
 
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Safety & Quality
-- **Location**: nodes/shared/pagination.ts:65-79 (consumed by item/getAll.ts:77-78)
-- **Detail**: `normalizeNewsBatchSize` maps `0`, other negatives, and non-finite values to `DEFAULT_NEWS_BATCH_SIZE` (`-1` = all). Item Get Many passes UI/`limit` through this helper, so an expression resolving to `0`/`NaN` silently becomes an unbounded history pull — the risk the plan’s Performance section flags. UI `limit` has `minValue: 1`, so the static UI path is safe; expression path is not.
-- **Fix**: Fall back invalid / non-positive (except explicit `-1`) values to a positive default (e.g. `DEFAULT_CLIENT_LIMIT` / 50); preserve `-1` only when explicitly requested.
-- **Decision**: Fixed
+Normal case (burst finishes within a few polls): catch-up reaches W → W jumps to the newest fetched id → even if the ring later forgets an id, `id > W` is false → no re-fire.
 
-### F5 — Soft-fail scrub may lack credentials on pre-listing failures
+Pathological case (backlog keeps growing faster than one poll can walk): catch-up never completes → W stays old → ring is the *only* dedupe for already-emitted ids → after 10k+ emits, ring forgets early ids → resume re-fetches them → they look “new” again.
 
-- **Severity**: 🔍 OBSERVATION
-- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Safety & Quality
-- **Location**: nodes/NextcloudNewsTrigger/pollNews.ts:200-201
-- **Detail**: Pre-listing failures call `scrubErrorMessage(error)` without credentials (same as Files Trigger). Basic-auth regexes still help; password-substring redaction may not run if `getCredentials` itself threw with a secret in the message.
-- **Fix**: Best-effort load credentials in the catch before scrubbing (as listSearch does), or scrub with any partially available secret material.
-- **Decision**: Fixed
+```mermaid
+flowchart TD
+  start["Steady poll starts<br/>W = 100, ring has ≤10k ids"] --> fetch["Fetch up to pageSize × maxPagesPerPoll<br/>newest → older toward W"]
+  fetch --> emit{"For each fetched id:<br/>not in ring AND id > W?"}
+  emit -->|yes| fire["Emit to workflow<br/>append id to ring"]
+  emit -->|no| skip["Skip"]
+  fire --> budget{"Reached W or exhausted<br/>within page budget?"}
+  skip --> budget
+  budget -->|yes: catch-up done| raiseW["Clear catchUpOffset<br/>Raise W to max fetched id"]
+  budget -->|no: budget hit| persist["Keep catchUpOffset<br/>Do NOT raise W"]
+  raiseW --> safe["Later: even if ring forgets an id,<br/>id ≤ W → no re-emit ✅"]
+  persist --> next["Next poll resumes…"]
+  next --> grow{"Have we emitted >10k ids<br/>while W still frozen?"}
+  grow -->|no| fetch
+  grow -->|yes| evict["Ring drops oldest emitted ids<br/>e.g. id 5000 leaves the ring"]
+  evict --> resume["Resume later re-fetches id 5000"]
+  resume --> dupe["5000 not in ring AND 5000 > W<br/>→ emits AGAIN ❌"]
+```
 
-### F6 — Favicon always reports `image/x-icon` MIME
+Concrete numbers (defaults `pageSize=100`, `maxPagesPerPoll=5` → 500 articles/poll):
 
-- **Severity**: 🔍 OBSERVATION
+1. W=100. Overnight, 12 000 new articles appear (ids 101…12 100).
+2. Polls 1–20: each emits ~500 ids, ring fills, W still 100 because catch-up has not walked all the way back to 100.
+3. Once ring holds 10 000 ids, older ones (e.g. early 101…) are evicted.
+4. A later resume page that includes those evicted ids treats them as unseen and `> W` → duplicate workflow runs.
+
+How rare? Only when **incomplete catch-up lasts long enough to exceed the 10k ring** (huge sustained backlog, or limits set so low that catch-up never catches the ingest rate). Typical feeds never hit this.
+
+- **Fix A ⭐ Recommended**: Track emitted ids (or an “emitted high-water”) that survives ring eviction until catch-up completes and W advances; add a >10k multi-poll regression test.
+  - Strength: Preserves no-skip catch-up while closing the re-fire path under extreme backlog.
+  - Tradeoff: Extra static-data key / logic; more state to reason about.
+  - Confidence: MEDIUM — needs careful interaction with existing ring + W rules.
+  - Blind spot: How often real feeds exceed 10k ids while catch-up never completes is unverified.
+- **Fix B**: Document as known limitation; rely on operators raising limits / shortening poll interval; optionally emit a one-shot notice after N incomplete catch-up polls.
+  - Strength: No state-model change; matches “bounded catch-up” product framing.
+  - Tradeoff: Extreme backlog still risks duplicates; notice-only doesn’t prevent re-fire.
+  - Confidence: MEDIUM — acceptable if extreme backlog is rare.
+  - Blind spot: No production telemetry on catch-up duration.
+- **Decision**: Fixed via Fix B — document known limitation; operator maintains poll capacity vs ingest rate
+
+### F3 — pollError notice shares the article output stream
+
+- **Severity**: 👁️ OBSERVATION
 - **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
 - **Dimension**: Pattern Consistency
-- **Location**: nodes/NextcloudNews/resources/feed/favicon.ts:35-36
-- **Detail**: Binary path is correct (`json: false`, `arraybuffer`), but MIME is hardcoded to `image/x-icon` even when the bytes are PNG/SVG.
-- **Fix**: Infer MIME from response headers or magic bytes when present.
-- **Decision**: Fixed
+- **Location**: `nodes/shared/pollOrchestration.ts:111-114`, wired at `pollNews.ts:650-654`
+- **Detail**: Intentional `oneShotNotice` emits `{ event: 'pollError', message }` on the main trigger branch. Workflows that assume article fields (`id`, `title`, …) can mishandle that item unless they branch on `event`. Docs mention the shape; node UI does not.
+- **Fix**: Add a short note on the News Trigger node description (or Unread Only / advanced section) that soft-fail may emit a `pollError` item consumers should filter.
+- **Decision**: FIXED — node description notes pollError notice shape for consumers
 
-### F7 — Shared soft-fail bullet still describes Files-only `return null`
-
-- **Severity**: 🔍 OBSERVATION
+- **Severity**: 👁️ OBSERVATION
 - **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Plan Adherence
-- **Location**: context/changes/suite-polling-triggers/follow-ups/next-app-triggers.md:12
-- **Detail**: Shared conventions still say soft-fail returns `null`. The News subsection correctly documents the one-shot notice-item pattern. Future app authors reading only the shared bullet may miss decision 8B.
-- **Fix**: Update the shared soft-fail bullet to mention optional one-shot notice item (News pattern) vs silent `null` (Files).
-- **Decision**: Fixed
+- **Dimension**: Architecture
+- **Location**: `nodes/shared/pollOrchestration.ts:82-99`
+- **Detail**: `handlePollListingFailure` logs/emits `scrubbedMessage` as-is. Files and News callers scrub correctly today; a future trigger that passes raw errors would leak secrets into logs/workflow data.
+- **Fix**: Rename param/JSDoc to `alreadyScrubbedMessage` (and keep checklist mandate); optional test fixture asserting `[REDACTED]` in notice paths.
+- **Decision**: FIXED differently — `handlePollListingFailure` takes `error` + `scrubError` and scrubs before any log/notice/throw (callers supply app scrubber only)
 
-## Triage notes
+### F5 — Unplanned Item Limit description lint tweak
 
-- 2026-07-20: F1–F4 fixed; triage paused (context clear). Resume with `/10x-impl-review context/changes/nextcloud-news/reviews/impl-review.md` for F5–F7.
-- 2026-07-20: F5–F7 fixed (resume triage complete).
+- **Severity**: 👁️ OBSERVATION
+- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
+- **Dimension**: Scope Discipline
+- **Location**: `nodes/NextcloudNews/resources/item/index.ts:45`
+- **Detail**: Phase 3 commit shortened the Item Get Many `limit` description to satisfy `node-param-description-wrong-for-limit`. Unrelated to trigger extraction; benign and unblocks lint gate.
+- **Fix**: No code change — accept as incidental lint hygiene (or note in plan addendum if strict audit trail is required).
+- **Decision**: SKIPPED

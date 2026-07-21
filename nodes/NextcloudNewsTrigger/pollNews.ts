@@ -645,7 +645,8 @@ export async function runNewsPoll(
 	} catch (error) {
 		return handlePollListingFailure(context, {
 			isInitialized,
-			scrubbedMessage: scrubErrorMessage(error, credentials),
+			error,
+			scrubError: (err) => scrubErrorMessage(err, credentials),
 			logLabel: 'Nextcloud News Trigger',
 			softFail: {
 				mode: 'oneShotNotice',

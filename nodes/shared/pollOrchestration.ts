@@ -76,6 +76,8 @@ export async function runPollBootstrap<T>(
 
 /**
  * Handle a listing/API failure during poll.
+ * Scrubs the error before any log, notice emit, or throw — callers supply app-specific
+ * `scrubError` (secrets differ per credential type); this helper owns when scrubbing runs.
  * - Initialized: soft-fail per policy (`silent` → null, `oneShotNotice` → at most one notice).
  * - Not initialized: throw scrubbed NodeApiError (activation must fail loudly).
  */
@@ -83,13 +85,16 @@ export function handlePollListingFailure(
 	context: IPollFunctions,
 	options: {
 		isInitialized: boolean;
-		scrubbedMessage: string;
+		error: unknown;
+		/** App-specific secret redaction; invoked here before log / notice / throw. */
+		scrubError: (error: unknown) => string;
 		/** Prefix for the debug log, e.g. `Nextcloud News Trigger`. */
 		logLabel: string;
 		softFail: SoftFailPolicy;
 	},
 ): INodeExecutionData[][] | null {
-	const { isInitialized, scrubbedMessage, logLabel, softFail } = options;
+	const { isInitialized, error, scrubError, logLabel, softFail } = options;
+	const scrubbedMessage = scrubError(error);
 
 	if (!isInitialized) {
 		throwPollError(context, scrubbedMessage);

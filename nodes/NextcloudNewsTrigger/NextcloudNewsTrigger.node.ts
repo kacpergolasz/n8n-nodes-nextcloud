@@ -20,7 +20,7 @@ export class NextcloudNewsTrigger implements INodeType {
 		subtitle:
 			'={{$parameter["unreadOnly"] ? "Unread articles" : "All articles"}}{{$parameter["feed"].value ? " · feed " + $parameter["feed"].value : ($parameter["folder"].value ? " · folder " + $parameter["folder"].value : "")}}',
 		description:
-			'Starts the workflow when new articles appear in Nextcloud News (optional folder/feed scope)',
+			'Starts the workflow when new articles appear in Nextcloud News (optional folder/feed scope). After the trigger is initialized, a transient API failure may emit one notice item shaped like { event: "pollError", message } — filter on event if your workflow expects article fields only.',
 		defaults: {
 			name: 'Nextcloud News Trigger',
 		},
@@ -103,7 +103,7 @@ export class NextcloudNewsTrigger implements INodeType {
 					minValue: 1,
 				},
 				description:
-					'How many articles to request per News API page (batchSize). Larger values reduce requests but raise memory/latency per poll.',
+					'How many articles to request per News API page (batchSize). Larger values reduce requests but raise memory/latency per poll. No hard upper cap in the node — oversized values may be rejected or truncated by the Nextcloud News server.',
 			},
 			{
 				displayName: 'Max Pages Per Poll',
@@ -114,7 +114,7 @@ export class NextcloudNewsTrigger implements INodeType {
 					minValue: 1,
 				},
 				description:
-					'Maximum pages walked toward older articles in one poll when catching up after a burst. Unfinished catch-up resumes on the next poll (no permanent skips).',
+					'Maximum pages walked toward older articles in one poll when catching up after a burst. Unfinished catch-up resumes on the next poll (no permanent skips). Keep this modest relative to your server capacity; the node does not impose an upper cap. Size Page Size × Max Pages Per Poll (and Poll Times) so catch-up can finish under your feed’s ingest rate — if a backlog stays incomplete across many polls past the ~10k id window, already-emitted articles can fire again.',
 			},
 		],
 		usableAsTool: true,
