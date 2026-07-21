@@ -1,7 +1,12 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { DeckBoard } from '../../DeckInterface';
-import { buildBoardUpdatePayload, deckRequest } from '../../GenericFunctions';
+import {
+	buildBoardUpdatePayload,
+	deckRequest,
+	parseBoardAdditionalFields,
+	parseDeckBoard,
+} from '../../GenericFunctions';
+import { parseString } from '../../../shared/parse';
 import { boardToJson } from '../shared/entityJson';
 import { resolveBoardFromInput } from '../shared/resolveInput';
 import type { BoardOperationContext } from './types';
@@ -12,10 +17,12 @@ export async function boardUpdate(
 ): Promise<INodeExecutionData> {
 	const { itemIndex } = ctx;
 	const boardId = resolveBoardFromInput(context, itemIndex);
-	const current = (await deckRequest(context, 'GET', `/boards/${boardId}`)) as DeckBoard;
-	const title = context.getNodeParameter('title', itemIndex, '') as string;
-	const hexColor = context.getNodeParameter('hexColor', itemIndex, '') as string;
-	const additionalFields = context.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+	const current = parseDeckBoard(await deckRequest(context, 'GET', `/boards/${boardId}`));
+	const title = parseString(context.getNodeParameter('title', itemIndex, ''), 'Title');
+	const hexColor = parseString(context.getNodeParameter('hexColor', itemIndex, ''), 'Hex color');
+	const additionalFields = parseBoardAdditionalFields(
+		context.getNodeParameter('additionalFields', itemIndex, {}),
+	);
 
 	const patch: {
 		title?: string;
@@ -33,7 +40,7 @@ export async function boardUpdate(
 	}
 
 	const payload = buildBoardUpdatePayload(current, patch);
-	const board = (await deckRequest(context, 'PUT', `/boards/${boardId}`, payload)) as DeckBoard;
+	const board = parseDeckBoard(await deckRequest(context, 'PUT', `/boards/${boardId}`, payload));
 	return {
 		json: boardToJson(board),
 		pairedItem: { item: itemIndex },

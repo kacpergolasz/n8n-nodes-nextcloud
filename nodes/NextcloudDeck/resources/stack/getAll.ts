@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { DeckStack } from '../../DeckInterface';
-import { deckRequest } from '../../GenericFunctions';
+import { deckRequest, parseDeckStacks } from '../../GenericFunctions';
+import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
 import { stackToJson } from '../shared/entityJson';
 import type { StackOperationContext } from './types';
 
@@ -10,13 +10,12 @@ export async function stackGetAll(
 	ctx: StackOperationContext,
 ): Promise<INodeExecutionData[]> {
 	const { itemIndex, boardId } = ctx;
-	const returnAll = context.getNodeParameter('returnAll', itemIndex, false) as boolean;
-	const limit = context.getNodeParameter('limit', itemIndex, 10) as number;
-	const stacks = (await deckRequest(
-		context,
-		'GET',
-		`/boards/${boardId}/stacks`,
-	)) as DeckStack[];
+	const returnAll = parseRequiredBoolean(
+		context.getNodeParameter('returnAll', itemIndex, false),
+		'Return All',
+	);
+	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 10), 'Limit');
+	const stacks = parseDeckStacks(await deckRequest(context, 'GET', `/boards/${boardId}/stacks`));
 	const sliced = returnAll ? stacks : stacks.slice(0, limit);
 	return sliced.map((stack) => ({
 		json: stackToJson(stack),

@@ -1,32 +1,24 @@
-export interface NextcloudCredentialData {
-	baseUrl: string;
-	username: string;
-	appPassword: string;
-}
-
-export interface DeckPickerOption {
+export type DeckPickerOption = {
 	name: string;
 	value: string;
-}
+};
 
-export interface DeckBoard {
+export type DeckBoard = {
 	id: number;
 	title: string;
 	color: string;
 	archived?: boolean;
-	deletedAt?: number;
-	[key: string]: unknown;
-}
+	deletedAt?: number | null;
+};
 
-export interface DeckStack {
+export type DeckStack = {
 	id: number;
 	title: string;
 	order: number;
 	cards?: DeckCard[];
-	[key: string]: unknown;
-}
+};
 
-export interface DeckCard {
+export type DeckCard = {
 	id: number;
 	title: string;
 	type?: string;
@@ -34,5 +26,4 @@ export interface DeckCard {
 	description?: string;
 	duedate?: string | null;
 	stackId?: number;
-	[key: string]: unknown;
-}
+};

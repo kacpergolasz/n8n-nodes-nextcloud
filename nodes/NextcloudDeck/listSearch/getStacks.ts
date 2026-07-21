@@ -1,25 +1,20 @@
-import type {
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodeParameterResourceLocator,
-	JsonObject,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { getCredentials, loadStacks, resolveBoardId } from '../GenericFunctions';
+import { nodeApiErrorPayload } from '../../shared/parse';
+import { parseLocatorParamValue } from '../resources/shared/resolveInput';
 import { formatDeckAccessErrorMessage, getHttpStatusCode } from '../shared/httpStatus';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
 
 export async function getStacks(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	try {
-		const board = this.getCurrentNodeParameter('board') as
-			| INodeParameterResourceLocator
-			| undefined;
-		if (!board?.value) {
+		const boardValue = parseLocatorParamValue(this.getCurrentNodeParameter('board'));
+		if (!boardValue) {
 			return { results: [] };
 		}
 
-		const boardId = resolveBoardId(board.value as string);
+		const boardId = resolveBoardId(boardValue);
 		const stacks = await loadStacks(this, boardId);
 		return {
 			results: stacks.map((stack) => ({ name: stack.name, value: stack.value })),
@@ -34,6 +29,6 @@ export async function getStacks(this: ILoadOptionsFunctions): Promise<INodeListS
 		const scrubbedMessage = scrubErrorMessage(error, secrets);
 		const statusCode = getHttpStatusCode(error);
 		const message = formatDeckAccessErrorMessage(statusCode, scrubbedMessage);
-		throw new NodeApiError(this.getNode(), { message } as JsonObject);
+		throw new NodeApiError(this.getNode(), nodeApiErrorPayload(message));
 	}
 }

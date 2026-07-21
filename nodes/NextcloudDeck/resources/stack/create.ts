@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { DeckStack } from '../../DeckInterface';
-import { deckRequest } from '../../GenericFunctions';
+import { deckRequest, parseDeckStack } from '../../GenericFunctions';
+import { parseRequiredNumber, parseRequiredString } from '../../../shared/parse';
 import { stackToJson } from '../shared/entityJson';
 import type { StackOperationContext } from './types';
 
@@ -11,8 +11,8 @@ export async function stackCreate(
 	ctx: StackOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex, boardId } = ctx;
-	const title = context.getNodeParameter('title', itemIndex) as string;
-	const order = context.getNodeParameter('order', itemIndex, 0) as number;
+	const title = parseRequiredString(context.getNodeParameter('title', itemIndex), 'Title');
+	const order = parseRequiredNumber(context.getNodeParameter('order', itemIndex, 0), 'Order');
 	if (!title.trim()) {
 		throw new NodeOperationError(
 			context.getNode(),
@@ -20,10 +20,12 @@ export async function stackCreate(
 			{ itemIndex },
 		);
 	}
-	const stack = (await deckRequest(context, 'POST', `/boards/${boardId}/stacks`, {
-		title,
-		order,
-	})) as DeckStack;
+	const stack = parseDeckStack(
+		await deckRequest(context, 'POST', `/boards/${boardId}/stacks`, {
+			title,
+			order,
+		}),
+	);
 	return {
 		json: stackToJson(stack),
 		pairedItem: { item: itemIndex },
