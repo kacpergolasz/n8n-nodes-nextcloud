@@ -278,13 +278,13 @@ Extract minimal reusable lifecycle/orchestration helpers from Files + News while
 
 #### Automated
 
-- [x] 3.1 News trigger tests pass after lifecycle extraction
-- [x] 3.2 Files trigger tests pass after lifecycle extraction
-- [x] 3.3 Shared helper tests pass
-- [x] 3.4 Typecheck and lint pass after extraction
+- [x] 3.1 News trigger tests pass after lifecycle extraction — df37fcf
+- [x] 3.2 Files trigger tests pass after lifecycle extraction — df37fcf
+- [x] 3.3 Shared helper tests pass — df37fcf
+- [x] 3.4 Typecheck and lint pass after extraction — df37fcf
 
 #### Manual
 
-- [x] 3.5 News one-shot notice soft-fail behavior preserved
-- [x] 3.6 Files silent soft-fail behavior preserved
-- [x] 3.7 Manual sample behavior preserved in both triggers
+- [x] 3.5 News one-shot notice soft-fail behavior preserved — df37fcf
+- [x] 3.6 Files silent soft-fail behavior preserved — df37fcf
+- [x] 3.7 Manual sample behavior preserved in both triggers — df37fcf
