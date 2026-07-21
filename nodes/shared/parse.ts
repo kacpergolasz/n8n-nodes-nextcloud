@@ -15,6 +15,23 @@ export function throwParseError(error: unknown, fallbackMessage: string): never 
 	throw new Error(fallbackMessage);
 }
 
+/** User-facing message from a caught unknown (for `NodeOperationError` wrappers). */
+export function getErrorMessage(error: unknown, fallback = 'Unknown error'): string {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+
+	if (typeof error === 'string' && error.trim()) {
+		return error;
+	}
+
+	return fallback;
+}
+
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export function parseRequiredString(value: unknown, label = 'Value'): string {
 	if (value === undefined || value === null || value === '') {
 		throw new Error(`${label} is required`);
@@ -76,6 +93,56 @@ export function parsePositiveInt(value: unknown, label = 'Value'): number {
 	}
 
 	return parsed;
+}
+
+/**
+ * Coerce to string; `undefined` / `null` → `''` (optional node params with empty default).
+ */
+export function parseString(value: unknown, label = 'Value'): string {
+	if (value === undefined || value === null) {
+		return '';
+	}
+
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return String(value);
+	}
+
+	throw new Error(`${label} must be a string`);
+}
+
+/** Optional string param: empty / missing → `undefined`. */
+export function parseOptionalString(value: unknown, label = 'Value'): string | undefined {
+	const text = parseString(value, label);
+	return text === '' ? undefined : text;
+}
+
+export function parseStringArray(value: unknown, label = 'Value'): string[] {
+	if (!Array.isArray(value)) {
+		throw new Error(`${label} must be an array`);
+	}
+
+	return value.map((entry, index) => parseRequiredString(entry, `${label}[${index}]`));
+}
+
+/** Binary HTTP body → Buffer (ArrayBuffer / Uint8Array / Buffer). */
+export function parseBinaryBuffer(value: unknown, label = 'Response'): Buffer {
+	if (Buffer.isBuffer(value)) {
+		return value;
+	}
+
+	if (value instanceof ArrayBuffer) {
+		return Buffer.from(value);
+	}
+
+	if (value instanceof Uint8Array) {
+		return Buffer.from(value);
+	}
+
+	throw new Error(`${label} must be binary data`);
 }
 
 /**

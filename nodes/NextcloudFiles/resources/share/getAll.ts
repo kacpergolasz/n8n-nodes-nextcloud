@@ -1,6 +1,11 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { normalizeFilesPath, ocsRequest, parseShare } from '../../GenericFunctions';
+import {
+	parseRequiredBoolean,
+	parseRequiredNumber,
+	parseString,
+} from '../../../shared/parse';
 import type { ShareOperationContext } from './types';
 
 export async function shareGetAll(
@@ -8,9 +13,12 @@ export async function shareGetAll(
 	ctx: ShareOperationContext,
 ): Promise<INodeExecutionData[]> {
 	const { itemIndex } = ctx;
-	const filterPath = context.getNodeParameter('filterPath', itemIndex, '') as string;
-	const returnAll = context.getNodeParameter('returnAll', itemIndex, false) as boolean;
-	const limit = context.getNodeParameter('limit', itemIndex, 100) as number;
+	const filterPath = parseString(context.getNodeParameter('filterPath', itemIndex, ''), 'Filter path');
+	const returnAll = parseRequiredBoolean(
+		context.getNodeParameter('returnAll', itemIndex, false),
+		'Return all',
+	);
+	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 100), 'Limit');
 	const qs: IDataObject = {};
 	if (filterPath.trim()) {
 		qs.path = normalizeFilesPath(filterPath);
@@ -31,7 +39,7 @@ export async function shareGetAll(
 	}
 
 	return sliced.map((share) => ({
-		json: share as unknown as IDataObject,
+		json: share,
 		pairedItem: { item: itemIndex },
 	}));
 }

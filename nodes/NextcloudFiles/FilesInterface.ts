@@ -1,10 +1,4 @@
-export interface NextcloudCredentialData {
-	baseUrl: string;
-	username: string;
-	appPassword: string;
-}
-
-export interface DirectoryEntry {
+export type DirectoryEntry = {
 	href: string;
 	basename: string;
 	path: string;
@@ -13,14 +7,14 @@ export interface DirectoryEntry {
 	lastModified?: string;
 	contentType?: string;
 	etag?: string;
-}
+};
 
-export interface FolderListOption {
+export type FolderListOption = {
 	name: string;
 	value: string;
-}
+};
 
-export interface ParsedShare {
+export type ParsedShare = {
 	id: number;
 	shareType: number;
 	shareWith?: string;
@@ -35,9 +29,9 @@ export interface ParsedShare {
 	displaynameOwner?: string;
 	itemType?: string;
 	mimetype?: string;
-}
+};
 
-export interface OcsEnvelope<T = unknown> {
+export type OcsEnvelope<T = unknown> = {
 	ocs: {
 		meta: {
 			status: string;
@@ -46,4 +40,4 @@ export interface OcsEnvelope<T = unknown> {
 		};
 		data: T;
 	};
-}
+};

@@ -6,6 +6,7 @@ import {
 	fileNameFromPath,
 	nextcloudRequest,
 } from '../../GenericFunctions';
+import { parseBinaryBuffer, parseRequiredString } from '../../../shared/parse';
 import { resolvePathFromInput } from '../shared/resolveInput';
 import type { FileOperationContext } from './types';
 
@@ -15,7 +16,10 @@ export async function fileDownload(
 ): Promise<INodeExecutionData> {
 	const { itemIndex, credentials } = ctx;
 	const sourcePath = resolvePathFromInput(context, itemIndex);
-	const binaryPropertyName = context.getNodeParameter('binaryPropertyName', itemIndex) as string;
+	const binaryPropertyName = parseRequiredString(
+		context.getNodeParameter('binaryPropertyName', itemIndex),
+		'Binary property',
+	);
 	const fileUrl = buildFilesUrl(credentials.baseUrl, credentials.username, sourcePath);
 	const response = await nextcloudRequest(
 		context,
@@ -25,7 +29,7 @@ export async function fileDownload(
 		{},
 		{ encoding: 'arraybuffer' },
 	);
-	const buffer = Buffer.from(response as ArrayBuffer);
+	const buffer = parseBinaryBuffer(response);
 	const fileName = fileNameFromPath(sourcePath);
 	const mimeType = contentTypeFromFileName(fileName);
 	const binaryData = await context.helpers.prepareBinaryData(buffer, fileName, mimeType);

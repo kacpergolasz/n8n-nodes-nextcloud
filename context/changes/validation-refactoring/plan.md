@@ -476,28 +476,28 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [x] 1.1 Package installs / resolves `zod` for TypeScript imports from `nodes/shared/parse.ts`
-- [x] 1.2 `npm exec tsc --noEmit` (or `npm build`) succeeds with the new module
-- [x] 1.3 `npm lint` succeeds (`eslint.config.mjs` unchanged)
-- [x] 1.4 `npm test` succeeds (no mandatory new tests)
+- [x] 1.1 Package installs / resolves `zod` for TypeScript imports from `nodes/shared/parse.ts` — 1443b13
+- [x] 1.2 `npm exec tsc --noEmit` (or `npm build`) succeeds with the new module — 1443b13
+- [x] 1.3 `npm lint` succeeds (`eslint.config.mjs` unchanged) — 1443b13
+- [x] 1.4 `npm test` succeeds (no mandatory new tests) — 1443b13
 
 #### Manual
 
-- [x] 1.5 Confirm `package.json` has no `dependencies.zod` and `n8n.strict` still `true`
-- [x] 1.6 Spot-check `parse.ts` exports are importable from a node file path (no circular import with pagination/poll modules)
+- [x] 1.5 Confirm `package.json` has no `dependencies.zod` and `n8n.strict` still `true` — 1443b13
+- [x] 1.6 Spot-check `parse.ts` exports are importable from a node file path (no circular import with pagination/poll modules) — 1443b13
 
 ### Phase 2: Files node
 
 #### Automated
 
-- [ ] 2.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [ ] 2.2 `npm test` succeeds (existing Files tests)
-- [ ] 2.3 `npm lint` succeeds
+- [x] 2.1 `npm exec tsc --noEmit` / `npm build` succeeds
+- [x] 2.2 `npm test` succeeds (existing Files tests)
+- [x] 2.3 `npm lint` succeeds
 
 #### Manual
 
-- [ ] 2.4 Grep Files prod paths for ` as ` — only expected boundary (method) if any
-- [ ] 2.5 Credential Test / one share op still conceptually sound (no live NC required if tests cover parsers)
+- [x] 2.4 Grep Files prod paths for ` as ` — only expected boundary (method) if any
+- [x] 2.5 Credential Test / one share op still conceptually sound (no live NC required if tests cover parsers)
 
 ### Phase 3: Deck node
 
