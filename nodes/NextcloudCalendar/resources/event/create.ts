@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { parseRequiredString, parseString } from '../../../shared/parse';
 import { buildEventUrl, buildICalendarPayload, nextcloudRequest } from '../../GenericFunctions';
 import type { EventOperationContext } from './types';
 
@@ -8,10 +9,10 @@ export async function eventCreate(
 	ctx: EventOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex, calendarUrl, calendarId, userId } = ctx;
-	const summary = context.getNodeParameter('summary', itemIndex) as string;
-	const start = context.getNodeParameter('start', itemIndex) as string;
-	const end = context.getNodeParameter('end', itemIndex) as string;
-	const description = context.getNodeParameter('description', itemIndex, '') as string;
+	const summary = parseRequiredString(context.getNodeParameter('summary', itemIndex), 'Summary');
+	const start = parseRequiredString(context.getNodeParameter('start', itemIndex), 'Start');
+	const end = parseRequiredString(context.getNodeParameter('end', itemIndex), 'End');
+	const description = parseString(context.getNodeParameter('description', itemIndex, ''), 'Description');
 	const payload = buildICalendarPayload({ summary, start, end, description });
 	const eventId = `${Date.now()}-${itemIndex}`;
 	const eventUrl = buildEventUrl(calendarUrl, eventId);

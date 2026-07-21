@@ -2,13 +2,12 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeParameterResourceLocator,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
+import { nodeApiErrorPayload, parseRequiredString } from '../shared/parse';
 import {
 	getCredentials,
 	parseUserIdAndCalendarIdFromCalendarUrl,
@@ -29,8 +28,8 @@ function resolveCalendarFromInput(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
 ): string {
-	const locator = context.getNodeParameter('calendar', itemIndex) as INodeParameterResourceLocator;
-	return locator.value as string;
+	const value = context.getNodeParameter('calendar', itemIndex, undefined, { extractValue: true });
+	return parseRequiredString(value, 'Calendar');
 }
 
 export class NextcloudCalendar implements INodeType {
@@ -168,7 +167,7 @@ export class NextcloudCalendar implements INodeType {
 				}
 				throw new NodeApiError(
 					this.getNode(),
-					{ message, ...(statusCode !== undefined ? { httpCode: statusCode } : {}) } as JsonObject,
+					nodeApiErrorPayload(message, statusCode !== undefined ? { httpCode: statusCode } : undefined),
 					{
 						itemIndex: i,
 						...(statusCode !== undefined ? { httpCode: String(statusCode) } : {}),
