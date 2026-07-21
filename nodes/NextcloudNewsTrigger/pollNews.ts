@@ -4,9 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 	IPollFunctions,
-	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 
 import {
 	getCredentials,
@@ -29,6 +27,21 @@ import {
 	getLastTimeChecked,
 	getProcessedIds,
 } from '../shared/pollHelpers';
+import {
+	clearSoftFailNotice,
+	handlePollListingFailure,
+	pollErrorNoticeItem,
+	returnManualSampleOrNull,
+	runPollBootstrap,
+	setPollErrorNoticeShown,
+} from '../shared/pollOrchestration';
+
+export {
+	POLL_ERROR_NOTICE_SHOWN_KEY,
+	isPollErrorNoticeShown,
+	pollErrorNoticeItem,
+	setPollErrorNoticeShown,
+} from '../shared/pollOrchestration';
 
 /** Default page size for trigger item fetches (News `batchSize`). */
 export const DEFAULT_TRIGGER_PAGE_SIZE = 100;
@@ -92,9 +105,6 @@ export function resolveNewsPollLimits(context: IPollFunctions): NewsPollLimits {
 /** Scope key the current ID window was seeded for (folder/feed/unread). */
 export const POLL_SCOPE_KEY = 'pollScope';
 
-/** True after a soft-fail notice item was emitted for the current failure window. */
-export const POLL_ERROR_NOTICE_SHOWN_KEY = 'pollErrorNoticeShown';
-
 /**
  * High-water mark of article ids already accounted for. News ids are monotonic,
  * so anything ≤ this value is treated as seen (avoids re-fire when the
@@ -131,10 +141,6 @@ export type NewsPollScopeResolved = {
 
 function asLoadOptionsContext(context: IPollFunctions): ILoadOptionsFunctions {
 	return context as unknown as ILoadOptionsFunctions;
-}
-
-function throwPollError(context: IPollFunctions, message: string): never {
-	throw new NodeApiError(context.getNode(), { message } as JsonObject);
 }
 
 /**
@@ -198,18 +204,6 @@ export function getPollScope(staticData: IDataObject): string | undefined {
 		return undefined;
 	}
 	return String(value);
-}
-
-export function isPollErrorNoticeShown(staticData: IDataObject): boolean {
-	return staticData[POLL_ERROR_NOTICE_SHOWN_KEY] === true;
-}
-
-export function setPollErrorNoticeShown(staticData: IDataObject, shown: boolean): void {
-	if (shown) {
-		staticData[POLL_ERROR_NOTICE_SHOWN_KEY] = true;
-	} else {
-		delete staticData[POLL_ERROR_NOTICE_SHOWN_KEY];
-	}
 }
 
 export function getMaxProcessedId(staticData: IDataObject): number {
@@ -322,13 +316,6 @@ export function seedNewsPollState(
 
 export function articleToOutputItem(item: NewsItem): IDataObject {
 	return itemToJson(item);
-}
-
-export function pollErrorNoticeItem(message: string): IDataObject {
-	return {
-		event: 'pollError',
-		message,
-	};
 }
 
 /**
@@ -609,25 +596,25 @@ export async function runNewsPoll(
 	const isManual = context.getMode() === 'manual';
 	const requestContext = asLoadOptionsContext(context);
 
-	let credentials: NextcloudCredentialData;
-	let pollScope: NewsPollScope;
-	let resolved: NewsPollScopeResolved;
-	let limits: NewsPollLimits;
-
-	try {
-		credentials = await getCredentials(requestContext);
-		pollScope = readPollScopeFromNode(context);
-		resolved = resolveNewsPollScope(pollScope);
-		limits = resolveNewsPollLimits(context);
-	} catch (error) {
-		let secrets = {};
-		try {
-			secrets = await getCredentials(requestContext);
-		} catch {
-			// ignore credential load failures while scrubbing
-		}
-		throwPollError(context, scrubErrorMessage(error, secrets));
-	}
+	const { credentials, resolved, limits } = await runPollBootstrap(
+		context,
+		async () => {
+			const credentials = await getCredentials(requestContext);
+			const pollScope = readPollScopeFromNode(context);
+			const resolved = resolveNewsPollScope(pollScope);
+			const limits = resolveNewsPollLimits(context);
+			return { credentials, resolved, limits };
+		},
+		async (error) => {
+			let secrets: NextcloudCredentialData | Record<string, never> = {};
+			try {
+				secrets = await getCredentials(requestContext);
+			} catch {
+				// ignore credential load failures while scrubbing
+			}
+			return scrubErrorMessage(error, secrets);
+		},
+	);
 
 	const isInitialized = isNewsPollInitialized(staticData, resolved.scopeKey);
 
@@ -656,37 +643,27 @@ export async function runNewsPoll(
 			items = await loadTriggerItemsPage(requestContext, resolved, 0, limits.pageSize);
 		}
 	} catch (error) {
-		const scrubbedMessage = scrubErrorMessage(error, credentials);
-
-		if (isInitialized) {
-			context.logger.debug(
-				`Nextcloud News Trigger: listing failed after initialization; soft-failing poll (${scrubbedMessage})`,
-			);
-
-			if (isPollErrorNoticeShown(staticData)) {
-				return null;
-			}
-
-			setPollErrorNoticeShown(staticData, true);
-			return [context.helpers.returnJsonArray([pollErrorNoticeItem(scrubbedMessage)])];
-		}
-
-		throwPollError(context, scrubbedMessage);
+		return handlePollListingFailure(context, {
+			isInitialized,
+			scrubbedMessage: scrubErrorMessage(error, credentials),
+			logLabel: 'Nextcloud News Trigger',
+			softFail: {
+				mode: 'oneShotNotice',
+				staticData,
+				buildNoticeItem: pollErrorNoticeItem,
+			},
+		});
 	}
 
 	// Successful listing clears the soft-fail notice window.
-	setPollErrorNoticeShown(staticData, false);
+	clearSoftFailNotice(staticData);
 
 	if (isManual) {
-		const sample = items[0];
-		if (!sample) {
-			context.logger.debug(
-				'Nextcloud News Trigger: manual sample unavailable (no matching articles). Returning null.',
-			);
-			return null;
-		}
-
-		return [context.helpers.returnJsonArray([articleToOutputItem(sample)])];
+		return returnManualSampleOrNull(
+			context,
+			items[0] ? articleToOutputItem(items[0]) : undefined,
+			'Nextcloud News Trigger: manual sample unavailable (no matching articles). Returning null.',
+		);
 	}
 
 	if (!isInitialized) {

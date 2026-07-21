@@ -264,27 +264,27 @@ Extract minimal reusable lifecycle/orchestration helpers from Files + News while
 
 #### Automated
 
-- [x] 2.1 Trigger tests validate default and overridden limits
-- [x] 2.2 Type checking passes with new node params
-- [x] 2.3 Linting passes for trigger and tests
+- [x] 2.1 Trigger tests validate default and overridden limits — 0cdadd9
+- [x] 2.2 Type checking passes with new node params — 0cdadd9
+- [x] 2.3 Linting passes for trigger and tests — 0cdadd9
 
 #### Manual
 
-- [x] 2.4 Default-limit behavior remains backward-compatible
-- [x] 2.5 Smaller-limit runs resume correctly across polls
-- [x] 2.6 Node UI exposes clear advanced polling controls
+- [x] 2.4 Default-limit behavior remains backward-compatible — 0cdadd9
+- [x] 2.5 Smaller-limit runs resume correctly across polls — 0cdadd9
+- [x] 2.6 Node UI exposes clear advanced polling controls — 0cdadd9
 
 ### Phase 3: Extract Shared Poll Lifecycle Harness
 
 #### Automated
 
-- [ ] 3.1 News trigger tests pass after lifecycle extraction
-- [ ] 3.2 Files trigger tests pass after lifecycle extraction
-- [ ] 3.3 Shared helper tests pass
-- [ ] 3.4 Typecheck and lint pass after extraction
+- [x] 3.1 News trigger tests pass after lifecycle extraction
+- [x] 3.2 Files trigger tests pass after lifecycle extraction
+- [x] 3.3 Shared helper tests pass
+- [x] 3.4 Typecheck and lint pass after extraction
 
 #### Manual
 
-- [ ] 3.5 News one-shot notice soft-fail behavior preserved
-- [ ] 3.6 Files silent soft-fail behavior preserved
-- [ ] 3.7 Manual sample behavior preserved in both triggers
+- [x] 3.5 News one-shot notice soft-fail behavior preserved
+- [x] 3.6 Files silent soft-fail behavior preserved
+- [x] 3.7 Manual sample behavior preserved in both triggers

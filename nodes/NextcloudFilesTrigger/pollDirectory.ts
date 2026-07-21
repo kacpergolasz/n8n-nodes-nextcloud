@@ -4,18 +4,21 @@ import type {
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 	IPollFunctions,
-	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 
 import {
 	getCredentials,
 	loadDirectoryListing,
 	normalizeFilesPath,
 } from '../NextcloudFiles/GenericFunctions';
-import type { DirectoryEntry, NextcloudCredentialData } from '../NextcloudFiles/FilesInterface';
+import type { DirectoryEntry } from '../NextcloudFiles/FilesInterface';
 import { scrubErrorMessage } from '../NextcloudFiles/shared/scrubSecrets';
 import { LAST_TIME_CHECKED_KEY, getLastTimeChecked } from '../shared/pollHelpers';
+import {
+	handlePollListingFailure,
+	returnManualSampleOrNull,
+	runPollBootstrap,
+} from '../shared/pollOrchestration';
 
 import {
 	type DirectoryChange,
@@ -150,10 +153,6 @@ function pickManualSample(
 	return undefined;
 }
 
-function throwPollError(context: IPollFunctions, message: string): never {
-	throw new NodeApiError(context.getNode(), { message } as JsonObject);
-}
-
 export async function runDirectoryPoll(
 	context: IPollFunctions,
 ): Promise<INodeExecutionData[][] | null> {
@@ -162,15 +161,15 @@ export async function runDirectoryPoll(
 	const selectedEvents = context.getNodeParameter('event') as string[];
 	const requestContext = asLoadOptionsContext(context);
 
-	let credentials: NextcloudCredentialData;
-	let folderPath: string;
-
-	try {
-		credentials = await getCredentials(requestContext);
-		folderPath = resolveFolderToWatch(context);
-	} catch (error) {
-		throwPollError(context, scrubErrorMessage(error));
-	}
+	const { credentials, folderPath } = await runPollBootstrap(
+		context,
+		async () => {
+			const credentials = await getCredentials(requestContext);
+			const folderPath = resolveFolderToWatch(context);
+			return { credentials, folderPath };
+		},
+		(error) => scrubErrorMessage(error),
+	);
 
 	const isInitialized = isDirectoryPollInitialized(staticData, folderPath);
 
@@ -178,29 +177,21 @@ export async function runDirectoryPoll(
 	try {
 		listing = await loadDirectoryListing(requestContext, credentials, folderPath);
 	} catch (error) {
-		const scrubbedMessage = scrubErrorMessage(error, credentials);
-
-		if (isInitialized) {
-			context.logger.debug(
-				`Nextcloud Files Trigger: listing failed after initialization; soft-failing poll (${scrubbedMessage})`,
-			);
-			return null;
-		}
-
-		throwPollError(context, scrubbedMessage);
+		return handlePollListingFailure(context, {
+			isInitialized,
+			scrubbedMessage: scrubErrorMessage(error, credentials),
+			logLabel: 'Nextcloud Files Trigger',
+			softFail: { mode: 'silent' },
+		});
 	}
 
 	if (isManual) {
 		const sample = pickManualSample(listing, selectedEvents);
-		if (!sample) {
-			context.logger.debug(
-				'Nextcloud Files Trigger: manual sample unavailable (empty folder or selected event types do not match). Returning null.',
-			);
-			return null;
-		}
-
-		const item = changeToOutputItem(sample);
-		return [context.helpers.returnJsonArray([item])];
+		return returnManualSampleOrNull(
+			context,
+			sample ? changeToOutputItem(sample) : undefined,
+			'Nextcloud Files Trigger: manual sample unavailable (empty folder or selected event types do not match). Returning null.',
+		);
 	}
 
 	if (!isInitialized) {

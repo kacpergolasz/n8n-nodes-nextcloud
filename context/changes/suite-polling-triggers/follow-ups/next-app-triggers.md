@@ -8,12 +8,16 @@ Reference implementations: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTri
 - **`polling: true`** — do not author `pollTimes`; n8n injects Poll Times UI and owns scheduling (≥1 minute minimum).
 - **`async poll(this: IPollFunctions)`** — return `INodeExecutionData[][] | null`; do not call `__emit` directly.
 - **Reuse `nodes/shared/pollHelpers.ts`** — `seedLastTimeChecked` / `getLastTimeChecked` for cursor seeding; optional `filterIdsInStaticData` for ID-window dedupe (Salesforce-style) when timestamps are unreliable.
-- **First production poll (empty cursor)** — seed `lastTimeChecked` + initial state, return `null` (no history flood on activation).
-- **Soft-fail** — if the listing/API throws **after** initialization, scrub secrets (`scrubSecrets`), log at debug, and **do not** advance cursor/state (Outlook pattern). Return either silent `null` (Files) or at most one one-shot notice item such as `{ event: 'pollError', ... }` per failure window, clearing the notice flag on the next successful poll (News). Prefer silent `null` unless the app needs an operator-visible signal.
+- **Reuse `nodes/shared/pollOrchestration.ts`** — lifecycle envelopes shared by Files + News (and future app triggers):
+  - `runPollBootstrap` — load credentials/params; rethrow scrubbed `NodeApiError` on failure (activation must fail loudly).
+  - `handlePollListingFailure` — after init, soft-fail via policy hook (`silent` → `null`, or `oneShotNotice` → at most one `{ event: 'pollError', message }` per failure window); before init, rethrow. Clear the notice flag with `clearSoftFailNotice` on the next successful listing.
+  - `returnManualSampleOrNull` — Test step returns one sample item or `null` (never throw).
+- **First production poll (empty cursor)** — seed `lastTimeChecked` + initial state, return `null` (no history flood on activation). App-specific: decide *what* to seed (snapshot, ID window, etc.).
+- **Soft-fail** — prefer `handlePollListingFailure` with an explicit policy rather than copying try/catch boilerplate. Prefer `silent` unless the app needs an operator-visible signal (`oneShotNotice`, as News does).
 - **Pre-initialization errors** — rethrow (activation should fail loudly when credentials/path are wrong).
-- **Manual / Test step** (`getMode() === 'manual'`) — return up to **one** sample item matching selected events; if nothing to show (empty folder or no matching event types), return `null` — do **not** throw (a thrown poll error can deregister crons / kill the schedule on some n8n versions).
+- **Manual / Test step** (`getMode() === 'manual'`) — use `returnManualSampleOrNull`; picking *which* sample remains app-specific (e.g. Files event-aware picker vs News newest article).
 - **Credential** — shared `nextcloudApi` (Basic Auth); no per-trigger credential types unless a future app truly needs different auth.
-- **Tests** — co-located Vitest under `nodes/<Trigger>/test/`; mock HTTP / `IPollFunctions`; no live Nextcloud in CI.
+- **Tests** — co-located Vitest under `nodes/<Trigger>/test/`; mock HTTP / `IPollFunctions`; no live Nextcloud in CI. Shared orchestration coverage lives in `nodes/shared/test/pollOrchestration.test.ts`.
 
 ## Files Trigger (shipped — S-07)
 
@@ -24,8 +28,9 @@ Reference implementations: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTri
 | Events | `fileCreated`, `fileUpdated`, `folderCreated`, `folderUpdated` (multiOptions `event`; default: file created + file updated) |
 | Depth | **Direct children only** — notice in UI; nested subfolder changes are not detected |
 | Output fields | `event`, `path`, `basename`, `isFolder`, `etag`, `lastModified`, plus `href`, `size`, `contentType` |
-| Poll entry | `pollDirectory.ts` → `runDirectoryPoll` |
-| Empty listing guard | After init, a successful `[]` listing keeps the prior snapshot (avoids create-flood); only thrown errors used soft-fail originally |
+| Soft-fail | `handlePollListingFailure` with `mode: 'silent'` — scrub + debug-log; return `null`; do not advance snapshot |
+| Poll entry | `pollDirectory.ts` → `runDirectoryPoll` (lifecycle via `pollOrchestration`) |
+| Empty listing guard | After init, a successful `[]` listing keeps the prior snapshot (avoids create-flood); app-specific — not part of shared soft-fail |
 | Init gate | Initialized only when **all** of `lastTimeChecked`, `snapshot`, and `watchedFolder` are present and `watchedFolder` matches the current `folderToWatch`. First poll (or folder change / missing piece) re-seeds cursor + snapshot + watched path and returns `null` (no history flood). |
 
 ### Files Trigger — deferred follow-ups
@@ -39,13 +44,13 @@ Reference implementations: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTri
 - **Blocker**: CalDAV listing in this package does not yet filter/report by `LAST-MODIFIED`; PROPFIND responses may truncate (S-08).
 - **Target pattern**: Google Calendar Trigger — time-window poll + `lastTimeChecked`; event create/update/cancel parameters.
 - **Before starting**: finish S-08 (reliable event listing / sync), then add `NextcloudCalendarTrigger` with app-specific classify logic (not directory snapshot).
-- **Reuse**: `pollHelpers` cursor seed; soft-fail + manual sample; separate `classify*` module + poll tests.
+- **Reuse**: `pollHelpers` + `pollOrchestration` (bootstrap, silent soft-fail, manual sample); separate `classify*` module + poll tests.
 
 ### Deck — needs timestamps or ID dedupe
 
 - **Gap**: Deck card listings in this package lack reliable modification timestamps.
 - **Options**: (a) extend Deck API helpers to expose `lastModified` / `updated` when available; (b) use `filterIdsInStaticData` for create-only “new card id” detection (Notion-trigger style) until timestamps exist.
-- **Reuse**: `pollHelpers` for cursor + optional ID window; same trigger shell shape as Files.
+- **Reuse**: `pollHelpers` for cursor + optional ID window; `pollOrchestration` for lifecycle envelopes; same trigger shell shape as Files.
 
 ### Talk — later (Gmail-like)
 
@@ -63,10 +68,10 @@ Second suite poller after Files. Prefer this pattern when the app exposes stable
 | Events | New articles only (no delete / update detection in MVP) |
 | Filters | Optional folder locator, optional feed locator (feed wins), boolean **Unread only** (`getRead=false` when checked; default **true**) |
 | Output | One n8n item per new article — full News article JSON |
-| Soft-fail | After init: scrub + debug-log; emit **at most one** notice item (`event: 'pollError'`) per failure window; do not advance ID window; clear notice flag on next successful poll |
+| Soft-fail | `handlePollListingFailure` with `mode: 'oneShotNotice'` — scrub + debug-log; emit **at most one** notice item (`event: 'pollError'`) per failure window; do not advance ID window; `clearSoftFailNotice` on next successful poll |
 | Init / scope gate | First production poll (or folder/feed filter change) **pages** to seed processed ids (not only newest page) and returns `null` (no history flood) |
 | Steady catch-up | Node params `pageSize` (default **100**) and `maxPagesPerPoll` (default **5**). Newest→older walk toward `maxProcessedId` until id ≤ watermark, empty/exhausted list, or page cap. Cap persists `catchUpOffset` (resume survives soft-fail); raise watermark only after catch-up completes. Ring buffer dedupes only — it does not end catch-up. Emit new ids ascending. |
-| Poll entry | `pollNews.ts` → `runNewsPoll` |
+| Poll entry | `pollNews.ts` → `runNewsPoll` (lifecycle via `pollOrchestration`) |
 | Docs | https://nextcloud.github.io/news/api/api-v1-3/ |
 
 ### Other apps
@@ -87,7 +92,7 @@ nodes/Nextcloud<App>Trigger/
     Nextcloud<App>Trigger.poll.test.ts
 ```
 
-Shared helpers stay in `nodes/shared/pollHelpers.ts` — do not copy cursor boilerplate into each trigger.
+Shared helpers stay in `nodes/shared/pollHelpers.ts` (cursor / ID window) and `nodes/shared/pollOrchestration.ts` (bootstrap, soft-fail policy, manual sample) — do not copy lifecycle boilerplate into each trigger. Fetch/classify/state remain app-local.
 
 ## Related
 
