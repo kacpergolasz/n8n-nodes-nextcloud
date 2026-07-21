@@ -1,8 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { assertHttpMethodIsValid } from '../shared/assertHttpMethodIsValid';
@@ -12,6 +8,7 @@ import {
 	parseRequiredString,
 	throwParseError,
 } from '../shared/parse';
+import type { NextcloudRequestContext } from '../shared/requestContext';
 import type {
 	NextcloudCalendarOption,
 	NextcloudCredentialData,
@@ -106,7 +103,7 @@ function parseNextcloudOAuth2Credentials(raw: unknown) {
 }
 
 export async function getCredentials(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 ): Promise<NextcloudCredentialData> {
 	const authentication = parseRequiredString(
 		context.getNodeParameter('authentication', 0, 'basicAuth'),
@@ -139,7 +136,7 @@ export async function getCredentials(
 }
 
 export async function nextcloudRequest(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	method: NextcloudHttpMethod,
 	url: string,
 	body?: string | IDataObject,
@@ -169,7 +166,7 @@ export async function nextcloudRequest(
 }
 
 export async function loadCalendars(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 ): Promise<NextcloudCalendarOption[]> {
 	const credentials = await getCredentials(context);
 	const calendarHomeUrl = buildCalendarHomeUrl(credentials);

@@ -9,6 +9,7 @@ import tseslint from 'typescript-eslint';
  * Allow: `as const` (always permitted by consistent-type-assertions).
  * Ignore: tests (and dist via the base config).
  * Boundary: WebDAV/CalDAV methods use `assertHttpMethodIsValid` (no `as` allowlist).
+ * Also bans non-null assertions (`!`) via `no-non-null-assertion`.
  */
 export default [
 	...config,
@@ -24,6 +25,7 @@ export default [
 				'error',
 				{ assertionStyle: 'never' },
 			],
+			'@typescript-eslint/no-non-null-assertion': 'error',
 		},
 	},
 ];
