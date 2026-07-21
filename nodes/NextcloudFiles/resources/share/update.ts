@@ -5,11 +5,11 @@ import {
 	buildShareUpdateBody,
 	ocsRequest,
 	parseShare,
-	parseShareId,
 	validateSharePassword,
 } from '../../GenericFunctions';
 import {
 	getErrorMessage,
+	parsePositiveInt,
 	parseRequiredBoolean,
 	parseString,
 	parseStringArray,
@@ -23,7 +23,7 @@ export async function shareUpdate(
 	const { itemIndex } = ctx;
 	let shareId: number;
 	try {
-		shareId = parseShareId(context.getNodeParameter('shareId', itemIndex));
+		shareId = parsePositiveInt(context.getNodeParameter('shareId', itemIndex), 'Share ID');
 	} catch (error) {
 		throw new NodeOperationError(context.getNode(), getErrorMessage(error), {
 			itemIndex,

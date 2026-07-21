@@ -1,7 +1,7 @@
 ---
 change_id: validation-refactoring
 title: Validation refactoring
-status: implementing
+status: impl_reviewed
 created: 2026-07-21
 updated: 2026-07-21
 archived_at: null
@@ -21,3 +21,4 @@ Export JSON/output shapes as `type` (not `interface`) without `[key: string]: un
 ### Implementation adaptations
 
 - **Zod placement (Phase 1):** Declared in `devDependencies` (`^3.25.67`), not `peerDependencies` / `dependencies`. Community-node lint only allows `n8n-workflow` (and optionally AI SDK) as peers, and forbids runtime `dependencies`. Runtime still uses host-provided Zod (Cloud allowlisted via `n8n-workflow`).
+- **Calendar OAuth credentials:** Basic auth uses shared `parseNextcloudCredentials`. OAuth keeps a node-local Zod schema / wider `NextcloudCredentialData` in Calendar (Phase 1 `parse.ts` deferred OAuth assembly). Both paths are cast-free; sharing the OAuth schema is a follow-up, not a Phase 7 blocker.

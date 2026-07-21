@@ -489,20 +489,6 @@ export function buildSharePermissionsBitmask(
 	return permissionsToBitmask(sanitized);
 }
 
-/** Parse a share ID from node parameters or expressions such as `{{ $json.id }}`. */
-export function parseShareId(value: unknown): number {
-	if (value === undefined || value === null || value === '') {
-		throw new Error('Share ID is required');
-	}
-
-	const parsed = typeof value === 'number' ? value : Number(String(value).trim());
-	if (!Number.isFinite(parsed) || parsed <= 0) {
-		throw new Error('Share ID must be a positive number');
-	}
-
-	return parsed;
-}
-
 export const SHARE_UPDATE_FIELD_PERMISSIONS = 'permissions';
 export const SHARE_UPDATE_FIELD_PASSWORD = 'password';
 export const SHARE_UPDATE_FIELD_EXPIRE_DATE = 'expireDate';

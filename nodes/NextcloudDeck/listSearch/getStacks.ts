@@ -2,8 +2,7 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 import { NodeApiError } from 'n8n-workflow';
 
 import { getCredentials, loadStacks, resolveBoardId } from '../GenericFunctions';
-import { nodeApiErrorPayload } from '../../shared/parse';
-import { parseLocatorParamValue } from '../resources/shared/resolveInput';
+import { nodeApiErrorPayload, parseLocatorParamValue } from '../../shared/parse';
 import { formatDeckAccessErrorMessage, getHttpStatusCode } from '../shared/httpStatus';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
 

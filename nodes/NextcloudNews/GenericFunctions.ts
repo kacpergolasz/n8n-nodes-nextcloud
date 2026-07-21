@@ -137,14 +137,14 @@ export async function newsRequest(
 
 const newsFolderSchema = z
 	.object({
-		id: z.coerce.number(),
+		id: z.coerce.number().int().positive(),
 		name: z.string(),
 	})
 	.passthrough();
 
 const newsFeedSchema = z
 	.object({
-		id: z.coerce.number(),
+		id: z.coerce.number().int().positive(),
 		url: z.string(),
 		title: z.string(),
 		faviconLink: z.union([z.string(), z.null()]).optional(),
@@ -158,7 +158,7 @@ const newsFeedSchema = z
 
 const newsItemSchema = z
 	.object({
-		id: z.coerce.number(),
+		id: z.coerce.number().int().positive(),
 		guid: z.string().optional(),
 		guidHash: z.string().optional(),
 		url: z.union([z.string(), z.null()]).optional(),
@@ -327,8 +327,12 @@ export function parseItemIds(raw: unknown): number[] {
 	}
 
 	if (text.startsWith('[')) {
-		const parsed: unknown = JSON.parse(text);
-		return parseItemIds(parsed);
+		try {
+			const parsed: unknown = JSON.parse(text);
+			return parseItemIds(parsed);
+		} catch {
+			throw new Error(`Item ids must be a valid JSON array or comma-separated list`);
+		}
 	}
 
 	return text.split(/[\s,]+/).filter(Boolean).map((part) => {

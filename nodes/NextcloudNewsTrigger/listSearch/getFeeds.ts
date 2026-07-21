@@ -2,8 +2,7 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 import { NodeApiError } from 'n8n-workflow';
 
 import { getCredentials, loadFeeds, resolveFolderId } from '../../NextcloudNews/GenericFunctions';
-import { nodeApiErrorPayload } from '../../shared/parse';
-import { parseLocatorParamValue } from '../../NextcloudNews/resources/shared/resolveInput';
+import { nodeApiErrorPayload, parseLocatorParamValue } from '../../shared/parse';
 import { formatNewsAccessErrorMessage, getHttpStatusCode } from '../../NextcloudNews/shared/httpStatus';
 import { scrubErrorMessage } from '../../NextcloudNews/shared/scrubSecrets';
 

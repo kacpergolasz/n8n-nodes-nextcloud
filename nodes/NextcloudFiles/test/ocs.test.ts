@@ -3,7 +3,6 @@ import {
 	buildSharePermissionsBitmask,
 	buildShareUpdateBody,
 	parseShare,
-	parseShareId,
 	parseSharePasswordValidationResult,
 	permissionsToBitmask,
 	sanitizeSharePermissionLabels,
@@ -190,13 +189,6 @@ describe('Nextcloud Files OCS helpers', () => {
 		).toEqual({
 			permissions: 1,
 		});
-	});
-
-	it('parseShareId accepts numeric strings from expressions', () => {
-		expect(parseShareId('42')).toBe(42);
-		expect(parseShareId(42)).toBe(42);
-		expect(() => parseShareId('')).toThrow('Share ID is required');
-		expect(() => parseShareId('abc')).toThrow('Share ID must be a positive number');
 	});
 
 	it('buildShareUpdateBody only sends selected fields', () => {

@@ -12,9 +12,8 @@ import {
 } from '../NextcloudNews/GenericFunctions';
 import type { NewsItem } from '../NextcloudNews/NewsInterface';
 import { itemToJson } from '../NextcloudNews/resources/shared/entityJson';
-import { parseLocatorParamValue } from '../NextcloudNews/resources/shared/resolveInput';
 import { scrubErrorMessage } from '../NextcloudNews/shared/scrubSecrets';
-import { parseRequiredBoolean, type NextcloudCredentialData } from '../shared/parse';
+import { parseLocatorParamValue, parseRequiredBoolean, type NextcloudCredentialData } from '../shared/parse';
 import {
 	buildNewsItemsQueryParams,
 	nextNewsOffsetFromItems,

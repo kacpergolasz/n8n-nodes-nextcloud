@@ -12,14 +12,13 @@ import {
 } from '../NextcloudFiles/GenericFunctions';
 import type { DirectoryEntry } from '../NextcloudFiles/FilesInterface';
 import { scrubErrorMessage } from '../NextcloudFiles/shared/scrubSecrets';
-import { isPlainObject, parseStringArray } from '../shared/parse';
+import { isPlainObject, parseLocatorParamValue, parseStringArray } from '../shared/parse';
 import { LAST_TIME_CHECKED_KEY, getLastTimeChecked } from '../shared/pollHelpers';
 import {
 	handlePollListingFailure,
 	returnManualSampleOrNull,
 	runPollBootstrap,
 } from '../shared/pollOrchestration';
-import { parseLocatorParamValue } from '../NextcloudFiles/resources/shared/resolveInput';
 
 import {
 	type DirectoryChange,
@@ -51,17 +50,27 @@ export function hasSnapshot(staticData: IDataObject): boolean {
 	return raw !== undefined && raw !== null && typeof raw === 'object' && !Array.isArray(raw);
 }
 
-export function getSnapshot(staticData: IDataObject): DirectorySnapshot {
+export function getSnapshot(
+	staticData: IDataObject,
+	logger?: { debug: (message: string) => void },
+): DirectorySnapshot {
 	const raw = staticData[SNAPSHOT_KEY];
 	if (!isPlainObject(raw)) {
 		return {};
 	}
 
 	const snapshot: DirectorySnapshot = {};
+	let droppedCount = 0;
 	for (const [path, entry] of Object.entries(raw)) {
-		if (!isPlainObject(entry)) continue;
+		if (!isPlainObject(entry)) {
+			droppedCount += 1;
+			continue;
+		}
 		const isFolder = entry['isFolder'];
-		if (typeof isFolder !== 'boolean') continue;
+		if (typeof isFolder !== 'boolean') {
+			droppedCount += 1;
+			continue;
+		}
 		const etag = entry['etag'];
 		const lastModified = entry['lastModified'];
 		snapshot[path] = {
@@ -69,6 +78,13 @@ export function getSnapshot(staticData: IDataObject): DirectorySnapshot {
 			...(typeof etag === 'string' ? { etag } : {}),
 			...(typeof lastModified === 'string' ? { lastModified } : {}),
 		};
+	}
+	if (droppedCount > 0) {
+		logger?.debug(
+			`Nextcloud Files Trigger: dropped ${droppedCount} invalid snapshot entr${
+				droppedCount === 1 ? 'y' : 'ies'
+			} (expected object with boolean isFolder).`,
+		);
 	}
 	return snapshot;
 }
@@ -223,7 +239,7 @@ export async function runDirectoryPoll(
 		return null;
 	}
 
-	const priorSnapshot = getSnapshot(staticData);
+	const priorSnapshot = getSnapshot(staticData, context.logger);
 	const priorCount = Object.keys(priorSnapshot).length;
 
 	// A successful empty listing after we already tracked children is suspicious
