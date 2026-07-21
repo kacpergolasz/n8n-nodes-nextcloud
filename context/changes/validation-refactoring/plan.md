@@ -568,13 +568,13 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [x] 8.1 `npm lint` succeeds (strict mode / default config)
-- [x] 8.2 `npm lint:safety` succeeds on the cleaned tree
-- [x] 8.3 Introducing a deliberate prod `as string` in a non-allowlisted file causes `lint:safety` to fail
-- [x] 8.4 `npm test` and build still succeed
-- [x] 8.5 `n8n.strict` remains `true`; `eslint.config.mjs` unchanged from CLI default
+- [x] 8.1 `npm lint` succeeds (strict mode / default config) — a8e5b89
+- [x] 8.2 `npm lint:safety` succeeds on the cleaned tree — a8e5b89
+- [x] 8.3 Introducing a deliberate prod `as string` in a non-allowlisted file causes `lint:safety` to fail — a8e5b89
+- [x] 8.4 `npm test` and build still succeed — a8e5b89
+- [x] 8.5 `n8n.strict` remains `true`; `eslint.config.mjs` unchanged from CLI default — a8e5b89
 
 #### Manual
 
-- [ ] 8.6 Confirm `prepublishOnly`/CI path actually invokes `lint:safety`
-- [x] 8.7 Confirm tests and `as const` are not false-positives
+- [x] 8.6 Confirm `prepublishOnly`/CI path actually invokes `lint:safety` — a8e5b89
+- [x] 8.7 Confirm tests and `as const` are not false-positives — a8e5b89
