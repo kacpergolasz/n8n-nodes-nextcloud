@@ -1,21 +1,14 @@
-export interface NextcloudCredentialData {
-	baseUrl: string;
-	username: string;
-	appPassword: string;
-}
-
-export interface NewsPickerOption {
+export type NewsPickerOption = {
 	name: string;
 	value: string;
-}
+};
 
-export interface NewsFolder {
+export type NewsFolder = {
 	id: number;
 	name: string;
-	[key: string]: unknown;
-}
+};
 
-export interface NewsFeed {
+export type NewsFeed = {
 	id: number;
 	url: string;
 	title: string;
@@ -25,10 +18,9 @@ export interface NewsFeed {
 	unreadCount?: number;
 	link?: string | null;
 	pinned?: boolean;
-	[key: string]: unknown;
-}
+};
 
-export interface NewsItem {
+export type NewsItem = {
 	id: number;
 	guid?: string;
 	guidHash?: string;
@@ -41,8 +33,7 @@ export interface NewsItem {
 	unread?: boolean;
 	starred?: boolean;
 	lastModified?: number;
-	[key: string]: unknown;
-}
+};
 
 export type NewsFoldersResponse = {
 	folders?: NewsFolder[];

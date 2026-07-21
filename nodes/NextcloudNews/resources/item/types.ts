@@ -1,4 +1,4 @@
-import type { NextcloudCredentialData } from '../../NewsInterface';
+import type { NextcloudCredentialData } from '../../../shared/parse';
 
 export interface ItemOperationContext {
 	itemIndex: number;

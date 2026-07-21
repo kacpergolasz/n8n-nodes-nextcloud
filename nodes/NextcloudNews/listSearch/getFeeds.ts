@@ -1,28 +1,18 @@
-import type {
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodeParameterResourceLocator,
-	JsonObject,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { getCredentials, loadFeeds, resolveFolderId } from '../GenericFunctions';
+import { nodeApiErrorPayload } from '../../shared/parse';
+import { parseLocatorParamValue } from '../resources/shared/resolveInput';
 import { formatNewsAccessErrorMessage, getHttpStatusCode } from '../shared/httpStatus';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
 
 export async function getFeeds(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	try {
-		const raw = this.getCurrentNodeParameter('folderFilter') as unknown;
-		// Match poll/execute helpers: accept RLC `{ value }` or bare
-		// numeric/string expression results (e.g. `={{ $json.folderId }}`).
-		const value =
-			raw !== null && typeof raw === 'object' && 'value' in (raw as object)
-				? (raw as INodeParameterResourceLocator).value
-				: raw;
+		const raw = this.getCurrentNodeParameter('folderFilter');
+		const valueStr = parseLocatorParamValue(raw);
 		const folderId =
-			value !== undefined && value !== null && String(value).trim() !== ''
-				? resolveFolderId(value as string | number)
-				: undefined;
+			valueStr !== undefined ? resolveFolderId(valueStr) : undefined;
 
 		const feeds = await loadFeeds(this, folderId);
 		return {
@@ -38,6 +28,6 @@ export async function getFeeds(this: ILoadOptionsFunctions): Promise<INodeListSe
 		const scrubbedMessage = scrubErrorMessage(error, secrets);
 		const statusCode = getHttpStatusCode(error);
 		const message = formatNewsAccessErrorMessage(statusCode, scrubbedMessage);
-		throw new NodeApiError(this.getNode(), { message } as JsonObject);
+		throw new NodeApiError(this.getNode(), nodeApiErrorPayload(message));
 	}
 }

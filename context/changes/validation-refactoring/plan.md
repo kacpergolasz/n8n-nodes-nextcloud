@@ -503,26 +503,26 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [x] 3.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [x] 3.2 `npm test` succeeds
-- [x] 3.3 `npm lint` succeeds
+- [x] 3.1 `npm exec tsc --noEmit` / `npm build` succeeds — df56a97
+- [x] 3.2 `npm test` succeeds — df56a97
+- [x] 3.3 `npm lint` succeeds — df56a97
 
 #### Manual
 
-- [x] 3.4 Grep Deck prod for ` as ` — expect zero (or only documented temporary leftovers headed to Phase 7)
+- [x] 3.4 Grep Deck prod for ` as ` — expect zero (or only documented temporary leftovers headed to Phase 7) — df56a97
 
 ### Phase 4: News + NewsTrigger
 
 #### Automated
 
-- [ ] 4.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [ ] 4.2 `npm test` succeeds (News + NewsTrigger suites)
-- [ ] 4.3 `npm lint` succeeds
+- [x] 4.1 `npm exec tsc --noEmit` / `npm build` succeeds
+- [x] 4.2 `npm test` succeeds (News + NewsTrigger suites)
+- [x] 4.3 `npm lint` succeeds
 
 #### Manual
 
-- [ ] 4.4 Grep News + NewsTrigger prod for remaining ` as `
-- [ ] 4.5 Confirm entity output helpers are cast-free
+- [x] 4.4 Grep News + NewsTrigger prod for remaining ` as `
+- [x] 4.5 Confirm entity output helpers are cast-free
 
 ### Phase 5: Calendar node
 

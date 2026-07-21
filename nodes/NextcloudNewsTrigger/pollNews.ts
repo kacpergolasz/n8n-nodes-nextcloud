@@ -2,7 +2,6 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeParameterResourceLocator,
 	IPollFunctions,
 } from 'n8n-workflow';
 
@@ -11,9 +10,11 @@ import {
 	newsRequest,
 	unwrapItems,
 } from '../NextcloudNews/GenericFunctions';
-import type { NewsItem, NextcloudCredentialData } from '../NextcloudNews/NewsInterface';
+import type { NewsItem } from '../NextcloudNews/NewsInterface';
 import { itemToJson } from '../NextcloudNews/resources/shared/entityJson';
+import { parseLocatorParamValue } from '../NextcloudNews/resources/shared/resolveInput';
 import { scrubErrorMessage } from '../NextcloudNews/shared/scrubSecrets';
+import { parseRequiredBoolean, type NextcloudCredentialData } from '../shared/parse';
 import {
 	buildNewsItemsQueryParams,
 	nextNewsOffsetFromItems,
@@ -81,7 +82,7 @@ function readPositiveIntParam(
 	paramName: string,
 	fallback: number,
 ): number {
-	const raw = context.getNodeParameter(paramName) as unknown;
+	const raw: unknown = context.getNodeParameter(paramName);
 	const coerced =
 		typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN;
 	if (!Number.isFinite(coerced) || coerced < 1) {
@@ -170,21 +171,16 @@ export function resolveOptionalLocatorId(
 	paramName: string,
 	resourceLabel: string,
 ): number | undefined {
-	const raw = context.getNodeParameter(paramName) as unknown;
-	// Match actions-node getLocatorValue: accept RLC `{ value }` or bare
-	// numeric/string expression results (e.g. `={{ $json.id }}` → number).
-	const value =
-		raw !== null && typeof raw === 'object' && 'value' in (raw as object)
-			? (raw as INodeParameterResourceLocator).value
-			: raw;
+	const raw: unknown = context.getNodeParameter(paramName);
+	const valueStr = parseLocatorParamValue(raw);
 
-	if (value === undefined || value === null || String(value).trim() === '') {
+	if (valueStr === undefined) {
 		return undefined;
 	}
 
-	const id = Number(String(value).trim());
+	const id = Number(valueStr);
 	if (!Number.isFinite(id)) {
-		throw new Error(`${resourceLabel} id is invalid: ${value}`);
+		throw new Error(`${resourceLabel} id is invalid: ${valueStr}`);
 	}
 
 	return Math.trunc(id);
@@ -194,7 +190,7 @@ export function readPollScopeFromNode(context: IPollFunctions): NewsPollScope {
 	return {
 		folderId: resolveOptionalLocatorId(context, 'folder', 'Folder'),
 		feedId: resolveOptionalLocatorId(context, 'feed', 'Feed'),
-		unreadOnly: context.getNodeParameter('unreadOnly') as boolean,
+		unreadOnly: parseRequiredBoolean(context.getNodeParameter('unreadOnly'), 'Unread Only'),
 	};
 }
 

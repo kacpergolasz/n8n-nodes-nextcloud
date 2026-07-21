@@ -6,6 +6,7 @@ import {
 	findFeedById,
 	newsRequest,
 } from '../../GenericFunctions';
+import { parseBinaryBuffer, parseRequiredString } from '../../../shared/parse';
 import { resolveFeedFromInput } from '../shared/resolveInput';
 import type { FeedOperationContext } from './types';
 
@@ -49,7 +50,7 @@ export async function feedFavicon(
 ): Promise<INodeExecutionData> {
 	const { itemIndex } = ctx;
 	const feedId = resolveFeedFromInput(context, itemIndex);
-	const binaryPropertyName = context.getNodeParameter('binaryPropertyName', itemIndex) as string;
+	const binaryPropertyName = parseRequiredString(context.getNodeParameter('binaryPropertyName', itemIndex), 'Binary Property Name');
 
 	const feed = await findFeedById(context, feedId);
 	if (!feed?.url) {
@@ -65,7 +66,7 @@ export async function feedFavicon(
 		json: false,
 		encoding: 'arraybuffer',
 	});
-	const buffer = Buffer.from(response as ArrayBuffer);
+	const buffer = parseBinaryBuffer(response);
 	const { mimeType, extension } = mimeFromFaviconBuffer(buffer);
 	const fileName = `favicon-${feedId}.${extension}`;
 	const binaryData = await context.helpers.prepareBinaryData(buffer, fileName, mimeType);
