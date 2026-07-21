@@ -1,6 +1,7 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult, JsonObject } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { nodeApiErrorPayload } from '../../shared/parse';
 import { getCredentials, loadCalendars } from '../GenericFunctions';
 import { scrubErrorMessage } from '../shared/scrubSecrets';
 import type { ScrubSecretsInput } from '../shared/scrubSecrets';
@@ -29,6 +30,6 @@ export async function getCalendars(this: ILoadOptionsFunctions): Promise<INodeLi
 			// ignore credential load failures while scrubbing
 		}
 		const scrubbedMessage = scrubErrorMessage(error, secrets);
-		throw new NodeApiError(this.getNode(), { message: scrubbedMessage } as JsonObject);
+		throw new NodeApiError(this.getNode(), nodeApiErrorPayload(scrubbedMessage));
 	}
 }

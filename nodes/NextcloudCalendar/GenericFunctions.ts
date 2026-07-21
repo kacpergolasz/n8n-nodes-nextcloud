@@ -4,7 +4,13 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
+import {
+	parseNextcloudCredentials,
+	parseRequiredString,
+	throwParseError,
+} from '../shared/parse';
 import type {
 	NextcloudCalendarOption,
 	NextcloudCredentialData,
@@ -80,34 +86,57 @@ export function resolveCredentialName(authentication: string): NextcloudCredenti
 	return authentication === 'oAuth2' ? 'nextcloudOAuth2Api' : 'nextcloudApi';
 }
 
+const nextcloudOAuth2CredentialSchema = z.object({
+	baseUrl: z.string().min(1, 'Base URL is required'),
+	username: z.string().min(1, 'Username is required'),
+	clientSecret: z.string().optional(),
+	oauthTokenData: z
+		.object({
+			access_token: z.string().optional(),
+			refresh_token: z.string().optional(),
+		})
+		.passthrough()
+		.optional(),
+});
+
+function parseNextcloudOAuth2Credentials(raw: unknown) {
+	try {
+		return nextcloudOAuth2CredentialSchema.parse(raw);
+	} catch (error) {
+		throwParseError(error, 'Invalid Nextcloud OAuth2 credentials');
+	}
+}
+
 export async function getCredentials(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<NextcloudCredentialData> {
-	const authentication = context.getNodeParameter('authentication', 0, 'basicAuth') as string;
+	const authentication = parseRequiredString(
+		context.getNodeParameter('authentication', 0, 'basicAuth'),
+		'Authentication',
+	);
 	const credentialName = resolveCredentialName(authentication);
-	const raw = (await context.getCredentials(credentialName)) as IDataObject;
-
-	const base: NextcloudCredentialData = {
-		baseUrl: normalizeBaseUrl(raw.baseUrl as string),
-		username: raw.username as string,
-		credentialName,
-		authentication: authentication === 'oAuth2' ? 'oAuth2' : 'basicAuth',
-	};
+	const raw = await context.getCredentials(credentialName);
 
 	if (credentialName === 'nextcloudApi') {
+		const parsed = parseNextcloudCredentials(raw);
 		return {
-			...base,
-			appPassword: raw.appPassword as string,
+			baseUrl: normalizeBaseUrl(parsed.baseUrl),
+			username: parsed.username,
+			credentialName,
+			authentication: 'basicAuth',
+			appPassword: parsed.appPassword,
 		};
 	}
 
-	const oauthTokenData = raw.oauthTokenData as IDataObject | undefined;
-
+	const oauthParsed = parseNextcloudOAuth2Credentials(raw);
 	return {
-		...base,
-		accessToken: oauthTokenData?.access_token as string | undefined,
-		refreshToken: oauthTokenData?.refresh_token as string | undefined,
-		clientSecret: raw.clientSecret as string | undefined,
+		baseUrl: normalizeBaseUrl(oauthParsed.baseUrl),
+		username: oauthParsed.username,
+		credentialName,
+		authentication: 'oAuth2',
+		clientSecret: oauthParsed.clientSecret,
+		accessToken: oauthParsed.oauthTokenData?.access_token,
+		refreshToken: oauthParsed.oauthTokenData?.refresh_token,
 	};
 }
 
@@ -121,7 +150,12 @@ export async function nextcloudRequest(
 ) {
 	const resolvedCredentialName =
 		credentialName ??
-		resolveCredentialName(context.getNodeParameter('authentication', 0, 'basicAuth') as string);
+		resolveCredentialName(
+			parseRequiredString(
+				context.getNodeParameter('authentication', 0, 'basicAuth'),
+				'Authentication',
+			),
+		);
 
 	return await context.helpers.httpRequestWithAuthentication.call(context, resolvedCredentialName, {
 		method: method as IHttpRequestMethods,
@@ -307,7 +341,7 @@ function tzidFromParamPart(paramPart: string): string | undefined {
 
 /**
  * Parses the first VEVENT in an iCalendar blob into optional JSON fields (omit missing properties).
- * Excludes UID. Suitable for “get event” style responses.
+ * Excludes UID. Suitable for "get event" style responses.
  */
 export function parseIcsEventVerbose(rawIcs: string): IDataObject {
 	const unfolded = unfoldIcsContent(rawIcs.trim());
@@ -345,11 +379,11 @@ export function parseIcsEventVerbose(rawIcs: string): IDataObject {
 
 	const out: IDataObject = {};
 
-	const setIf = (key: string, val: unknown) => {
+	const setIf = (key: string, val: IDataObject[string]) => {
 		if (val === undefined || val === null) return;
 		if (typeof val === 'string' && val.length === 0) return;
 		if (Array.isArray(val) && val.length === 0) return;
-		out[key] = val as IDataObject[string];
+		out[key] = val;
 	};
 
 	const dtStart = lastByName.DTSTART;

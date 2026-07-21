@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
 import {
 	eventIdFromCalDavHref,
 	nextcloudRequest,
@@ -28,8 +29,11 @@ export async function eventGetAll(
 	ctx: EventOperationContext,
 ): Promise<INodeExecutionData[]> {
 	const { itemIndex, calendarUrl, calendarId, userId } = ctx;
-	const returnAll = context.getNodeParameter('returnAll', itemIndex, false) as boolean;
-	const limit = context.getNodeParameter('limit', itemIndex, 10) as number;
+	const returnAll = parseRequiredBoolean(
+		context.getNodeParameter('returnAll', itemIndex, false),
+		'Return All',
+	);
+	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 10), 'Limit');
 	const afterMs = nodeDateToFilterMs(context.getNodeParameter('after', itemIndex, ''));
 	const beforeMs = nodeDateToFilterMs(context.getNodeParameter('before', itemIndex, ''));
 	const hasTimeFilter = afterMs !== null || beforeMs !== null;
