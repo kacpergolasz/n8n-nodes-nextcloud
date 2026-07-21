@@ -202,8 +202,9 @@ export function unwrapFolders(response: unknown): NewsFolder[] {
 		if (Array.isArray(folders)) {
 			return folders.map(parseNewsFolder);
 		}
+		throw new Error('Invalid News folders response: expected { folders: [...] }');
 	}
-	return [];
+	throw new Error('Invalid News folders response: expected array or { folders: [...] }');
 }
 
 export function unwrapFeeds(response: unknown): NewsFeed[] {
@@ -215,8 +216,9 @@ export function unwrapFeeds(response: unknown): NewsFeed[] {
 		if (Array.isArray(feeds)) {
 			return feeds.map(parseNewsFeed);
 		}
+		throw new Error('Invalid News feeds response: expected { feeds: [...] }');
 	}
-	return [];
+	throw new Error('Invalid News feeds response: expected array or { feeds: [...] }');
 }
 
 export function unwrapItems(response: unknown): NewsItem[] {
@@ -228,8 +230,9 @@ export function unwrapItems(response: unknown): NewsItem[] {
 		if (Array.isArray(items)) {
 			return items.map(parseNewsItem);
 		}
+		throw new Error('Invalid News items response: expected { items: [...] }');
 	}
-	return [];
+	throw new Error('Invalid News items response: expected array or { items: [...] }');
 }
 
 /** Prefer a single created entity; fall back to first list entry. */

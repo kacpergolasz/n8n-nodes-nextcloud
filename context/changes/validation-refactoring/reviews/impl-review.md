@@ -2,184 +2,106 @@
 # Implementation Review: Validation Refactoring (F-02)
 
 - **Plan**: context/changes/validation-refactoring/plan.md
-- **Scope**: Phases 1–6 of 8 (7–8 not yet implemented)
+- **Scope**: Phases 1–8 of 8 (full plan)
 - **Date**: 2026-07-21
-- **Verdict**: NEEDS ATTENTION
-- **Findings**: 0 critical, 6 warnings, 4 observations
+- **Verdict**: APPROVED
+- **Findings**: 0 critical, 1 warning, 4 observations
+- **Triage**: F1 FIXED (Fix A), F2 FIXED, F3 ACCEPTED, F4 FIXED, F5 FIXED
 
 ## Verdicts
 
 | Dimension | Verdict |
 |-----------|---------|
-| Plan Adherence | WARNING |
+| Plan Adherence | PASS |
 | Scope Discipline | PASS |
-| Safety & Quality | WARNING |
+| Safety & Quality | PASS |
 | Architecture | WARNING |
-| Pattern Consistency | WARNING |
+| Pattern Consistency | PASS |
 | Success Criteria | PASS |
 
 ## Findings
 
-### F1 — Shared `throwPollError` still casts `as JsonObject`
+### F1 — Zod remains a `devDependency` with residual publish/runtime risk
 
 - **Severity**: ⚠️ WARNING
-- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Plan Adherence
-- **Location**: nodes/shared/pollOrchestration.ts:24
-- **Detail**: Phase 1 added `nodeApiErrorPayload` specifically to eliminate `as JsonObject` at NodeApiError sites, but `throwPollError` still does `throw new NodeApiError(context.getNode(), { message } as JsonObject)`. This is the only remaining non-allowlisted prod cast outside the expected WebDAV×2 + poll-adapter×2 set, and it sits on the shared poll path used by NewsTrigger and FilesTrigger.
-- **Fix**: Replace `{ message } as JsonObject` with `nodeApiErrorPayload(message)` from `nodes/shared/parse.ts`; drop unused `JsonObject` import if unused.
-  - Strength: One-line; matches every node listSearch/node error path already migrated.
-  - Tradeoff: Negligible; existing `pollOrchestration` tests should still pass.
-  - Confidence: HIGH — helper already used suite-wide.
-  - Blind spot: None significant.
-- **Decision**: FIXED
+- **Impact**: 🔬 HIGH — architectural stakes; think carefully before deciding
+- **Dimension**: Architecture
+- **Location**: package.json:49-56
+- **Detail**: Documented Phase 1 adaptation (community-node lint blocks non-allowlisted peers / runtime `dependencies`; Cloud expects host-provided Zod via `n8n-workflow`). `dist` still `require`s `zod` from `nodes/shared/parse.js`. Self-hosted / clean consumer installs that do not hoist Zod from the host may fail at runtime even though `lint:safety` and typecheck are green. Prior phase-1–6 review accepted this as an observation; with Phase 8 complete and publish gated, it is the main remaining architectural risk.
+- **Fix A ⭐ Recommended**: Keep `devDependencies` placement; add an explicit release/README note that Zod must be resolvable from the n8n host (Cloud allowlisted; self-hosted via n8n's own install), and optionally a smoke check in CI that `require.resolve('zod')` works under a simulated consumer layout.
+  - Strength: Respects `n8n.strict` / community-node lint; matches documented adaptation.
+  - Tradeoff: Does not make the package self-contained for odd install graphs.
+  - Confidence: HIGH — this is the intended Cloud model.
+  - Blind spot: Exact n8n self-hosted node_modules layout for community packages not verified in this review.
+- **Fix B**: Bundle Zod into the published `dist` (or vendor a minimal subset) so the package does not depend on host resolution.
+  - Strength: Self-contained runtime.
+  - Tradeoff: May fight Cloud/community packaging rules; larger artifact; duplicate Zod copies.
+  - Confidence: LOW — packaging policy may forbid it.
+  - Blind spot: Whether Cloud verification rejects bundled Zod.
+- **Decision**: FIXED (via Fix A — README + change.md host-Zod notes; CI smoke skipped)
 
-### F2 — `parseShareId` not aligned with shared `parsePositiveInt`
-
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
-- **Dimension**: Plan Adherence
-- **Location**: nodes/NextcloudFiles/GenericFunctions.ts:492-503
-- **Detail**: Phase 2 said to prefer shared primitives where equivalent. `parseShareId` reimplements the same coercion path but allows non-integers (`3.5` passes) while `parsePositiveInt` requires `Number.isInteger`. Message text also differs ("positive number" vs "positive integer").
-- **Fix A ⭐ Recommended**: Delegate to `parsePositiveInt(value, 'Share ID')` (optionally wrap message).
-  - Strength: Matches plan intent; tightens invalid share ids.
-  - Tradeoff: Slightly stricter than prior behavior for fractional ids (unlikely from NC).
-  - Confidence: HIGH — share ids are integers in OCS.
-  - Blind spot: Haven't audited all call sites for fractional expression results.
-- **Fix B**: Keep local `parseShareId` but add `Number.isInteger` check and document why it stays separate.
-  - Strength: Preserves dedicated Share-ID messaging.
-  - Tradeoff: Still duplicates logic.
-  - Confidence: MEDIUM.
-  - Blind spot: Future drift risk remains.
-- **Decision**: FIXED (removed `parseShareId`; call sites use `parsePositiveInt` directly)
-
-### F3 — `parseLocatorParamValue` triplicated across Files/News/Deck
-
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
-- **Dimension**: Pattern Consistency
-- **Location**: nodes/NextcloudFiles/resources/shared/resolveInput.ts:33; nodes/NextcloudNews/resources/shared/resolveInput.ts:7; nodes/NextcloudDeck/resources/shared/resolveInput.ts:33
-- **Detail**: Identical RLC/scalar extractors were copied into three node trees (FilesTrigger correctly imports Files'). Plan pushed shared helpers for cross-cutting parse work; this helper is now suite-wide but not centralized.
-- **Fix A ⭐ Recommended**: Move `parseLocatorParamValue` into `nodes/shared/parse.ts` (or `shared/resolveInput.ts`) and re-export/import from each node.
-  - Strength: One source of truth; Phase 7/8 less likely to miss a copy.
-  - Tradeoff: Touches three import graphs + tests if any import paths break.
-  - Confidence: HIGH — bodies are identical today.
-  - Blind spot: Whether any node-local specialization is planned later.
-- **Fix B**: Leave triplicated until a later cleanup change; document as known DRY debt in `change.md`.
-  - Strength: Zero risk now; doesn't block Phase 7–8.
-  - Tradeoff: Drift risk remains.
-  - Confidence: HIGH for deferral safety.
-  - Blind spot: None significant.
-- **Decision**: FIXED (via Fix A — centralized in `nodes/shared/parse.ts`)
-
-### F4 — FilesTrigger `getSnapshot` silently drops invalid entries
-
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
-- **Dimension**: Safety & Quality
-- **Location**: nodes/NextcloudFilesTrigger/pollDirectory.ts:54-74
-- **Detail**: Structural parse skips entries when `isFolder` is not a boolean. Soft behavior avoids throws, but a corrupted/legacy snapshot can shrink silently and cause the next classify pass to emit spurious `*Created` events for dropped paths. No dedicated unit tests cover malformed snapshot shapes (test bar was intentionally light — this is an under-proven parser).
-- **Fix A ⭐ Recommended**: Keep soft skip but `context.logger.debug/warn` when dropping entries (needs logger plumbing or return a drop count from `getSnapshot` for the poll path to log); add 1–2 unit tests for malformed entries.
-  - Strength: Preserves soft-fail; makes floods diagnosable; addresses change.md test-bar reminder for a hot-path parser.
-  - Tradeoff: Small API/test surface.
-  - Confidence: MEDIUM — logging API choice needs a quick look at IPollFunctions logger usage.
-  - Blind spot: How often staticData serialization could coerce booleans to strings.
-- **Fix B**: Coerce common string forms (`'true'`/`'false'`) for `isFolder` and only skip truly invalid shapes; add tests.
-  - Strength: More resilient to serialization quirks.
-  - Tradeoff: Masks bad data instead of surfacing it.
-  - Confidence: MEDIUM.
-  - Blind spot: Whether n8n staticData ever stringifies booleans.
-- **Decision**: FIXED (via Fix A — soft skip + logger.debug + unit tests)
-
-### F5 — News entity schemas use `z.coerce.number()` + `.passthrough()` without tests
-
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
-- **Dimension**: Safety & Quality
-- **Location**: nodes/NextcloudNews/GenericFunctions.ts:~138-174
-- **Detail**: Per change.md pre-impl-review reminder: light test bar is intentional, but push for tests if parsers look under-proven. News unwrap schemas coerce ids (`null`→`0`, `"1.5"`→`1.5`) and `.passthrough()` keeps unknown fields. Existing News tests cover operations more than schema edge cases.
-- **Fix A ⭐ Recommended**: Tighten id fields to `z.number().int().positive()` (or coerce then refine integer/positive) and add a small unit test file for `unwrapFolders`/`unwrapItems` bad payloads.
-  - Strength: Fail loud on bad API/param data; matches Deck-ish strictness.
-  - Tradeoff: May reject previously-tolerated weird payloads.
-  - Confidence: MEDIUM — need to confirm NC News always returns numeric ids.
-  - Blind spot: Live API quirks for coerce-on-string ids from expressions.
-- **Fix B**: Keep schemas; add tests only documenting current coerce/passthrough behavior.
-  - Strength: No runtime behavior change.
-  - Tradeoff: Leaves loose parsing.
-  - Confidence: HIGH.
-  - Blind spot: None significant.
-- **Decision**: FIXED (coerce then `.int().positive()` on folder/feed/item `id`; no new tests per triage)
-
-### F6 — `parseItemIds` `JSON.parse` lacks try/catch
-
-- **Severity**: ⚠️ WARNING
-- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Safety & Quality
-- **Location**: nodes/NextcloudNews/GenericFunctions.ts:~329-331
-- **Detail**: When raw text starts with `[`, `JSON.parse` can throw `SyntaxError` with the raw input. Elsewhere parsers use `throwParseError` / user-facing `Error` messages.
-- **Fix**: Wrap in try/catch and `throw new Error('Item ids must be a valid JSON array or comma-separated list')` (or `throwParseError`).
-  - Strength: Consistent UX; tiny change.
-  - Tradeoff: None material.
-  - Confidence: HIGH.
-  - Blind spot: None significant.
-- **Decision**: FIXED
-
-### F7 — Zod declared in `devDependencies` not `peerDependencies`
+### F2 — `lint:safety` does not ban non-null assertions (`!`)
 
 - **Severity**: 🔍 OBSERVATION
 - **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
-- **Dimension**: Scope Discipline
-- **Location**: package.json; change.md §Implementation adaptations
-- **Detail**: Plan required peerDependency; implementation correctly used `devDependencies` because community-node lint forbids non-allowlisted peers / runtime dependencies. Documented in `change.md`. `n8n.strict` remains true; no `dependencies.zod`.
-- **Fix**: No code change. Optionally mirror the note into the plan Overview if future readers skip `change.md`.
-- **Decision**: FIXED (adaptation note added to `plan.md` Phase 1 Zod section)
+- **Dimension**: Safety & Quality
+- **Location**: eslint.safety.config.mjs:22-27
+- **Detail**: Phase 8 contract bans `as T` via `assertionStyle: 'never'` (`as const` allowed). Non-null assertions (`x!`) are a separate escape hatch and are not covered. Prod tree currently has no `!.` usage; this is a loophole for future code, not a present violation.
+- **Fix**: Optionally add `@typescript-eslint/no-non-null-assertion: 'error'` on the same prod globs.
+- **Decision**: FIXED
 
-### F8 — Calendar OAuth credential schema remains node-local
+### F3 — `assertHttpMethodIsValid` widens WebDAV verbs to `IHttpRequestMethods`
 
 - **Severity**: 🔍 OBSERVATION
 - **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
 - **Dimension**: Architecture
-- **Location**: nodes/NextcloudCalendar/GenericFunctions.ts (local `nextcloudOAuth2CredentialSchema`); EventInterface.ts local `NextcloudCredentialData`
-- **Detail**: Plan said shared parse for whichever credential Calendar selects. Implementation uses shared `parseNextcloudCredentials` for basic and a local Zod schema for OAuth — matching the Phase 1 `parse.ts` comment deferring OAuth assembly. Runtime is cast-free for both paths. Wider Calendar `NextcloudCredentialData` type is intentional, not a stale duplicate.
-- **Fix**: Document as an explicit adaptation in `change.md` (parallel to Zod placement), or defer shared OAuth schema to a follow-up. No must-fix for Phase 7.
-- **Decision**: FIXED (documented in `change.md` §Implementation adaptations)
+- **Location**: nodes/shared/assertHttpMethodIsValid.ts:12-14
+- **Detail**: Assertion predicate claims `method is IHttpRequestMethods` after allowing PROPFIND/MKCOL/MOVE/COPY, which are not in n8n's union. Runtime allowlist is correct; this is the intentional Phase 7 replacement for `as IHttpRequestMethods`. Documented in the helper and `change.md`.
+- **Fix**: No code change required. Keep as the documented HTTP boundary; avoid reintroducing `as` allowlists.
+- **Decision**: ACCEPTED (intentional Phase 7 boundary; no code change)
 
-### F9 — No dedicated unit tests for new shared/`parse.ts` helpers
+### F4 — News `unwrap*` returns `[]` on unrecognized envelopes
 
 - **Severity**: 🔍 OBSERVATION
 - **Impact**: 🔎 MEDIUM — real tradeoff; pause to reason through it
-- **Dimension**: Success Criteria
-- **Location**: nodes/shared/parse.ts (no sibling `parse.test.ts`)
-- **Detail**: Plan and change.md intentionally set a light test bar (existing suites + typecheck). All 227 tests pass. Highest-value gaps are already called out in F4/F5 rather than blanket coverage of every primitive.
-- **Fix**: Optional follow-up: add focused tests for `parseNextcloudCredentials`, `nodeApiErrorPayload`, and any parsers touched by F4/F5 fixes — not a Phase 1–6 blocker.
-- **Decision**: FIXED (`nodes/shared/test/parse.test.ts` for credentials, NodeApiError payload, parsePositiveInt, parseLocatorParamValue)
+- **Dimension**: Safety & Quality
+- **Location**: nodes/NextcloudNews/GenericFunctions.ts:196-232
+- **Detail**: After Zod entity parsers throw on bad array elements, unrecognized top-level shapes still soft-return `[]`, which can look like an empty success. Pre-existing soft-empty pattern; not a Phase 7–8 regression. Ids were tightened in prior triage (`int().positive()`).
+- **Fix**: Optionally throw when an object envelope is present but missing/invalid `folders`/`feeds`/`items`; keep `[]` only for true empty lists.
+- **Decision**: FIXED
 
-### F10 — ICS TEXT escaping incomplete in `buildICalendarPayload` (out of F-02 scope)
+### F5 — Deck/Calendar request helpers still use narrower context unions
 
 - **Severity**: 🔍 OBSERVATION
-- **Impact**: 🔬 HIGH — architectural stakes; think carefully before deciding
-- **Dimension**: Safety & Quality
-- **Location**: nodes/NextcloudCalendar/GenericFunctions.ts (~buildICalendarPayload)
-- **Detail**: Safety review flagged incomplete RFC 5545 TEXT escaping (`\n` only; `\r`, `\`, `,`, `;` unhandled) as a possible CRLF/property-injection class. Plan explicitly excludes rewriting ICS/XML content parsers unless they use avoidable param/credential `as` casts. This path was not introduced by F-02 cast removal; treating as follow-up outside this change rather than a Phase 1–6 reject.
-- **Fix**: Track as a separate security hardening change (dedicated `escapeIcsTextValue`); do not block validation-refactoring Phase 7–8.
-- **Decision**: FIXED (`escapeIcsTextValue` + used in `buildICalendarPayload`; unit tests)
+- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
+- **Dimension**: Pattern Consistency
+- **Location**: nodes/NextcloudDeck/GenericFunctions.ts; nodes/NextcloudCalendar/GenericFunctions.ts
+- **Detail**: Files/News adopted `NextcloudRequestContext` (`ILoadOptionsFunctions | IExecuteFunctions | IPollFunctions`). Deck/Calendar still type helpers as `ILoadOptionsFunctions | IExecuteFunctions` only — fine because they have no poll path, but mildly inconsistent.
+- **Fix**: Adopt `NextcloudRequestContext` when next touching those helpers; not a Phase 8 blocker.
+- **Decision**: FIXED
 
-## Success criteria evidence (Phases 1–6)
+## Success criteria evidence (Phases 1–8)
 
 | Check | Result |
 |-------|--------|
-| `npm exec tsc --noEmit` | PASS (exit 0) |
-| `npm test` | PASS (18 files / 227 tests) |
+| `npm exec tsc -- --noEmit` | PASS (exit 0) |
+| `npm test` | PASS (19 files / 235 tests) |
 | `npm run lint` | PASS (0 errors; 8 pre-existing icon warnings) |
+| `npm run lint:safety` | PASS (0 errors; same icon warnings) |
 | `dependencies.zod` absent | PASS |
 | `n8n.strict === true` | PASS |
 | `eslint.config.mjs` unchanged CLI default | PASS |
+| `prepublishOnly` invokes `lint:safety` | PASS |
+| CI `.github/workflows/ci.yml` runs `lint:safety` | PASS |
 | credentials/ prod `as` | PASS (zero) |
-| Deck prod `as` | PASS (zero) |
-| News entityJson cast-free | PASS |
-| Remaining expected boundaries | Files method, Calendar method, NewsTrigger adapter, FilesTrigger adapter |
-| Unexpected leftover | `pollOrchestration.ts:24` (F1) |
+| nodes/ prod `as T` | PASS (zero; 5× `as const` only) |
+| Phase 7 allowlist in `change.md` | PASS (“Allowlisted remaining casts: none”) |
+| Prior triage F1–F10 still present | PASS |
 
 ## Progress manual items
 
-Phases 1–6 Manual Progress rows are all `[x]`. Cast inventories were verified via ast-grep during implementation (user-directed). No rubber-stamp red flags beyond F1 (shared leftover outside the per-node greps).
+Phases 1–8 Manual Progress rows are all `[x]`. Phase 7–8 greps / allowlist / CI wiring verified in this review. No rubber-stamp red flags.
+
+## Prior review note
+
+Phases 1–6 were reviewed earlier the same day (10 findings, all FIXED via triage). This report replaces that scope with a full Phases 1–8 review after Phase 7–8 landed.

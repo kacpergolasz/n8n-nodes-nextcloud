@@ -81,6 +81,9 @@ Before you begin, install the following on your development machine:
 > [!NOTE]
 > The `@n8n/node-cli` is included as a dev dependency and will be installed automatically when you run `npm install`. The CLI includes n8n for local development, so you don't need to install n8n globally.
 
+> [!IMPORTANT]
+> **Runtime dependency: Zod.** This package declares `zod` only as a `devDependency` (community-node `n8n.strict` forbids shipping it as a runtime dependency). At runtime, Zod must resolve from the **n8n host** (Cloud allowlists it via `n8n-workflow`; self-hosted installs normally get it from n8n's own dependencies). If nodes fail with `Cannot find module 'zod'`, ensure your n8n install provides Zod.
+
 ## Getting Started with this Starter
 
 Follow these steps to create your own n8n community node package:

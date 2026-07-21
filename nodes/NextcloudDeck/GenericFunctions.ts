@@ -2,7 +2,6 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
-	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -18,6 +17,7 @@ import {
 	throwParseError,
 	type NextcloudCredentialData,
 } from '../shared/parse';
+import type { NextcloudRequestContext } from '../shared/requestContext';
 
 function normalizeBaseUrl(baseUrl: string): string {
 	return baseUrl.replace(/\/+$/, '');
@@ -78,7 +78,7 @@ export function buildCardReorderUrl(
 }
 
 export async function getCredentials(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 ): Promise<NextcloudCredentialData> {
 	const credentials = parseNextcloudCredentials(await context.getCredentials('nextcloudApi'));
 
@@ -90,7 +90,7 @@ export async function getCredentials(
 }
 
 export async function deckRequest(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	method: IHttpRequestMethods,
 	path: string,
 	body?: IDataObject,
@@ -279,7 +279,7 @@ export async function moveCard(
 }
 
 export async function loadBoards(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 ): Promise<DeckPickerOption[]> {
 	const boards = filterActiveBoards(parseDeckBoards(await deckRequest(context, 'GET', '/boards')));
 
@@ -290,7 +290,7 @@ export async function loadBoards(
 }
 
 export async function loadStacks(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	boardId: string,
 ): Promise<DeckPickerOption[]> {
 	const stacks = parseDeckStacks(await deckRequest(context, 'GET', `/boards/${boardId}/stacks`));

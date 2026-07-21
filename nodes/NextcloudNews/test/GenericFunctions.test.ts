@@ -117,8 +117,18 @@ describe('unwrap helpers', () => {
 			{ id: 9, title: 'Article' },
 		]);
 		expect(unwrapFolders([])).toEqual([]);
-		expect(unwrapFeeds(null)).toEqual([]);
-		expect(unwrapItems(null)).toEqual([]);
+		expect(unwrapFolders({ folders: [] })).toEqual([]);
+		expect(unwrapFeeds({ feeds: [] })).toEqual([]);
+		expect(unwrapItems({ items: [] })).toEqual([]);
+	});
+
+	it('rejects unrecognized envelopes', () => {
+		expect(() => unwrapFolders(null)).toThrow('expected array or { folders: [...] }');
+		expect(() => unwrapFeeds(null)).toThrow('expected array or { feeds: [...] }');
+		expect(() => unwrapItems(null)).toThrow('expected array or { items: [...] }');
+		expect(() => unwrapFolders({ notFolders: 1 })).toThrow('expected { folders: [...] }');
+		expect(() => unwrapFeeds({ feeds: 'nope' })).toThrow('expected { feeds: [...] }');
+		expect(() => unwrapItems({ items: {} })).toThrow('expected { items: [...] }');
 	});
 
 	it('picks first created entity', () => {
