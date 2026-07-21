@@ -162,7 +162,7 @@
 - **Location**: nodes/NextcloudCalendar/GenericFunctions.ts (~buildICalendarPayload)
 - **Detail**: Safety review flagged incomplete RFC 5545 TEXT escaping (`\n` only; `\r`, `\`, `,`, `;` unhandled) as a possible CRLF/property-injection class. Plan explicitly excludes rewriting ICS/XML content parsers unless they use avoidable param/credential `as` casts. This path was not introduced by F-02 cast removal; treating as follow-up outside this change rather than a Phase 1–6 reject.
 - **Fix**: Track as a separate security hardening change (dedicated `escapeIcsTextValue`); do not block validation-refactoring Phase 7–8.
-- **Decision**: PENDING
+- **Decision**: FIXED (`escapeIcsTextValue` + used in `buildICalendarPayload`; unit tests)
 
 ## Success criteria evidence (Phases 1–6)
 

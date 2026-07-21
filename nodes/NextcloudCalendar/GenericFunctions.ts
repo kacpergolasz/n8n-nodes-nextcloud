@@ -271,9 +271,9 @@ export function buildEventUrl(calendarPath: string, eventId: string): string {
 
 export function buildICalendarPayload(input: NextcloudEventInput, uid?: string): string {
 	const uidValue = uid ?? `${Date.now()}-${sanitizeFileNamePart(input.summary)}@n8n-nextcloud`;
-	const escapedSummary = input.summary.replace(/\n/g, '\\n');
-	const escapedDescription = (input.description ?? '').replace(/\n/g, '\\n');
-	const escapedLocation = (input.location ?? '').replace(/\n/g, '\\n');
+	const escapedSummary = escapeIcsTextValue(input.summary);
+	const escapedDescription = escapeIcsTextValue(input.description ?? '');
+	const escapedLocation = escapeIcsTextValue(input.location ?? '');
 	const dtStamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 	const dtStart = input.start.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 	const dtEnd = input.end.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
@@ -298,6 +298,15 @@ export function buildICalendarPayload(input: NextcloudEventInput, uid?: string):
 /** RFC 5545 line folding: remove CRLF followed by a single space or tab. */
 export function unfoldIcsContent(content: string): string {
 	return content.replace(/\r?\n[ \t]/g, '');
+}
+
+/** RFC 5545 TEXT: escape `\`, `;`, `,`, and newlines (CR/LF → `\n`). */
+export function escapeIcsTextValue(value: string): string {
+	return value
+		.replace(/\\/g, '\\\\')
+		.replace(/;/g, '\\;')
+		.replace(/,/g, '\\,')
+		.replace(/\r\n|\n|\r/g, '\\n');
 }
 
 export function unescapeIcsText(value: string): string {
