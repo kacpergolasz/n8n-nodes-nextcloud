@@ -1,6 +1,5 @@
 import type {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPollFunctions,
 } from 'n8n-workflow';
@@ -30,10 +29,6 @@ import {
 export const SNAPSHOT_KEY = 'snapshot';
 /** Normalized path of the folder the current snapshot was seeded for. */
 export const WATCHED_FOLDER_KEY = 'watchedFolder';
-
-function asLoadOptionsContext(context: IPollFunctions): ILoadOptionsFunctions {
-	return context as unknown as ILoadOptionsFunctions;
-}
 
 export function resolveFolderToWatch(context: IPollFunctions): string {
 	const raw = context.getNodeParameter('folderToWatch', undefined);
@@ -198,12 +193,11 @@ export async function runDirectoryPoll(
 	const staticData = context.getWorkflowStaticData('node');
 	const isManual = context.getMode() === 'manual';
 	const selectedEvents = parseStringArray(context.getNodeParameter('event'), 'Events');
-	const requestContext = asLoadOptionsContext(context);
 
 	const { credentials, folderPath } = await runPollBootstrap(
 		context,
 		async () => {
-			const credentials = await getCredentials(requestContext);
+			const credentials = await getCredentials(context);
 			const folderPath = resolveFolderToWatch(context);
 			return { credentials, folderPath };
 		},
@@ -214,7 +208,7 @@ export async function runDirectoryPoll(
 
 	let listing: DirectoryEntry[];
 	try {
-		listing = await loadDirectoryListing(requestContext, credentials, folderPath);
+		listing = await loadDirectoryListing(context, credentials, folderPath);
 	} catch (error) {
 		return handlePollListingFailure(context, {
 			isInitialized,

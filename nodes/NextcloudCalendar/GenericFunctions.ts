@@ -158,6 +158,7 @@ export async function nextcloudRequest(
 		);
 
 	return await context.helpers.httpRequestWithAuthentication.call(context, resolvedCredentialName, {
+		// CAST-ALLOWLIST: CalDAV — n8n IHttpRequestMethods omits PROPFIND (Phase 8 → eslint-disable)
 		method: method as IHttpRequestMethods,
 		url,
 		body,

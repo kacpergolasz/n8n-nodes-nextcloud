@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-} from 'n8n-workflow';
+import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -11,6 +6,7 @@ import {
 	parseNextcloudCredentials,
 	type NextcloudCredentialData,
 } from '../shared/parse';
+import type { NextcloudRequestContext } from '../shared/requestContext';
 import type { DirectoryEntry, ParsedShare } from './FilesInterface';
 
 /** n8n's IHttpRequestMethods omits WebDAV verbs like PROPFIND, MKCOL, MOVE, and COPY. */
@@ -163,7 +159,7 @@ export function parseDirectoryListingFromMultistatus(
 }
 
 export async function getCredentials(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 ): Promise<NextcloudCredentialData> {
 	const credentials = parseNextcloudCredentials(await context.getCredentials('nextcloudApi'));
 
@@ -175,7 +171,7 @@ export async function getCredentials(
 }
 
 export async function nextcloudRequest(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	method: NextcloudHttpMethod,
 	url: string,
 	body?: string | Buffer | IDataObject,
@@ -183,6 +179,7 @@ export async function nextcloudRequest(
 	options?: IDataObject,
 ) {
 	return await context.helpers.httpRequestWithAuthentication.call(context, 'nextcloudApi', {
+		// CAST-ALLOWLIST: WebDAV — n8n IHttpRequestMethods omits PROPFIND/MKCOL/MOVE/COPY (Phase 8 → eslint-disable)
 		method: method as IHttpRequestMethods,
 		url,
 		body,
@@ -206,7 +203,7 @@ const DIRECTORY_PROPFIND_BODY = `<?xml version="1.0" encoding="utf-8" ?>
 </d:propfind>`;
 
 export async function loadDirectoryListing(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	credentials: NextcloudCredentialData,
 	directoryPath: string,
 ): Promise<DirectoryEntry[]> {
@@ -335,7 +332,7 @@ export function clearPathListSearchCache(): void {
 }
 
 export async function collectPathEntriesRecursive(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	credentials: NextcloudCredentialData,
 	options: PathListSearchScope & {
 		filter?: string;
@@ -597,7 +594,7 @@ export function parseSharePasswordValidationResult(response: unknown): string | 
  * the password_policy app is unavailable, or the validate request cannot be completed.
  */
 export async function validateSharePassword(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	password: string,
 ): Promise<string | undefined> {
 	const trimmed = password.trim();
@@ -752,7 +749,7 @@ export function unwrapOcsResponse(response: unknown): unknown {
  * Forces JSON output and unwraps the `ocs.data` envelope.
  */
 export async function ocsRequest(
-	context: ILoadOptionsFunctions | IExecuteFunctions,
+	context: NextcloudRequestContext,
 	method: NextcloudHttpMethod,
 	apiPath: string,
 	body?: IDataObject,
