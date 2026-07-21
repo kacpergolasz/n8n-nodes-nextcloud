@@ -12,12 +12,16 @@ import { scrubErrorMessage } from '../../NextcloudNews/shared/scrubSecrets';
 
 export async function getFeeds(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	try {
-		const folder = this.getCurrentNodeParameter('folder') as
-			| INodeParameterResourceLocator
-			| undefined;
+		const raw = this.getCurrentNodeParameter('folder') as unknown;
+		// Match poll/execute helpers: accept RLC `{ value }` or bare
+		// numeric/string expression results (e.g. `={{ $json.folderId }}`).
+		const value =
+			raw !== null && typeof raw === 'object' && 'value' in (raw as object)
+				? (raw as INodeParameterResourceLocator).value
+				: raw;
 		const folderId =
-			folder?.value !== undefined && folder.value !== null && folder.value !== ''
-				? resolveFolderId(folder.value as string)
+			value !== undefined && value !== null && String(value).trim() !== ''
+				? resolveFolderId(value as string | number)
 				: undefined;
 
 		const feeds = await loadFeeds(this, folderId);

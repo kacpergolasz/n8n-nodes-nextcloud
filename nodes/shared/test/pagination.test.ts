@@ -5,12 +5,37 @@ import {
 	NEWS_BATCH_SIZE_ALL,
 	applyReturnAllLimit,
 	buildNewsItemsQueryParams,
+	coerceFiniteNumber,
 	nextNewsOffsetFromItems,
 	normalizeNewsBatchSize,
 	normalizeNewsOffset,
 } from '../pagination';
 
 describe('pagination', () => {
+	describe('coerceFiniteNumber', () => {
+		it('returns finite numbers as-is', () => {
+			expect(coerceFiniteNumber(43)).toBe(43);
+			expect(coerceFiniteNumber(0)).toBe(0);
+			expect(coerceFiniteNumber(-1)).toBe(-1);
+		});
+
+		it('parses numeric strings', () => {
+			expect(coerceFiniteNumber('43')).toBe(43);
+			expect(coerceFiniteNumber(' 12.9 ')).toBe(12.9);
+			expect(coerceFiniteNumber('-1')).toBe(-1);
+		});
+
+		it('returns undefined for empty / non-numeric / non-finite', () => {
+			expect(coerceFiniteNumber(undefined)).toBeUndefined();
+			expect(coerceFiniteNumber(null)).toBeUndefined();
+			expect(coerceFiniteNumber('')).toBeUndefined();
+			expect(coerceFiniteNumber('  ')).toBeUndefined();
+			expect(coerceFiniteNumber('abc')).toBeUndefined();
+			expect(coerceFiniteNumber(Number.NaN)).toBeUndefined();
+			expect(coerceFiniteNumber({})).toBeUndefined();
+		});
+	});
+
 	describe('applyReturnAllLimit (client-limit mode)', () => {
 		const items = ['a', 'b', 'c', 'd', 'e'];
 
@@ -38,6 +63,10 @@ describe('pagination', () => {
 			expect(applyReturnAllLimit(items, false, 2.9)).toEqual(['a', 'b']);
 		});
 
+		it('coerces numeric-string limits from expressions', () => {
+			expect(applyReturnAllLimit(items, false, '2')).toEqual(['a', 'b']);
+		});
+
 		it('returns empty when input is empty', () => {
 			expect(applyReturnAllLimit([], false, 10)).toEqual([]);
 			expect(applyReturnAllLimit([], true)).toEqual([]);
@@ -45,13 +74,15 @@ describe('pagination', () => {
 	});
 
 	describe('normalizeNewsBatchSize / normalizeNewsOffset', () => {
-		it('defaults batchSize to -1 (all)', () => {
-			expect(normalizeNewsBatchSize()).toBe(DEFAULT_NEWS_BATCH_SIZE);
-			expect(normalizeNewsBatchSize(undefined)).toBe(NEWS_BATCH_SIZE_ALL);
+		it('defaults omitted / null batchSize to DEFAULT_CLIENT_LIMIT (never -1)', () => {
+			expect(normalizeNewsBatchSize()).toBe(DEFAULT_CLIENT_LIMIT);
+			expect(normalizeNewsBatchSize(undefined)).toBe(DEFAULT_CLIENT_LIMIT);
+			expect(normalizeNewsBatchSize(null)).toBe(DEFAULT_CLIENT_LIMIT);
 		});
 
-		it('preserves batchSize=-1', () => {
+		it('preserves explicit batchSize=-1 (fetch all)', () => {
 			expect(normalizeNewsBatchSize(-1)).toBe(NEWS_BATCH_SIZE_ALL);
+			expect(DEFAULT_NEWS_BATCH_SIZE).toBe(NEWS_BATCH_SIZE_ALL);
 		});
 
 		it('keeps positive batchSize values', () => {
@@ -65,6 +96,15 @@ describe('pagination', () => {
 			expect(normalizeNewsBatchSize(Number.NaN)).toBe(DEFAULT_CLIENT_LIMIT);
 		});
 
+		it('coerces numeric-string batchSize (expression chaining)', () => {
+			expect(normalizeNewsBatchSize('20')).toBe(20);
+			expect(normalizeNewsBatchSize('-1')).toBe(NEWS_BATCH_SIZE_ALL);
+			expect(normalizeNewsBatchSize('0')).toBe(DEFAULT_CLIENT_LIMIT);
+			expect(normalizeNewsBatchSize('')).toBe(DEFAULT_CLIENT_LIMIT);
+			expect(normalizeNewsBatchSize('  ')).toBe(DEFAULT_CLIENT_LIMIT);
+			expect(normalizeNewsBatchSize('abc')).toBe(DEFAULT_CLIENT_LIMIT);
+		});
+
 		it('defaults offset to 0', () => {
 			expect(normalizeNewsOffset()).toBe(DEFAULT_NEWS_OFFSET);
 			expect(normalizeNewsOffset(undefined)).toBe(0);
@@ -76,12 +116,19 @@ describe('pagination', () => {
 			expect(normalizeNewsOffset(-1)).toBe(DEFAULT_NEWS_OFFSET);
 			expect(normalizeNewsOffset(Number.NaN)).toBe(DEFAULT_NEWS_OFFSET);
 		});
+
+		it('coerces numeric-string offsets (expression chaining)', () => {
+			expect(normalizeNewsOffset('43')).toBe(43);
+			expect(normalizeNewsOffset('12.9')).toBe(12);
+			expect(normalizeNewsOffset('')).toBe(DEFAULT_NEWS_OFFSET);
+			expect(normalizeNewsOffset('abc')).toBe(DEFAULT_NEWS_OFFSET);
+		});
 	});
 
 	describe('buildNewsItemsQueryParams (News cursor mode)', () => {
 		it('always includes normalized batchSize and offset', () => {
 			expect(buildNewsItemsQueryParams()).toEqual({
-				batchSize: NEWS_BATCH_SIZE_ALL,
+				batchSize: DEFAULT_CLIENT_LIMIT,
 				offset: 0,
 			});
 		});
@@ -117,6 +164,13 @@ describe('pagination', () => {
 			expect(buildNewsItemsQueryParams({ batchSize: 0, offset: -9 })).toEqual({
 				batchSize: DEFAULT_CLIENT_LIMIT,
 				offset: 0,
+			});
+		});
+
+		it('coerces numeric-string batchSize / offset in the query', () => {
+			expect(buildNewsItemsQueryParams({ batchSize: '20', offset: '43' })).toEqual({
+				batchSize: 20,
+				offset: 43,
 			});
 		});
 	});

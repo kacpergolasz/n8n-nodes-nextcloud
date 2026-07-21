@@ -12,14 +12,16 @@ import { scrubErrorMessage } from '../shared/scrubSecrets';
 
 export async function getFeeds(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	try {
-		const folderFilter = this.getCurrentNodeParameter('folderFilter') as
-			| INodeParameterResourceLocator
-			| undefined;
+		const raw = this.getCurrentNodeParameter('folderFilter') as unknown;
+		// Match poll/execute helpers: accept RLC `{ value }` or bare
+		// numeric/string expression results (e.g. `={{ $json.folderId }}`).
+		const value =
+			raw !== null && typeof raw === 'object' && 'value' in (raw as object)
+				? (raw as INodeParameterResourceLocator).value
+				: raw;
 		const folderId =
-			folderFilter?.value !== undefined &&
-			folderFilter.value !== null &&
-			folderFilter.value !== ''
-				? resolveFolderId(folderFilter.value as string)
+			value !== undefined && value !== null && String(value).trim() !== ''
+				? resolveFolderId(value as string | number)
 				: undefined;
 
 		const feeds = await loadFeeds(this, folderId);

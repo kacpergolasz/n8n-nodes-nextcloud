@@ -9,11 +9,44 @@ export const DEFAULT_CLIENT_LIMIT = 50;
  */
 export const NEWS_BATCH_SIZE_ALL = -1;
 
-/** News API default when `batchSize` is omitted. */
+/**
+ * News API wire default when `batchSize` is omitted from the request.
+ * Our helpers never omit it: {@link normalizeNewsBatchSize} falls back to
+ * {@link DEFAULT_CLIENT_LIMIT} unless the caller passes explicit `-1`.
+ */
 export const DEFAULT_NEWS_BATCH_SIZE = NEWS_BATCH_SIZE_ALL;
 
 /** News API default `offset` (item id cursor); `0` starts from the newest. */
 export const DEFAULT_NEWS_OFFSET = 0;
+
+/** Coerce expression / static-data values that may arrive as numeric strings. */
+export type NewsNumericInput = number | string | null | undefined;
+
+/**
+ * Parse a finite number from node params / static data. Accepts numbers and
+ * numeric strings (common when chaining `nextOffset` via expressions).
+ * Empty / non-numeric → `undefined` (caller decides the fallback).
+ */
+export function coerceFiniteNumber(value: unknown): number | undefined {
+	if (value === undefined || value === null) {
+		return undefined;
+	}
+
+	if (typeof value === 'number') {
+		return Number.isFinite(value) ? value : undefined;
+	}
+
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (trimmed === '') {
+			return undefined;
+		}
+		const parsed = Number(trimmed);
+		return Number.isFinite(parsed) ? parsed : undefined;
+	}
+
+	return undefined;
+}
 
 /**
  * Client-limit mode: when the API returns a full list, optionally slice to
@@ -23,13 +56,15 @@ export const DEFAULT_NEWS_OFFSET = 0;
 export function applyReturnAllLimit<T>(
 	items: T[],
 	returnAll: boolean,
-	limit: number = DEFAULT_CLIENT_LIMIT,
+	limit: NewsNumericInput = DEFAULT_CLIENT_LIMIT,
 ): T[] {
 	if (returnAll) {
 		return items;
 	}
 
-	const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : DEFAULT_CLIENT_LIMIT;
+	const coerced = coerceFiniteNumber(limit);
+	const safeLimit =
+		coerced !== undefined && coerced > 0 ? Math.floor(coerced) : DEFAULT_CLIENT_LIMIT;
 	return items.slice(0, safeLimit);
 }
 
@@ -37,18 +72,21 @@ export function applyReturnAllLimit<T>(
 export type NewsItemsQueryType = 0 | 1 | 2 | 3;
 
 export type NewsItemsCursorParams = {
-	/**
-	 * Page size. `-1` = all items (News default when omitted). Positive integers page.
-	 * Non-finite / zero / other non-positive values fall back to
-	 * {@link DEFAULT_CLIENT_LIMIT} (never silently to `-1`).
-	 */
-	batchSize?: number;
+/**
+ * Page size. Explicit `-1` = all items. Positive integers page.
+ * Omitted / null / non-finite / zero / other non-positive values fall back to
+ * {@link DEFAULT_CLIENT_LIMIT} (never silently to `-1` — blank expression
+ * results must not unbounded-pull).
+ * Numeric strings are coerced (expression chaining).
+ */
+	batchSize?: NewsNumericInput;
 	/**
 	 * Item-id cursor: only return items with id ≤ this value (older-or-equal).
 	 * After a page, set the next `offset` to the **lowest** item id from that
 	 * page (see News autopaging docs). `0` / omitted starts from the newest.
+	 * Numeric strings are coerced (expression chaining).
 	 */
-	offset?: number;
+	offset?: NewsNumericInput;
 	/** Feed: 0, Folder: 1, Starred: 2, All: 3 */
 	type?: NewsItemsQueryType;
 	/** Folder or feed id; use `0` for Starred and All */
@@ -60,20 +98,19 @@ export type NewsItemsCursorParams = {
 };
 
 /**
- * Normalize News `batchSize`. Preserves explicit `-1` (all). Omitted →
- * {@link DEFAULT_NEWS_BATCH_SIZE} (`-1`). Invalid values (`NaN`, `0`, other
- * negatives) → {@link DEFAULT_CLIENT_LIMIT} so typos cannot unbounded-pull.
+ * Normalize News `batchSize`. Preserves explicit `-1` (all) only when
+ * requested. Omitted / null / empty strings / invalid values (`NaN`, `0`,
+ * other negatives) → {@link DEFAULT_CLIENT_LIMIT} so typos and blank
+ * expression results cannot unbounded-pull. Coerces numeric strings from
+ * expression results.
  */
-export function normalizeNewsBatchSize(batchSize?: number): number {
-	if (batchSize === undefined || batchSize === null) {
-		return DEFAULT_NEWS_BATCH_SIZE;
-	}
-
-	if (!Number.isFinite(batchSize)) {
+export function normalizeNewsBatchSize(batchSize?: NewsNumericInput): number {
+	const coerced = coerceFiniteNumber(batchSize);
+	if (coerced === undefined) {
 		return DEFAULT_CLIENT_LIMIT;
 	}
 
-	const n = Math.trunc(batchSize);
+	const n = Math.trunc(coerced);
 	if (n === NEWS_BATCH_SIZE_ALL) {
 		return NEWS_BATCH_SIZE_ALL;
 	}
@@ -87,14 +124,15 @@ export function normalizeNewsBatchSize(batchSize?: number): number {
 
 /**
  * Normalize News `offset` (item id cursor). Non-finite / negative →
- * {@link DEFAULT_NEWS_OFFSET}.
+ * {@link DEFAULT_NEWS_OFFSET}. Coerces numeric strings from expression results.
  */
-export function normalizeNewsOffset(offset?: number): number {
-	if (offset === undefined || offset === null || !Number.isFinite(offset)) {
+export function normalizeNewsOffset(offset?: NewsNumericInput): number {
+	const coerced = coerceFiniteNumber(offset);
+	if (coerced === undefined) {
 		return DEFAULT_NEWS_OFFSET;
 	}
 
-	const n = Math.trunc(offset);
+	const n = Math.trunc(coerced);
 	return n < 0 ? DEFAULT_NEWS_OFFSET : n;
 }
 
