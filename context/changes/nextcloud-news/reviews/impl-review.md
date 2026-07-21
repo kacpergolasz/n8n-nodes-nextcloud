@@ -93,7 +93,7 @@
 - **Location**: nodes/NextcloudNewsTrigger/pollNews.ts:200-201
 - **Detail**: Pre-listing failures call `scrubErrorMessage(error)` without credentials (same as Files Trigger). Basic-auth regexes still help; password-substring redaction may not run if `getCredentials` itself threw with a secret in the message.
 - **Fix**: Best-effort load credentials in the catch before scrubbing (as listSearch does), or scrub with any partially available secret material.
-- **Decision**: PENDING
+- **Decision**: Fixed
 
 ### F6 — Favicon always reports `image/x-icon` MIME
 
@@ -103,7 +103,7 @@
 - **Location**: nodes/NextcloudNews/resources/feed/favicon.ts:35-36
 - **Detail**: Binary path is correct (`json: false`, `arraybuffer`), but MIME is hardcoded to `image/x-icon` even when the bytes are PNG/SVG.
 - **Fix**: Infer MIME from response headers or magic bytes when present.
-- **Decision**: PENDING
+- **Decision**: Fixed
 
 ### F7 — Shared soft-fail bullet still describes Files-only `return null`
 
@@ -113,8 +113,9 @@
 - **Location**: context/changes/suite-polling-triggers/follow-ups/next-app-triggers.md:12
 - **Detail**: Shared conventions still say soft-fail returns `null`. The News subsection correctly documents the one-shot notice-item pattern. Future app authors reading only the shared bullet may miss decision 8B.
 - **Fix**: Update the shared soft-fail bullet to mention optional one-shot notice item (News pattern) vs silent `null` (Files).
-- **Decision**: PENDING
+- **Decision**: Fixed
 
 ## Triage notes
 
 - 2026-07-20: F1–F4 fixed; triage paused (context clear). Resume with `/10x-impl-review context/changes/nextcloud-news/reviews/impl-review.md` for F5–F7.
+- 2026-07-20: F5–F7 fixed (resume triage complete).

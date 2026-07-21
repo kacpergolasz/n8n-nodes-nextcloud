@@ -53,6 +53,27 @@ export const POLL_SCOPE_KEY = 'pollScope';
 /** True after a soft-fail notice item was emitted for the current failure window. */
 export const POLL_ERROR_NOTICE_SHOWN_KEY = 'pollErrorNoticeShown';
 
+/**
+ * High-water mark of article ids already accounted for. News ids are monotonic,
+ * so anything ≤ this value is treated as seen (avoids re-fire when the
+ * processed-id ring buffer evicts older entries).
+ */
+export const MAX_PROCESSED_ID_KEY = 'maxProcessedId';
+
+/**
+ * When a per-poll catch-up hits {@link TRIGGER_STEADY_MAX_PAGES} before reaching
+ * the watermark, resume from this offset on the next poll so mid-burst articles
+ * are not permanently skipped. Cleared only after catch-up observes an id ≤ W
+ * (or the list is exhausted). Survives soft-fail.
+ */
+export const CATCH_UP_OFFSET_KEY = 'catchUpOffset';
+
+/**
+ * @deprecated Stop target is always {@link MAX_PROCESSED_ID_KEY}; kept only so
+ * older static data is cleared cleanly.
+ */
+export const CATCH_UP_UNTIL_ID_KEY = 'catchUpUntilId';
+
 export type NewsPollScope = {
 	folderId?: number;
 	feedId?: number;
@@ -101,8 +122,14 @@ export function resolveOptionalLocatorId(
 	paramName: string,
 	resourceLabel: string,
 ): number | undefined {
-	const locator = context.getNodeParameter(paramName) as INodeParameterResourceLocator;
-	const value = locator?.value;
+	const raw = context.getNodeParameter(paramName) as unknown;
+	// Match actions-node getLocatorValue: accept RLC `{ value }` or bare
+	// numeric/string expression results (e.g. `={{ $json.id }}` → number).
+	const value =
+		raw !== null && typeof raw === 'object' && 'value' in (raw as object)
+			? (raw as INodeParameterResourceLocator).value
+			: raw;
+
 	if (value === undefined || value === null || String(value).trim() === '') {
 		return undefined;
 	}
@@ -143,6 +170,73 @@ export function setPollErrorNoticeShown(staticData: IDataObject, shown: boolean)
 	}
 }
 
+export function getMaxProcessedId(staticData: IDataObject): number {
+	const value = staticData[MAX_PROCESSED_ID_KEY];
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === 'string' && value.trim() !== '') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+	return 0;
+}
+
+export function setMaxProcessedId(staticData: IDataObject, maxId: number): void {
+	staticData[MAX_PROCESSED_ID_KEY] = maxId;
+}
+
+export function getCatchUpOffset(staticData: IDataObject): number | undefined {
+	const value = staticData[CATCH_UP_OFFSET_KEY];
+	if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+		return value;
+	}
+	if (typeof value === 'string' && value.trim() !== '') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed) && parsed > 0) {
+			return parsed;
+		}
+	}
+	return undefined;
+}
+
+export function getCatchUpUntilId(staticData: IDataObject): number | undefined {
+	const value = staticData[CATCH_UP_UNTIL_ID_KEY];
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === 'string' && value.trim() !== '') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+	return undefined;
+}
+
+export function clearCatchUpState(staticData: IDataObject): void {
+	delete staticData[CATCH_UP_OFFSET_KEY];
+	delete staticData[CATCH_UP_UNTIL_ID_KEY];
+}
+
+export function setCatchUpOffset(staticData: IDataObject, offset: number): void {
+	staticData[CATCH_UP_OFFSET_KEY] = offset;
+	// Drop legacy until-id; watermark is the sole stop target.
+	delete staticData[CATCH_UP_UNTIL_ID_KEY];
+}
+
+function maxArticleId(items: NewsItem[]): number {
+	let maxId = 0;
+	for (const item of items) {
+		if (item.id > maxId) {
+			maxId = item.id;
+		}
+	}
+	return maxId;
+}
+
 /**
  * Initialized only when cursor, processed-id window, and scope all match the
  * current poll filters. Missing any piece (or a scope change) triggers re-seed.
@@ -151,6 +245,8 @@ export function isNewsPollInitialized(staticData: IDataObject, scopeKey: string)
 	return (
 		getLastTimeChecked(staticData) !== undefined &&
 		Array.isArray(staticData[PROCESSED_IDS_KEY]) &&
+		staticData[MAX_PROCESSED_ID_KEY] !== undefined &&
+		staticData[MAX_PROCESSED_ID_KEY] !== null &&
 		getPollScope(staticData) === scopeKey
 	);
 }
@@ -160,12 +256,23 @@ export function seedNewsPollState(
 	scopeKey: string,
 	items: NewsItem[],
 	now: number = Date.now(),
+	/**
+	 * Explicit high-water mark (e.g. max id from an all-items newest page when
+	 * seeding under unread-only). Defaults to max id among `items`.
+	 */
+	maxProcessedId?: number,
 ): void {
 	// Reset the window first so a scope change does not retain prior-scope ids.
 	staticData[PROCESSED_IDS_KEY] = [];
+	clearCatchUpState(staticData);
 	const candidateIds = items.map((item) => String(item.id));
 	// Advance the ID window without emitting — marks current articles as seen.
 	filterIdsInStaticData(candidateIds, staticData);
+	const itemsMax = maxArticleId(items);
+	setMaxProcessedId(
+		staticData,
+		maxProcessedId !== undefined ? Math.max(itemsMax, maxProcessedId) : itemsMax,
+	);
 	staticData[LAST_TIME_CHECKED_KEY] = new Date(now).toISOString();
 	staticData[POLL_SCOPE_KEY] = scopeKey;
 	setPollErrorNoticeShown(staticData, false);
@@ -185,11 +292,13 @@ export function pollErrorNoticeItem(message: string): IDataObject {
 /**
  * Advance the News item-id cursor for the next page, or `undefined` when
  * paging should stop (partial page / missing cursor / non-advancing cursor).
+ *
+ * Stop when there is no next cursor — not by comparing against the prior
+ * query offset (that falsely aborts after page 1 when `previousOffset` was 0).
  */
 export function nextTriggerPageOffset(
 	items: NewsItem[],
 	offset: number,
-	previousOffset: number | undefined,
 ): number | undefined {
 	if (items.length < TRIGGER_ITEMS_BATCH_SIZE) {
 		return undefined;
@@ -200,10 +309,7 @@ export function nextTriggerPageOffset(
 		return undefined;
 	}
 
-	// Inclusive cursors can repeat the boundary id; stop if we would not advance.
-	if (previousOffset !== undefined && nextOffset >= previousOffset) {
-		return undefined;
-	}
+	// Inclusive cursors can repeat the boundary id; stop if we would not move older.
 	if (offset !== 0 && nextOffset >= offset) {
 		return undefined;
 	}
@@ -228,12 +334,45 @@ export async function loadTriggerItemsPage(
 	return unwrapItems(await newsRequest(context, 'GET', '/items', { qs }));
 }
 
+/** Append page items, skipping ids already in `seenIds` (inclusive-offset overlap). */
+export function appendUniqueNewsItems(
+	collected: NewsItem[],
+	page: NewsItem[],
+	seenIds: Set<string>,
+): void {
+	for (const item of page) {
+		const id = String(item.id);
+		if (seenIds.has(id)) {
+			continue;
+		}
+		seenIds.add(id);
+		collected.push(item);
+	}
+}
+
 /** Single newest page (offset 0) — used by manual mode. */
 export async function loadTriggerItems(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
 ): Promise<NewsItem[]> {
 	return loadTriggerItemsPage(context, scope, 0);
+}
+
+/**
+ * Newest-page max article id for the folder/feed scope with `getRead: true`.
+ * Used on unread-only seed so the watermark covers pre-existing read articles
+ * (avoids false-fire when those are later marked unread).
+ */
+export async function loadScopeMaxArticleId(
+	context: ILoadOptionsFunctions,
+	scope: NewsPollScopeResolved,
+): Promise<number> {
+	const newestAll = await loadTriggerItemsPage(
+		context,
+		{ ...scope, getRead: true },
+		0,
+	);
+	return maxArticleId(newestAll);
 }
 
 /**
@@ -245,8 +384,8 @@ export async function loadAllTriggerItemsForSeed(
 	scope: NewsPollScopeResolved,
 ): Promise<NewsItem[]> {
 	const collected: NewsItem[] = [];
+	const seenIds = new Set<string>();
 	let offset = 0;
-	let previousOffset: number | undefined;
 
 	for (let page = 0; page < TRIGGER_SEED_MAX_PAGES; page++) {
 		const items = await loadTriggerItemsPage(context, scope, offset);
@@ -254,18 +393,17 @@ export async function loadAllTriggerItemsForSeed(
 			break;
 		}
 
-		collected.push(...items);
+		appendUniqueNewsItems(collected, items, seenIds);
 
 		if (collected.length >= DEFAULT_MAX_PROCESSED_IDS) {
 			return collected.slice(0, DEFAULT_MAX_PROCESSED_IDS);
 		}
 
-		const nextOffset = nextTriggerPageOffset(items, offset, previousOffset);
+		const nextOffset = nextTriggerPageOffset(items, offset);
 		if (nextOffset === undefined) {
 			break;
 		}
 
-		previousOffset = offset;
 		offset = nextOffset;
 	}
 
@@ -273,44 +411,139 @@ export async function loadAllTriggerItemsForSeed(
 }
 
 /**
- * Steady-state: load the newest page, then keep paging while every item on a
- * full page is unseen (burst larger than {@link TRIGGER_ITEMS_BATCH_SIZE}).
- * Stop when a page includes an already-processed id, is partial/empty, or the
- * per-poll page cap is hit.
+ * Steady-state: walk newest → older toward the watermark with a per-poll page
+ * budget. Completeness is driven only by {@link MAX_PROCESSED_ID_KEY}; the ring
+ * buffer never ends catch-up. When the budget runs out before id ≤ W, persist
+ * {@link CATCH_UP_OFFSET_KEY} and continue next poll (resume survives soft-fail).
+ *
+ * With a pending resume R: peek from offset 0 for a newer burst, then continue
+ * from R toward W so already-fetched pages are not re-walked within the budget.
  */
 export async function loadTriggerItemsWithCatchUp(
 	context: ILoadOptionsFunctions,
 	scope: NewsPollScopeResolved,
 	staticData: IDataObject,
 ): Promise<NewsItem[]> {
-	const processed = new Set(getProcessedIds(staticData));
+	const watermark = getMaxProcessedId(staticData);
+	const priorOffset = getCatchUpOffset(staticData);
+	const processedIds = new Set(getProcessedIds(staticData));
+
 	const collected: NewsItem[] = [];
-	let offset = 0;
-	let previousOffset: number | undefined;
+	const seenIds = new Set<string>();
+	let pagesLeft = TRIGGER_STEADY_MAX_PAGES;
 
-	for (let page = 0; page < TRIGGER_STEADY_MAX_PAGES; page++) {
-		const items = await loadTriggerItemsPage(context, scope, offset);
-		if (items.length === 0) {
-			break;
+	const newest = await collectCatchUpPages(context, scope, collected, seenIds, {
+		startOffset: 0,
+		stopAtOrBelowId: watermark,
+		resumeFrontier: priorOffset,
+		processedIds,
+		maxPages: pagesLeft,
+	});
+	pagesLeft -= newest.pagesUsed;
+
+	if (newest.status === 'incomplete') {
+		// New burst from the top deeper than the budget; frontier moves older.
+		setCatchUpOffset(staticData, newest.nextOffset);
+		return collected;
+	}
+
+	if (newest.reason === 'watermark') {
+		clearCatchUpState(staticData);
+		return collected;
+	}
+
+	// Peek exhausted with no pending resume means the listing is done from the top.
+	if (newest.reason === 'exhausted' && priorOffset === undefined) {
+		clearCatchUpState(staticData);
+		return collected;
+	}
+
+	// Reached resume frontier / known territory from the top, or peek exhausted
+	// while a resume cursor exists — continue toward W from the saved offset.
+	if (priorOffset !== undefined && pagesLeft > 0) {
+		const resumed = await collectCatchUpPages(context, scope, collected, seenIds, {
+			startOffset: priorOffset,
+			stopAtOrBelowId: watermark,
+			processedIds,
+			maxPages: pagesLeft,
+		});
+		if (resumed.status === 'incomplete') {
+			setCatchUpOffset(staticData, resumed.nextOffset);
+			return collected;
 		}
-
-		collected.push(...items);
-
-		const hasSeen = items.some((item) => processed.has(String(item.id)));
-		if (hasSeen) {
-			break;
-		}
-
-		const nextOffset = nextTriggerPageOffset(items, offset, previousOffset);
-		if (nextOffset === undefined) {
-			break;
-		}
-
-		previousOffset = offset;
-		offset = nextOffset;
+		clearCatchUpState(staticData);
+		return collected;
 	}
 
 	return collected;
+}
+
+type CatchUpPageResult =
+	| {
+			status: 'complete';
+			reason: 'watermark' | 'frontier' | 'exhausted';
+			pagesUsed: number;
+	  }
+	| { status: 'incomplete'; nextOffset: number; pagesUsed: number };
+
+async function collectCatchUpPages(
+	context: ILoadOptionsFunctions,
+	scope: NewsPollScopeResolved,
+	collected: NewsItem[],
+	seenIds: Set<string>,
+	options: {
+		startOffset: number;
+		stopAtOrBelowId: number;
+		/** When set, reaching this offset (or a fully-known page) ends the phase so resume can continue. */
+		resumeFrontier?: number;
+		processedIds: Set<string>;
+		maxPages: number;
+	},
+): Promise<CatchUpPageResult> {
+	const { stopAtOrBelowId, resumeFrontier, processedIds, maxPages } = options;
+	let offset = options.startOffset;
+
+	if (maxPages <= 0) {
+		return { status: 'incomplete', nextOffset: offset, pagesUsed: 0 };
+	}
+
+	for (let page = 0; page < maxPages; page++) {
+		const items = await loadTriggerItemsPage(context, scope, offset);
+		const pagesUsed = page + 1;
+
+		if (items.length === 0) {
+			return { status: 'complete', reason: 'exhausted', pagesUsed };
+		}
+
+		appendUniqueNewsItems(collected, items, seenIds);
+
+		if (items.some((item) => item.id <= stopAtOrBelowId)) {
+			return { status: 'complete', reason: 'watermark', pagesUsed };
+		}
+
+		if (resumeFrontier !== undefined) {
+			const reachedFrontier = items.some((item) => item.id <= resumeFrontier);
+			const knownTerritory = items.every((item) =>
+				processedIds.has(String(item.id)),
+			);
+			if (reachedFrontier || knownTerritory) {
+				return { status: 'complete', reason: 'frontier', pagesUsed };
+			}
+		}
+
+		const nextOffset = nextTriggerPageOffset(items, offset);
+		if (nextOffset === undefined) {
+			return { status: 'complete', reason: 'exhausted', pagesUsed };
+		}
+
+		if (page === maxPages - 1) {
+			return { status: 'incomplete', nextOffset, pagesUsed };
+		}
+
+		offset = nextOffset;
+	}
+
+	return { status: 'complete', reason: 'exhausted', pagesUsed: maxPages };
 }
 
 export async function runNewsPoll(
@@ -329,15 +562,27 @@ export async function runNewsPoll(
 		pollScope = readPollScopeFromNode(context);
 		resolved = resolveNewsPollScope(pollScope);
 	} catch (error) {
-		throwPollError(context, scrubErrorMessage(error));
+		let secrets = {};
+		try {
+			secrets = await getCredentials(requestContext);
+		} catch {
+			// ignore credential load failures while scrubbing
+		}
+		throwPollError(context, scrubErrorMessage(error, secrets));
 	}
 
 	const isInitialized = isNewsPollInitialized(staticData, resolved.scopeKey);
 
 	let items: NewsItem[];
+	/** All-items newest-page max; set during unread-only seed only. */
+	let seedScopeMaxId: number | undefined;
 	try {
 		if (!isManual && !isInitialized) {
 			items = await loadAllTriggerItemsForSeed(requestContext, resolved);
+			// Unread listings omit read articles; raise W from newest all-items page.
+			if (!resolved.getRead) {
+				seedScopeMaxId = await loadScopeMaxArticleId(requestContext, resolved);
+			}
 		} else if (!isManual && isInitialized) {
 			items = await loadTriggerItemsWithCatchUp(requestContext, resolved, staticData);
 		} else {
@@ -378,24 +623,43 @@ export async function runNewsPoll(
 	}
 
 	if (!isInitialized) {
-		seedNewsPollState(staticData, resolved.scopeKey, items);
+		seedNewsPollState(staticData, resolved.scopeKey, items, Date.now(), seedScopeMaxId);
 		return null;
 	}
 
+	const watermark = getMaxProcessedId(staticData);
 	const candidateIds = items.map((item) => String(item.id));
+	// Record every fetched id in the ring buffer (in-poll / window dedupe only).
 	const { unseenIds } = filterIdsInStaticData(candidateIds, staticData);
 	staticData[LAST_TIME_CHECKED_KEY] = new Date().toISOString();
 
-	if (unseenIds.length === 0) {
-		return null;
+	// Raise W only after catch-up fully reached the prior watermark (no resume left).
+	if (getCatchUpOffset(staticData) === undefined) {
+		const fetchedMax = maxArticleId(items);
+		if (fetchedMax > watermark) {
+			setMaxProcessedId(staticData, fetchedMax);
+		}
 	}
 
-	const unseenSet = new Set(unseenIds);
-	const newArticles = items.filter((item) => unseenSet.has(String(item.id)));
+	// Emit only ids above the pre-poll watermark; ascending id order for workflows.
+	const remainingUnseen = new Set(
+		unseenIds.filter((id) => Number(id) > watermark),
+	);
+	const newArticles: NewsItem[] = [];
+	for (const item of items) {
+		const id = String(item.id);
+		if (!remainingUnseen.has(id)) {
+			continue;
+		}
+		remainingUnseen.delete(id);
+		newArticles.push(item);
+	}
 
 	if (newArticles.length === 0) {
 		return null;
 	}
+
+	newArticles.sort((a, b) => a.id - b.id);
 
 	return [context.helpers.returnJsonArray(newArticles.map(articleToOutputItem))];
 }
