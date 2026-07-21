@@ -1,11 +1,12 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { assertHttpMethodIsValid } from '../shared/assertHttpMethodIsValid';
+import type { NextcloudHttpMethod } from '../shared/assertHttpMethodIsValid';
 import {
 	parseNextcloudCredentials,
 	parseRequiredString,
@@ -17,9 +18,6 @@ import type {
 	NextcloudCredentialName,
 	NextcloudEventInput,
 } from './EventInterface';
-
-/** n8n's IHttpRequestMethods omits CalDAV verbs like PROPFIND. */
-type NextcloudHttpMethod = IHttpRequestMethods | 'PROPFIND';
 
 const CALENDAR_ROOT_MARKER = '/remote.php/dav/calendars/';
 
@@ -148,6 +146,8 @@ export async function nextcloudRequest(
 	headers?: IDataObject,
 	credentialName?: NextcloudCredentialName,
 ) {
+	assertHttpMethodIsValid(method);
+
 	const resolvedCredentialName =
 		credentialName ??
 		resolveCredentialName(
@@ -158,8 +158,7 @@ export async function nextcloudRequest(
 		);
 
 	return await context.helpers.httpRequestWithAuthentication.call(context, resolvedCredentialName, {
-		// CAST-ALLOWLIST: CalDAV — n8n IHttpRequestMethods omits PROPFIND (Phase 8 → eslint-disable)
-		method: method as IHttpRequestMethods,
+		method: method,
 		url,
 		body,
 		headers: {

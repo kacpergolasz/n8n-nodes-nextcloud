@@ -554,27 +554,27 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [x] 7.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [x] 7.2 `npm test` succeeds
-- [x] 7.3 `npm lint` succeeds
-- [x] 7.4 Grep confirms zero ` as ` under `credentials/`
+- [x] 7.1 `npm exec tsc --noEmit` / `npm build` succeeds — 311daa5
+- [x] 7.2 `npm test` succeeds — 311daa5
+- [x] 7.3 `npm lint` succeeds — 311daa5
+- [x] 7.4 Grep confirms zero ` as ` under `credentials/` — 311daa5
 
 #### Manual
 
-- [x] 7.5 `change.md` lists every remaining allowlisted cast with rationale
-- [x] 7.6 Human confirms no credential or avoidable param/response cast remains
+- [x] 7.5 `change.md` lists every remaining allowlisted cast with rationale — 311daa5
+- [x] 7.6 Human confirms no credential or avoidable param/response cast remains — 311daa5
 
 ### Phase 8: ESLint safety overlay (last)
 
 #### Automated
 
-- [ ] 8.1 `npm lint` succeeds (strict mode / default config)
-- [ ] 8.2 `npm lint:safety` succeeds on the cleaned tree
-- [ ] 8.3 Introducing a deliberate prod `as string` in a non-allowlisted file causes `lint:safety` to fail
-- [ ] 8.4 `npm test` and build still succeed
-- [ ] 8.5 `n8n.strict` remains `true`; `eslint.config.mjs` unchanged from CLI default
+- [x] 8.1 `npm lint` succeeds (strict mode / default config)
+- [x] 8.2 `npm lint:safety` succeeds on the cleaned tree
+- [x] 8.3 Introducing a deliberate prod `as string` in a non-allowlisted file causes `lint:safety` to fail
+- [x] 8.4 `npm test` and build still succeed
+- [x] 8.5 `n8n.strict` remains `true`; `eslint.config.mjs` unchanged from CLI default
 
 #### Manual
 
 - [ ] 8.6 Confirm `prepublishOnly`/CI path actually invokes `lint:safety`
-- [ ] 8.7 Confirm tests and `as const` are not false-positives
+- [x] 8.7 Confirm tests and `as const` are not false-positives

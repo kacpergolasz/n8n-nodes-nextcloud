@@ -1,6 +1,8 @@
-import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { assertHttpMethodIsValid } from '../shared/assertHttpMethodIsValid';
+import type { NextcloudHttpMethod } from '../shared/assertHttpMethodIsValid';
 import {
 	isPlainObject,
 	parseNextcloudCredentials,
@@ -9,8 +11,7 @@ import {
 import type { NextcloudRequestContext } from '../shared/requestContext';
 import type { DirectoryEntry, ParsedShare } from './FilesInterface';
 
-/** n8n's IHttpRequestMethods omits WebDAV verbs like PROPFIND, MKCOL, MOVE, and COPY. */
-export type NextcloudHttpMethod = IHttpRequestMethods | 'PROPFIND' | 'MKCOL' | 'MOVE' | 'COPY';
+export type { NextcloudHttpMethod };
 
 export type { NextcloudCredentialData };
 
@@ -178,9 +179,10 @@ export async function nextcloudRequest(
 	headers?: IDataObject,
 	options?: IDataObject,
 ) {
+	assertHttpMethodIsValid(method);
+
 	return await context.helpers.httpRequestWithAuthentication.call(context, 'nextcloudApi', {
-		// CAST-ALLOWLIST: WebDAV — n8n IHttpRequestMethods omits PROPFIND/MKCOL/MOVE/COPY (Phase 8 → eslint-disable)
-		method: method as IHttpRequestMethods,
+		method: method,
 		url,
 		body,
 		headers: {
