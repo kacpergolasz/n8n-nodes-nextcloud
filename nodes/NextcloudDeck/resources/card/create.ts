@@ -1,8 +1,8 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { DeckCard } from '../../DeckInterface';
-import { deckRequest, formatDeckDueDate } from '../../GenericFunctions';
+import { deckRequest, formatDeckDueDate, parseDeckCard } from '../../GenericFunctions';
+import { parseRequiredNumber, parseRequiredString, parseString } from '../../../shared/parse';
 import { cardToJson } from '../shared/entityJson';
 import { resolveStackFromInput } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
@@ -13,11 +13,14 @@ export async function cardCreate(
 ): Promise<INodeExecutionData> {
 	const { itemIndex, boardId } = ctx;
 	const stackId = resolveStackFromInput(context, itemIndex);
-	const title = context.getNodeParameter('title', itemIndex) as string;
-	const description = context.getNodeParameter('description', itemIndex, '') as string;
-	const dueDate = context.getNodeParameter('dueDate', itemIndex, '') as string;
-	const type = context.getNodeParameter('type', itemIndex, 'plain') as string;
-	const order = context.getNodeParameter('order', itemIndex, 0) as number;
+	const title = parseRequiredString(context.getNodeParameter('title', itemIndex), 'Title');
+	const description = parseString(
+		context.getNodeParameter('description', itemIndex, ''),
+		'Description',
+	);
+	const dueDate = parseString(context.getNodeParameter('dueDate', itemIndex, ''), 'Due date');
+	const type = parseString(context.getNodeParameter('type', itemIndex, 'plain'), 'Type');
+	const order = parseRequiredNumber(context.getNodeParameter('order', itemIndex, 0), 'Order');
 	if (!title.trim()) {
 		throw new NodeOperationError(
 			context.getNode(),
@@ -34,12 +37,14 @@ export async function cardCreate(
 	if (description.trim()) {
 		body.description = description;
 	}
-	const card = (await deckRequest(
-		context,
-		'POST',
-		`/boards/${boardId}/stacks/${stackId}/cards`,
-		body,
-	)) as DeckCard;
+	const card = parseDeckCard(
+		await deckRequest(
+			context,
+			'POST',
+			`/boards/${boardId}/stacks/${stackId}/cards`,
+			body,
+		),
+	);
 	return {
 		json: cardToJson(card),
 		pairedItem: { item: itemIndex },

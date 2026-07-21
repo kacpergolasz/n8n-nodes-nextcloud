@@ -1,4 +1,4 @@
-import type { NextcloudCredentialData } from '../../DeckInterface';
+import type { NextcloudCredentialData } from '../../../shared/parse';
 
 export interface StackOperationContext {
 	itemIndex: number;

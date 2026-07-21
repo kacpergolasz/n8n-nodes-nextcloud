@@ -1,7 +1,6 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { DeckBoard } from '../../DeckInterface';
-import { deckRequest } from '../../GenericFunctions';
+import { deckRequest, parseDeckBoard } from '../../GenericFunctions';
 import { boardToJson } from '../shared/entityJson';
 import { resolveBoardFromInput } from '../shared/resolveInput';
 import type { BoardOperationContext } from './types';
@@ -12,7 +11,7 @@ export async function boardGet(
 ): Promise<INodeExecutionData> {
 	const { itemIndex } = ctx;
 	const boardId = resolveBoardFromInput(context, itemIndex);
-	const board = (await deckRequest(context, 'GET', `/boards/${boardId}`)) as DeckBoard;
+	const board = parseDeckBoard(await deckRequest(context, 'GET', `/boards/${boardId}`));
 	return {
 		json: boardToJson(board),
 		pairedItem: { item: itemIndex },

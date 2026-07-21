@@ -9,7 +9,7 @@ export async function cardGet(
 	ctx: CardOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex, boardId } = ctx;
-	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex) as string);
+	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex));
 	const { card } = await findCardOnBoard(context, boardId, cardId);
 	return {
 		json: cardToJson(card),

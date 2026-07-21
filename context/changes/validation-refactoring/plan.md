@@ -490,26 +490,26 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 
 #### Automated
 
-- [x] 2.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [x] 2.2 `npm test` succeeds (existing Files tests)
-- [x] 2.3 `npm lint` succeeds
+- [x] 2.1 `npm exec tsc --noEmit` / `npm build` succeeds — a058f5c
+- [x] 2.2 `npm test` succeeds (existing Files tests) — a058f5c
+- [x] 2.3 `npm lint` succeeds — a058f5c
 
 #### Manual
 
-- [x] 2.4 Grep Files prod paths for ` as ` — only expected boundary (method) if any
-- [x] 2.5 Credential Test / one share op still conceptually sound (no live NC required if tests cover parsers)
+- [x] 2.4 Grep Files prod paths for ` as ` — only expected boundary (method) if any — a058f5c
+- [x] 2.5 Credential Test / one share op still conceptually sound (no live NC required if tests cover parsers) — a058f5c
 
 ### Phase 3: Deck node
 
 #### Automated
 
-- [ ] 3.1 `npm exec tsc --noEmit` / `npm build` succeeds
-- [ ] 3.2 `npm test` succeeds
-- [ ] 3.3 `npm lint` succeeds
+- [x] 3.1 `npm exec tsc --noEmit` / `npm build` succeeds
+- [x] 3.2 `npm test` succeeds
+- [x] 3.3 `npm lint` succeeds
 
 #### Manual
 
-- [ ] 3.4 Grep Deck prod for ` as ` — expect zero (or only documented temporary leftovers headed to Phase 7)
+- [x] 3.4 Grep Deck prod for ` as ` — expect zero (or only documented temporary leftovers headed to Phase 7)
 
 ### Phase 4: News + NewsTrigger
 

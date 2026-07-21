@@ -4,14 +4,20 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type {
 	DeckBoard,
 	DeckCard,
 	DeckPickerOption,
 	DeckStack,
-	NextcloudCredentialData,
 } from './DeckInterface';
+import {
+	isPlainObject,
+	parseNextcloudCredentials,
+	throwParseError,
+	type NextcloudCredentialData,
+} from '../shared/parse';
 
 function normalizeBaseUrl(baseUrl: string): string {
 	return baseUrl.replace(/\/+$/, '');
@@ -74,7 +80,7 @@ export function buildCardReorderUrl(
 export async function getCredentials(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<NextcloudCredentialData> {
-	const credentials = (await context.getCredentials('nextcloudApi')) as NextcloudCredentialData;
+	const credentials = parseNextcloudCredentials(await context.getCredentials('nextcloudApi'));
 
 	return {
 		baseUrl: normalizeBaseUrl(credentials.baseUrl),
@@ -104,6 +110,109 @@ export async function deckRequest(
 	});
 }
 
+const deckCardSchema = z.object({
+	id: z.coerce.number(),
+	title: z.string(),
+	type: z.string().optional(),
+	order: z.number().optional(),
+	description: z.string().optional(),
+	duedate: z.union([z.string(), z.null()]).optional(),
+	stackId: z.number().optional(),
+});
+
+const deckStackSchema = z.object({
+	id: z.coerce.number(),
+	title: z.string(),
+	order: z.number(),
+	cards: z.array(deckCardSchema).optional(),
+});
+
+const deckBoardSchema = z.object({
+	id: z.coerce.number(),
+	title: z.string(),
+	color: z.string(),
+	archived: z.boolean().optional(),
+	deletedAt: z.union([z.number(), z.null()]).optional(),
+});
+
+export function parseDeckCard(data: unknown): DeckCard {
+	try {
+		return deckCardSchema.parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid Deck card payload');
+	}
+}
+
+export function parseDeckStack(data: unknown): DeckStack {
+	try {
+		return deckStackSchema.parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid Deck stack payload');
+	}
+}
+
+export function parseDeckBoard(data: unknown): DeckBoard {
+	try {
+		return deckBoardSchema.parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid Deck board payload');
+	}
+}
+
+export function parseDeckBoards(data: unknown): DeckBoard[] {
+	try {
+		return z.array(deckBoardSchema).parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid Deck boards payload');
+	}
+}
+
+export function parseDeckStacks(data: unknown): DeckStack[] {
+	try {
+		return z.array(deckStackSchema).parse(data);
+	} catch (error) {
+		throwParseError(error, 'Invalid Deck stacks payload');
+	}
+}
+
+const boardAdditionalFieldsSchema = z
+	.object({
+		archived: z.boolean().optional(),
+	})
+	.passthrough();
+
+const cardAdditionalFieldsSchema = z
+	.object({
+		clearDueDate: z.boolean().optional(),
+	})
+	.passthrough();
+
+export function parseBoardAdditionalFields(raw: unknown): { archived?: boolean } {
+	if (!isPlainObject(raw)) {
+		return {};
+	}
+	try {
+		const parsed = boardAdditionalFieldsSchema.parse(raw);
+		return typeof parsed.archived === 'boolean' ? { archived: parsed.archived } : {};
+	} catch (error) {
+		throwParseError(error, 'Invalid board additional fields');
+	}
+}
+
+export function parseCardAdditionalFields(raw: unknown): { clearDueDate?: boolean } {
+	if (!isPlainObject(raw)) {
+		return {};
+	}
+	try {
+		const parsed = cardAdditionalFieldsSchema.parse(raw);
+		return typeof parsed.clearDueDate === 'boolean'
+			? { clearDueDate: parsed.clearDueDate }
+			: {};
+	} catch (error) {
+		throwParseError(error, 'Invalid card additional fields');
+	}
+}
+
 /** Locate a card on a board by id (summary from nested stack payloads). */
 export function findCardInStacks(stacks: DeckStack[], cardId: string): DeckCard | undefined {
 	return flattenCardsFromStacks(stacks).find((card) => String(card.id) === cardId);
@@ -115,18 +224,16 @@ export async function findCardOnBoard(
 	boardId: string,
 	cardId: string,
 ): Promise<{ card: DeckCard; stackId: string }> {
-	const stacks = (await deckRequest(context, 'GET', `/boards/${boardId}/stacks`)) as DeckStack[];
+	const stacks = parseDeckStacks(await deckRequest(context, 'GET', `/boards/${boardId}/stacks`));
 	const match = findCardInStacks(stacks, cardId);
 	if (!match?.stackId) {
 		throw new Error(`Card ${cardId} was not found on board ${boardId}.`);
 	}
 
 	const stackId = String(match.stackId);
-	const card = (await deckRequest(
-		context,
-		'GET',
-		`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
-	)) as DeckCard;
+	const card = parseDeckCard(
+		await deckRequest(context, 'GET', `/boards/${boardId}/stacks/${stackId}/cards/${cardId}`),
+	);
 
 	return { card, stackId };
 }
@@ -156,23 +263,25 @@ export async function moveCard(
 	order: number,
 ): Promise<DeckCard> {
 	const { card } = await findCardOnBoard(context, boardId, cardId);
-	const payload = mergeDefined(card as IDataObject, {
+	const payload = mergeDefined(card, {
 		stackId: Number(toStackId),
 		order,
 	});
 
-	return (await deckRequest(
-		context,
-		'PUT',
-		`/boards/${boardId}/stacks/${toStackId}/cards/${cardId}`,
-		payload,
-	)) as DeckCard;
+	return parseDeckCard(
+		await deckRequest(
+			context,
+			'PUT',
+			`/boards/${boardId}/stacks/${toStackId}/cards/${cardId}`,
+			payload,
+		),
+	);
 }
 
 export async function loadBoards(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<DeckPickerOption[]> {
-	const boards = filterActiveBoards((await deckRequest(context, 'GET', '/boards')) as DeckBoard[]);
+	const boards = filterActiveBoards(parseDeckBoards(await deckRequest(context, 'GET', '/boards')));
 
 	return boards.map((board) => ({
 		name: board.title,
@@ -184,7 +293,7 @@ export async function loadStacks(
 	context: ILoadOptionsFunctions | IExecuteFunctions,
 	boardId: string,
 ): Promise<DeckPickerOption[]> {
-	const stacks = (await deckRequest(context, 'GET', `/boards/${boardId}/stacks`)) as DeckStack[];
+	const stacks = parseDeckStacks(await deckRequest(context, 'GET', `/boards/${boardId}/stacks`));
 
 	return stacks.map((stack) => ({
 		name: stack.title,
@@ -203,24 +312,24 @@ function coerceResourceId(input: unknown, resourceLabel: string): string {
 	return trimmed;
 }
 
-export function resolveBoardId(boardInput: string | number): string {
+export function resolveBoardId(boardInput: unknown): string {
 	return coerceResourceId(boardInput, 'Board');
 }
 
-export function resolveStackId(stackInput: string | number): string {
+export function resolveStackId(stackInput: unknown): string {
 	return coerceResourceId(stackInput, 'Stack');
 }
 
-export function resolveCardId(cardInput: string | number): string {
+export function resolveCardId(cardInput: unknown): string {
 	return coerceResourceId(cardInput, 'Card');
 }
 
 /** Overlay patch keys that are not `undefined` onto target (partial-update safety). */
-export function mergeDefined<T extends IDataObject>(target: T, patch: IDataObject): T {
-	const result = { ...target };
+export function mergeDefined(target: IDataObject, patch: IDataObject): IDataObject {
+	const result: IDataObject = { ...target };
 	for (const [key, value] of Object.entries(patch)) {
 		if (value !== undefined) {
-			result[key as keyof T] = value as T[keyof T];
+			result[key] = value;
 		}
 	}
 	return result;

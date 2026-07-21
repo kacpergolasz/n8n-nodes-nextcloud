@@ -8,7 +8,7 @@ export async function cardDelete(
 	ctx: CardOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex, boardId } = ctx;
-	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex) as string);
+	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex));
 	await deleteCard(context, boardId, cardId);
 	return {
 		json: { id: cardId, deleted: true },

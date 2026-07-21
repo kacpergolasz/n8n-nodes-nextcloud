@@ -129,7 +129,6 @@ describe('board helpers', () => {
 					title: 'Current',
 					color: 'ff0000',
 					archived: false,
-					owner: { uid: 'admin' },
 				},
 				{ title: 'Renamed', color: '#00ff00' },
 			),

@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { DeckStack } from '../../DeckInterface';
-import { deckRequest, flattenCardsFromStacks } from '../../GenericFunctions';
+import { deckRequest, flattenCardsFromStacks, parseDeckStacks } from '../../GenericFunctions';
+import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
 import { cardToJson } from '../shared/entityJson';
 import { resolveOptionalStackFilter } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
@@ -11,14 +11,13 @@ export async function cardGetAll(
 	ctx: CardOperationContext,
 ): Promise<INodeExecutionData[]> {
 	const { itemIndex, boardId } = ctx;
-	const returnAll = context.getNodeParameter('returnAll', itemIndex, false) as boolean;
-	const limit = context.getNodeParameter('limit', itemIndex, 10) as number;
+	const returnAll = parseRequiredBoolean(
+		context.getNodeParameter('returnAll', itemIndex, false),
+		'Return All',
+	);
+	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 10), 'Limit');
 	const stackFilter = resolveOptionalStackFilter(context, itemIndex);
-	const stacks = (await deckRequest(
-		context,
-		'GET',
-		`/boards/${boardId}/stacks`,
-	)) as DeckStack[];
+	const stacks = parseDeckStacks(await deckRequest(context, 'GET', `/boards/${boardId}/stacks`));
 	const cards = flattenCardsFromStacks(stacks, stackFilter);
 	const sliced = returnAll ? cards : cards.slice(0, limit);
 	return sliced.map((card) => ({

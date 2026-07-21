@@ -1,13 +1,15 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { DeckCard } from '../../DeckInterface';
 import {
 	deckRequest,
 	findCardOnBoard,
 	formatDeckDueDate,
 	mergeDefined,
+	parseCardAdditionalFields,
+	parseDeckCard,
 	resolveCardId,
 } from '../../GenericFunctions';
+import { parseString } from '../../../shared/parse';
 import { cardToJson } from '../shared/entityJson';
 import type { CardOperationContext } from './types';
 
@@ -16,16 +18,21 @@ export async function cardUpdate(
 	ctx: CardOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex, boardId } = ctx;
-	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex) as string);
+	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex));
 	const { card: current, stackId: sourceStackId } = await findCardOnBoard(
 		context,
 		boardId,
 		cardId,
 	);
-	const title = context.getNodeParameter('title', itemIndex, '') as string;
-	const description = context.getNodeParameter('description', itemIndex, '') as string;
-	const dueDate = context.getNodeParameter('dueDate', itemIndex, '') as string;
-	const additionalFields = context.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+	const title = parseString(context.getNodeParameter('title', itemIndex, ''), 'Title');
+	const description = parseString(
+		context.getNodeParameter('description', itemIndex, ''),
+		'Description',
+	);
+	const dueDate = parseString(context.getNodeParameter('dueDate', itemIndex, ''), 'Due date');
+	const additionalFields = parseCardAdditionalFields(
+		context.getNodeParameter('additionalFields', itemIndex, {}),
+	);
 
 	const patch: IDataObject = {};
 	if (title.trim()) {
@@ -40,13 +47,15 @@ export async function cardUpdate(
 		patch.duedate = formatDeckDueDate(dueDate);
 	}
 
-	const payload = mergeDefined(current as IDataObject, patch);
-	const card = (await deckRequest(
-		context,
-		'PUT',
-		`/boards/${boardId}/stacks/${sourceStackId}/cards/${cardId}`,
-		payload,
-	)) as DeckCard;
+	const payload = mergeDefined(current, patch);
+	const card = parseDeckCard(
+		await deckRequest(
+			context,
+			'PUT',
+			`/boards/${boardId}/stacks/${sourceStackId}/cards/${cardId}`,
+			payload,
+		),
+	);
 	return {
 		json: cardToJson(card),
 		pairedItem: { item: itemIndex },

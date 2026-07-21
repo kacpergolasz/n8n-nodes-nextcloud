@@ -3,11 +3,11 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getCredentials } from './GenericFunctions';
+import { nodeApiErrorPayload, parseRequiredString } from '../shared/parse';
 import { getBoards } from './listSearch/getBoards';
 import { getStacks } from './listSearch/getStacks';
 import { boardDescription } from './resources/board';
@@ -85,8 +85,11 @@ export class NextcloudDeck implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			const outputCountBefore = returnData.length;
 			try {
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = parseRequiredString(this.getNodeParameter('resource', i), 'Resource');
+				const operation = parseRequiredString(
+					this.getNodeParameter('operation', i),
+					'Operation',
+				);
 
 				if (resource === 'board') {
 					const opCtx: BoardOperationContext = { itemIndex: i, credentials };
@@ -174,7 +177,10 @@ export class NextcloudDeck implements INodeType {
 				}
 				throw new NodeApiError(
 					this.getNode(),
-					{ message, ...(statusCode !== undefined ? { httpCode: statusCode } : {}) } as JsonObject,
+					nodeApiErrorPayload(
+						message,
+						statusCode !== undefined ? { httpCode: statusCode } : undefined,
+					),
 					{
 						itemIndex: i,
 						...(statusCode !== undefined ? { httpCode: String(statusCode) } : {}),
