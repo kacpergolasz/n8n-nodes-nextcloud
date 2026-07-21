@@ -1,4 +1,4 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult, JsonObject } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import {
@@ -11,6 +11,7 @@ import {
 	setCachedPathListOptions,
 } from '../../NextcloudFiles/GenericFunctions';
 import { scrubErrorMessage } from '../../NextcloudFiles/shared/scrubSecrets';
+import { nodeApiErrorPayload } from '../../shared/parse';
 
 const FOLDERS_ONLY_SCOPE = { includeFiles: false, includeFolders: true } as const;
 const LIST_SEARCH_RESOURCE = 'trigger';
@@ -57,6 +58,6 @@ export async function getFolders(
 			// ignore credential load failures while scrubbing
 		}
 		const scrubbedMessage = scrubErrorMessage(error, secrets);
-		throw new NodeApiError(this.getNode(), { message: scrubbedMessage } as JsonObject);
+		throw new NodeApiError(this.getNode(), nodeApiErrorPayload(scrubbedMessage));
 	}
 }
