@@ -1,10 +1,10 @@
 ---
 change_id: suite-polling-triggers
 title: Suite polling triggers
-status: impl_reviewed
+status: archived
 created: 2026-07-19
-updated: 2026-07-20
-archived_at: null
+updated: 2026-07-21
+archived_at: 2026-07-21T13:07:02Z
 ---
 
 ## Notes

@@ -39,7 +39,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | done |
 | S-14 | news-api-v2 | migrate Nextcloud News node to News API v2 when upstream is production-ready | S-06 | FR-008 | proposed |
 | S-15 | suite-pagination | get consistent Get Many across Deck/Files/Calendar matching News Item shape (`{ items, nextOffset }`, Limit + Offset) | S-06 | — | proposed |
-| S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | proposed |
+| S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | done |
 | S-11 | nextcloud-tasks | automate Nextcloud Tasks | S-01 | — | proposed |
 | S-12 | nextcloud-contacts | automate Nextcloud Contacts (port from core n8n Nextcloud node) | S-01 | FR-007 | proposed |
 | S-13 | suite-webhook-triggers | use webhook triggers for suite changes (especially Talk) | S-01, S-05 | FR-010 | proposed |
@@ -240,7 +240,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Top trigger priority in the PRD; starts once Calendar exists and expands as suite apps land — do not wait for every app before the first polling path.
-- **Status:** proposed
+- **Status:** done
 
 ### S-11: Nextcloud Tasks
 
@@ -327,3 +327,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-04: user can automate Nextcloud Deck boards and cards.** — Archived 2026-07-18 → `context/archive/2026-07-18-nextcloud-deck/`. Lesson: —.
 - **S-03: user can automate Nextcloud Files/Drive at legacy-standard coverage (file/folder/share-style operations).** — Archived 2026-07-18 → `context/archive/2026-07-18-nextcloud-files-drive/`. Lesson: —.
 - **S-06: user can automate Nextcloud News.** — Archived 2026-07-21 → `context/archive/2026-07-20-nextcloud-news/`. Lesson: —.
+- **S-07: user can use polling triggers for suite changes.** — Archived 2026-07-21 → `context/archive/2026-07-19-suite-polling-triggers/`. Lesson: —.
