@@ -9,7 +9,7 @@ Reference implementations: **Nextcloud Files Trigger** (`nodes/NextcloudFilesTri
 - **`async poll(this: IPollFunctions)`** — return `INodeExecutionData[][] | null`; do not call `__emit` directly.
 - **Reuse `nodes/shared/pollHelpers.ts`** — `seedLastTimeChecked` / `getLastTimeChecked` for cursor seeding; optional `filterIdsInStaticData` for ID-window dedupe (Salesforce-style) when timestamps are unreliable.
 - **First production poll (empty cursor)** — seed `lastTimeChecked` + initial state, return `null` (no history flood on activation).
-- **Soft-fail** — if the listing/API throws **after** initialization, scrub secrets (`scrubSecrets`), log at debug, return `null` without advancing cursor/state (Outlook pattern).
+- **Soft-fail** — if the listing/API throws **after** initialization, scrub secrets (`scrubSecrets`), log at debug, and **do not** advance cursor/state (Outlook pattern). Return either silent `null` (Files) or at most one one-shot notice item such as `{ event: 'pollError', ... }` per failure window, clearing the notice flag on the next successful poll (News). Prefer silent `null` unless the app needs an operator-visible signal.
 - **Pre-initialization errors** — rethrow (activation should fail loudly when credentials/path are wrong).
 - **Manual / Test step** (`getMode() === 'manual'`) — return up to **one** sample item matching selected events; if nothing to show (empty folder or no matching event types), return `null` — do **not** throw (a thrown poll error can deregister crons / kill the schedule on some n8n versions).
 - **Credential** — shared `nextcloudApi` (Basic Auth); no per-trigger credential types unless a future app truly needs different auth.
@@ -64,8 +64,8 @@ Second suite poller after Files. Prefer this pattern when the app exposes stable
 | Filters | Optional folder locator, optional feed locator (feed wins), boolean **Unread only** (`getRead=false` when checked; default **true**) |
 | Output | One n8n item per new article — full News article JSON |
 | Soft-fail | After init: scrub + debug-log; emit **at most one** notice item (`event: 'pollError'`) per failure window; do not advance ID window; clear notice flag on next successful poll |
-| Init / scope gate | First production poll (or folder/feed filter change) **pages** to seed processed ids (not only newest 100) and returns `null` (no history flood) |
-| Steady catch-up | Page size 100; if a full newest page is all unseen, keep paging until a seen id / partial page / per-poll page cap |
+| Init / scope gate | First production poll (or folder/feed filter change) **pages** to seed processed ids (not only newest page) and returns `null` (no history flood) |
+| Steady catch-up | Node params `pageSize` (default **100**) and `maxPagesPerPoll` (default **5**). Newest→older walk toward `maxProcessedId` until id ≤ watermark, empty/exhausted list, or page cap. Cap persists `catchUpOffset` (resume survives soft-fail); raise watermark only after catch-up completes. Ring buffer dedupes only — it does not end catch-up. Emit new ids ascending. |
 | Poll entry | `pollNews.ts` → `runNewsPoll` |
 | Docs | https://nextcloud.github.io/news/api/api-v1-3/ |
 
