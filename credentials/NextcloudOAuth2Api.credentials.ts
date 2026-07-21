@@ -7,7 +7,7 @@ export class NextcloudOAuth2Api implements ICredentialType {
 
 	displayName = 'Nextcloud OAuth2 API';
 
-	icon: Icon = 'file:nextcloudOAuth2Api.svg';
+	icon: Icon = { light: 'file:nextcloudOAuth2Api.svg', dark: 'file:nextcloudOAuth2Api.dark.svg' };
 
 	documentationUrl =
 		'https://docs.nextcloud.com/server/latest/admin_manual/configuration_server/oauth2.html';

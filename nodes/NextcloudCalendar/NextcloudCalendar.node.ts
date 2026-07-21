@@ -36,7 +36,7 @@ export class NextcloudCalendar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud Calendar',
 		name: 'nextcloudCalendar',
-		icon: 'file:nextcloudCalendar.svg',
+		icon: { light: 'file:nextcloudCalendar.svg', dark: 'file:nextcloudCalendar.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

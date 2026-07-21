@@ -37,7 +37,7 @@ export class NextcloudDeck implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud Deck',
 		name: 'nextcloudDeck',
-		icon: 'file:nextcloudDeck.svg',
+		icon: { light: 'file:nextcloudDeck.svg', dark: 'file:nextcloudDeck.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
