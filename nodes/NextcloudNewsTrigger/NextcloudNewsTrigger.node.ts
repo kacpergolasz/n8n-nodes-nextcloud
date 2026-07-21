@@ -113,8 +113,7 @@ export class NextcloudNewsTrigger implements INodeType {
 				typeOptions: {
 					minValue: 1,
 				},
-				description:
-					'Maximum pages walked toward older articles in one poll when catching up after a burst. Unfinished catch-up resumes on the next poll (no permanent skips). Keep this modest relative to your server capacity; the node does not impose an upper cap. Size Page Size × Max Pages Per Poll (and Poll Times) so catch-up can finish under your feed’s ingest rate — if a backlog stays incomplete across many polls past the ~10k id window, already-emitted articles can fire again.',
+				description: 'Maximum pages walked toward older articles in one poll when catching up after a burst. Unfinished catch-up resumes on the next poll (no permanent skips). Keep this modest relative to your server capacity; the node does not impose an upper cap. Size Page Size × Max Pages Per Poll (and Poll Times) so catch-up can finish under your feed’s ingest rate — if a backlog stays incomplete across many polls past the ~10k ID window, already-emitted articles can fire again.',
 			},
 		],
 		usableAsTool: true,

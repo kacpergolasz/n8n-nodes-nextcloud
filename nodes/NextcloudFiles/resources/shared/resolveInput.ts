@@ -1,5 +1,4 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INodeParameterResourceLocator  } from 'n8n-workflow';
 
 import { normalizeFilesPath } from '../../GenericFunctions';
 

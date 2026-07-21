@@ -1,5 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
-import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeParameterResourceLocator  } from 'n8n-workflow';
 
 import { resolveBoardId, resolveStackId } from '../../GenericFunctions';
 
