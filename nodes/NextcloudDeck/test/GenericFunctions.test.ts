@@ -14,6 +14,9 @@ import {
 	findCardInStacks,
 	mergeDefined,
 	normalizeDeckColor,
+	parseDeckBoard,
+	parseDeckCard,
+	parseDeckStack,
 	resolveBoardId,
 	resolveCardId,
 	resolveStackId,
@@ -253,5 +256,57 @@ describe('loadStacks mapping', () => {
 			{ name: 'Backlog', value: '3' },
 			{ name: 'In Progress', value: '7' },
 		]);
+	});
+});
+
+describe('Deck response parsers', () => {
+	it('preserves unknown API fields on cards, stacks, and boards', () => {
+		const card = parseDeckCard({
+			id: 10,
+			title: 'Task',
+			labels: [{ id: 1, title: 'Bug' }],
+			assignedUsers: [{ participant: { uid: 'alice' } }],
+		});
+		expect(card).toMatchObject({
+			id: 10,
+			title: 'Task',
+			labels: [{ id: 1, title: 'Bug' }],
+			assignedUsers: [{ participant: { uid: 'alice' } }],
+		});
+
+		const stack = parseDeckStack({
+			id: 2,
+			title: 'Todo',
+			order: 0,
+			acl: [{ participant: { uid: 'bob' }, permission: 1 }],
+			cards: [
+				{
+					id: 10,
+					title: 'Task',
+					labels: [{ id: 1, title: 'Bug' }],
+				},
+			],
+		});
+		expect(stack).toMatchObject({
+			id: 2,
+			acl: [{ participant: { uid: 'bob' }, permission: 1 }],
+		});
+		expect(stack.cards?.[0]).toMatchObject({
+			id: 10,
+			labels: [{ id: 1, title: 'Bug' }],
+		});
+
+		const board = parseDeckBoard({
+			id: 1,
+			title: 'Work',
+			color: '0082c9',
+			permissions: { PERMISSION_READ: true },
+		});
+		expect(board).toMatchObject({
+			id: 1,
+			title: 'Work',
+			color: '0082c9',
+			permissions: { PERMISSION_READ: true },
+		});
 	});
 });
