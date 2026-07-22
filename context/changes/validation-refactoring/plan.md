@@ -549,6 +549,7 @@ Parsers add negligible CPU vs HTTP. Prefer `safeParse` only where branching is c
 #### Manual
 
 - [x] 6.4 Grep FilesTrigger prod for remaining ` as ` — a4e0375
+- [x] 6.5 Post-close: re-seed when snapshot entries fail validation — a62aa06
 
 ### Phase 7: Boundary allowlist polish (next-to-last)
 
