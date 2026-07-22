@@ -27,23 +27,21 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 
 | ID | Change ID | Outcome (user can …) | Prerequisites | PRD refs | Status |
 |---|---|---|---|---|---|
-| F-01 | local-community-node-verify | (foundation) package builds and runs via local n8n community-node link for verification | — | FR-003 | done |
-| S-01 | shared-basic-auth-calendar | create shared Basic Auth credential, run Calendar events, pick resources from lists or manually | F-01 | US-01, FR-001, FR-011 | done |
-| S-08 | calendar-get-many-caldav | list more than a truncated PROPFIND page of Calendar events (reliable Get Many) | S-01 | US-01, FR-001 | proposed |
-| S-09 | calendar-partial-update | update a Calendar event with only changed fields | S-01 | US-01, FR-001 | proposed |
 | S-02 | shared-oauth2-credential | create and use shared OAuth2 credential across suite nodes (proven on Calendar) | S-01 | FR-002 | proposed |
-| S-03 | nextcloud-files-drive | automate Nextcloud Files/Drive at legacy-standard coverage | S-01 | FR-004 | done |
-| S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | done |
-| S-10 | deck-partial-update | update a Deck card with only whitelisted writable fields (safe GET→merge→PUT) | S-04 | FR-005 | proposed |
 | S-05 | nextcloud-talk | automate Nextcloud Talk | S-01 | FR-006 | proposed |
-| S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | done |
-| S-14 | news-api-v2 | migrate Nextcloud News node to News API v2 when upstream is production-ready | S-06 | FR-008 | proposed |
-| S-15 | suite-pagination | get consistent Get Many across Deck/Files/Calendar matching News Item shape (`{ items, nextOffset }`, Limit + Offset) | S-06 | — | proposed |
-| S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | done |
+| S-08 | suite-pagination | get consistent Get Many across Calendar/Deck/Files (+ Talk/Tasks/Contacts as they land) with News Item envelope (`{ items, nextOffset }`), including reliable Calendar CalDAV listing | S-01, S-06 | US-01, FR-001 | proposed |
+| S-09 | suite-partial-update | update Calendar/Deck/Talk/Tasks/Contacts entities with only changed fields (safe GET→whitelist-merge→PUT) | S-01, S-04 | US-01, FR-001, FR-005 | proposed |
 | S-11 | nextcloud-tasks | automate Nextcloud Tasks | S-01 | — | proposed |
 | S-12 | nextcloud-contacts | automate Nextcloud Contacts (port from core n8n Nextcloud node) | S-01 | FR-007 | proposed |
 | S-13 | suite-webhook-triggers | use webhook triggers for suite changes (especially Talk) | S-01, S-05 | FR-010 | proposed |
+| S-14 | news-api-v2 | migrate Nextcloud News node to News API v2 when upstream is production-ready | S-06 | FR-008 | proposed |
+| F-01 | local-community-node-verify | (foundation) package builds and runs via local n8n community-node link for verification | — | FR-003 | done |
+| S-01 | shared-basic-auth-calendar | create shared Basic Auth credential, run Calendar events, pick resources from lists or manually | F-01 | US-01, FR-001, FR-011 | done |
 | F-02 | validation-refactoring | (foundation) validated parameter/response parsing replaces `as Type` casts | S-01 | — | done |
+| S-03 | nextcloud-files-drive | automate Nextcloud Files/Drive at legacy-standard coverage | S-01 | FR-004 | done |
+| S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | done |
+| S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | done |
+| S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | done |
 
 ## Streams
 
@@ -51,10 +49,10 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 
 | Stream | Theme | Chain | Note |
 |---|---|---|---|
-| A | Credential & Calendar proof | `F-01` → `S-01` → `S-08` / `S-09` → `S-02` | Quality-first validation path; Calendar depth (Get Many / partial update) follows the north star; OAuth follows once Calendar proves the shared credential. |
+| A | Credential & Calendar proof | `F-01` → `S-01` → `S-02` | Quality-first validation path; OAuth follows once Calendar proves the shared credential. Suite Get Many / CalDAV depth lives in Stream D (`S-08`). |
 | B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` → `S-14` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. News API v2 (`S-14`) follows the v1.3 News node. |
 | C | Triggers | `S-07` / `S-13` | Polling after Calendar exists; webhooks after Talk (`S-05`) for FR-010 value. |
-| D | Quality / debt | `F-02` / `S-15` | Cross-cutting validation helpers and Get Many retrofit to the News Item pagination envelope; can run in parallel once patterns exist (`S-01` / `S-06`). |
+| D | Quality / debt | `F-02` / `S-08` / `S-09` | Cross-cutting validation helpers, suite-wide Get Many (News Item envelope + reliable Calendar CalDAV), and safe partial Update; can run in parallel once patterns exist (`S-01` / `S-04` / `S-06`). |
 
 ## Baseline
 
@@ -90,7 +88,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **PRD refs:** —
 - **Unlocks:** safer multi-item runs and expression-driven parameters across all suite nodes
 - **Prerequisites:** S-01
-- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-10, S-11, S-12, S-13
+- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-11, S-12, S-13
 - **Blockers:** —
 - **Unknowns:** Whether to standardize on hand-rolled guards, a shared helper module, or a schema library (e.g. Zod) for n8n parameter shapes.
 - **Risk:** Widespread `as boolean` / `as string` / `as IDataObject` casts today hide runtime type errors; leaving this untracked lets bad expression values fail late or silently misbehave.
@@ -110,28 +108,28 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** North star and quality gate for the shared-credential contract; if this is weak, later suite nodes inherit a bad pattern.
 - **Status:** done
 
-### S-08: Calendar Get Many via CalDAV query
+### S-08: Suite Get Many (News Item envelope + Calendar CalDAV)
 
-- **Outcome:** user can Get Many Calendar events beyond the truncated PROPFIND page (default Limit 10 matches observed server behavior until this lands), with Return All / Limit behaving against a complete listing strategy (likely `REPORT` `calendar-query` and/or paging).
-- **Change ID:** calendar-get-many-caldav
-- **PRD refs:** US-01, FR-001
-- **Prerequisites:** S-01
-- **Parallel with:** S-09, S-02, S-03, S-04, S-05, S-06, S-07
+- **Outcome:** user gets consistent Get Many across the suite matching the **Nextcloud News → Item → Get Many** contract: one n8n item per call shaped as `{ items: [...], nextOffset: number | null }` (empty lists still return the envelope), UI **Limit** + **Offset** (cursor when the API allows), optional filters left empty mean “do not apply,” and shared pagination helpers — real server cursor where supported, documented client-limit only where not. Includes fixing **Calendar** beyond the truncated PROPFIND page (likely `REPORT` `calendar-query` and/or paging) so Calendar can adopt the same envelope honestly. Covers **Calendar / Deck / Files** now; extends to **Talk / Tasks / Contacts** Get Many as those apps land.
+- **Change ID:** suite-pagination
+- **PRD refs:** US-01, FR-001 (extends to other FRs as app slices land)
+- **Prerequisites:** S-01, S-06
+- **Parallel with:** S-09, S-02, S-05, S-07, S-11, S-12, S-13, S-14
 - **Blockers:** —
-- **Unknowns:** Exact Nextcloud/Sabre truncation rules for PROPFIND + `calendar-data`; whether `calendar-query` REPORT alone is enough or sync-collection / offset+limit is required.
-- **Risk:** S-01 ships a working but incomplete Get Many; leaving this untracked would silently under-fetch events in production workflows.
+- **Unknowns:** Exact Nextcloud/Sabre truncation rules for PROPFIND + `calendar-data`; whether `calendar-query` REPORT alone is enough or sync-collection / offset+limit is required; which Deck/Files endpoints expose a true cursor vs remain client-slice; whether folder/feed-style Get Many that are naturally small lists keep client-limit while still adopting the `{ items, nextOffset }` envelope (with `nextOffset: null`).
+- **Risk:** Today Calendar under-fetches via truncated PROPFIND, and most other suite `getAll` ops fetch-all then `.slice(0, limit)` and emit one n8n item per entity. Splitting “fix Calendar listing” from “adopt the News envelope” duplicates pagination work; one suite slice keeps listing reliability and UX contract together.
 - **Status:** proposed
 
-### S-09: Calendar partial event update
+### S-09: Suite partial Update (safe whitelist merge)
 
-- **Outcome:** user can Update a Calendar event by sending only changed fields (node performs GET → merge → PUT under the hood) instead of re-supplying summary/start/end/description every time.
-- **Change ID:** calendar-partial-update
-- **PRD refs:** US-01, FR-001
-- **Prerequisites:** S-01
-- **Parallel with:** S-08, S-02, S-03, S-04, S-05, S-06, S-07
+- **Outcome:** user can Update suite entities by supplying only changed fields — node performs GET → whitelist-merge → PUT (or CalDAV equivalent) instead of re-sending full entities or round-tripping read-only/nested API metadata. Covers **Calendar events**, **Deck cards** (and align Deck boards with the same helper pattern), then extends the same contract to **Talk / Tasks / Contacts** Update ops as those apps land (and any other suite Update that today spreads a full GET into PUT).
+- **Change ID:** suite-partial-update
+- **PRD refs:** US-01, FR-001, FR-005 (extends to FR-006 / FR-007 / Tasks as those slices land)
+- **Prerequisites:** S-01, S-04
+- **Parallel with:** S-08, S-02, S-05, S-06, S-07, S-11, S-12, S-13, S-14
 - **Blockers:** —
-- **Unknowns:** Merge rules for all-day vs timed events and timezone fields when only a subset is provided.
-- **Risk:** CalDAV replaces whole `.ics` resources; without an explicit merge path, Update stays awkward for automation authors.
+- **Unknowns:** Per-app writable field sets (Calendar all-day vs timed / timezones; Deck card vs board; Talk/Tasks/Contacts once APIs are chosen); whether a shared `build*UpdatePayload` helper lives under `nodes/shared/` or stays node-local with a documented suite convention.
+- **Risk:** Today Calendar Update forces full re-supply; Deck card Update uses `mergeDefined` on the full GET (read-only/nested fields can fail PUT or clobber metadata). Leaving this per-app duplicates the same bug class; one suite slice keeps the safe-merge pattern consistent.
 - **Status:** proposed
 
 ### S-02: Shared OAuth2 credential
@@ -170,18 +168,6 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Risk:** Author-priority suite app; parallel after shared credential to avoid serializing the whole suite.
 - **Status:** done
 
-### S-10: Deck partial card update (safe merge)
-
-- **Outcome:** user can Update a Deck card without sending the full GET entity back on PUT — node whitelists writable fields (`title`, `description`, `duedate`, `type`, `order`) via a `buildCardUpdatePayload` helper, mirroring board update and S-09 Calendar partial-update pattern.
-- **Change ID:** deck-partial-update
-- **PRD refs:** FR-005
-- **Prerequisites:** S-04
-- **Parallel with:** S-08, S-09, S-02, S-03, S-05, S-06, S-07
-- **Blockers:** —
-- **Unknowns:** Exact writable field set across Deck API versions; nested/read-only fields on card GET responses.
-- **Risk:** Current card Update uses `mergeDefined` on the full GET payload; read-only or nested fields may cause PUT failures or silent clobbering until this lands.
-- **Status:** proposed
-
 ### S-05: Nextcloud Talk
 
 - **Outcome:** user can automate Nextcloud Talk.
@@ -212,22 +198,10 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** news-api-v2
 - **PRD refs:** FR-008
 - **Prerequisites:** S-06
-- **Parallel with:** S-02, S-05, S-07, S-08, S-09, S-10, S-11, S-12, S-13, S-15, F-02
+- **Parallel with:** S-02, S-05, S-07, S-08, S-09, S-11, S-12, S-13, F-02
 - **Blockers:** Upstream Nextcloud News API v2 remains a draft / incomplete (see https://nextcloud.github.io/news/developer/ and https://nextcloud.github.io/news/api/api-v2/).
 - **Unknowns:** When v2 is fully implemented; breaking vs additive migration path for existing workflows; whether dual-version support is needed during transition.
 - **Risk:** Building S-06 on v2 today would target an incomplete API; parking the migration as an explicit follow-up keeps S-06 shippable on v1.3 without losing the upgrade path.
-- **Status:** proposed
-
-### S-15: Suite Get Many refactor (News Item pattern)
-
-- **Outcome:** user gets consistent Get Many across Deck/Files/Calendar that matches the **Nextcloud News → Item → Get Many** contract: one n8n item per call shaped as `{ items: [...], nextOffset: number | null }` (empty lists still return the envelope), UI **Limit** + **Offset** (cursor when the API allows), optional filters left empty mean “do not apply,” and shared pagination helpers — real server cursor where supported, documented client-limit only where not.
-- **Change ID:** suite-pagination
-- **PRD refs:** —
-- **Prerequisites:** S-06
-- **Parallel with:** S-02, S-05, S-07, S-08, S-09, S-10, S-11, S-12, S-13, S-14, F-02
-- **Blockers:** —
-- **Unknowns:** Which Deck/Files endpoints can expose a true cursor vs remain client-slice; Calendar still blocked on S-08 for reliable listing; whether folder/feed-style Get Many that are naturally small lists keep client-limit while still adopting the `{ items, nextOffset }` envelope (with `nextOffset: null`).
-- **Risk:** Today most suite `getAll` ops fetch-all then `.slice(0, limit)` and emit one n8n item per entity. News Item Get Many is the reference implementation for pagination UX; without this follow-up the rest of the suite stays inconsistent and awkward to page in workflows.
 - **Status:** proposed
 
 ### S-07: Suite polling triggers
@@ -248,7 +222,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** nextcloud-tasks
 - **PRD refs:** —
 - **Prerequisites:** S-01
-- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-10, S-12, S-13, F-02
+- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-12, S-13, F-02
 - **Blockers:** —
 - **Unknowns:** Tasks REST/CalDAV surface on target Nextcloud versions; minimum viable operation set vs Google Tasks mirror.
 - **Risk:** No dedicated PRD FR yet; kept as a suite-app vertical slice so Tasks does not hide inside Deck or Calendar.
@@ -260,7 +234,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** nextcloud-contacts
 - **PRD refs:** FR-007
 - **Prerequisites:** S-01
-- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-10, S-11, S-13, F-02
+- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-11, S-13, F-02
 - **Blockers:** —
 - **Unknowns:** Which Contacts operations exist in core n8n today; CardDAV vs OCS/API coverage needed for parity.
 - **Risk:** PRD nice-to-have (FR-007); porting avoids re-inventing CardDAV contact ops but must align with the shared-credential contract.
@@ -272,7 +246,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** suite-webhook-triggers
 - **PRD refs:** FR-010
 - **Prerequisites:** S-01, S-05
-- **Parallel with:** S-02, S-03, S-04, S-06, S-07, S-08, S-09, S-10, S-11, S-12, F-02
+- **Parallel with:** S-02, S-03, S-04, S-06, S-07, S-08, S-09, S-11, S-12, F-02
 - **Blockers:** —
 - **Unknowns:** Nextcloud webhook registration model per app; Talk-specific payload shapes and HMAC/secret verification in n8n.
 - **Risk:** Lower priority than polling (S-07) in the PRD, but explicitly coupled to Talk value; sequenced after Talk actions exist.
@@ -284,16 +258,14 @@ Foundations below assume these are present and do NOT re-scaffold them.
 |---|---|---|---|---|
 | F-01 | local-community-node-verify | Make package runnable via local n8n community-node link | yes | Run `/10x-plan local-community-node-verify` — unlocks north star |
 | S-01 | shared-basic-auth-calendar | Shared Basic Auth + Nextcloud Calendar (+ resource pickers) | no | After F-01 |
-| S-08 | calendar-get-many-caldav | Reliable Calendar Get Many (CalDAV query / paging) | no | After S-01; observed PROPFIND truncation |
-| S-09 | calendar-partial-update | Calendar Update with only changed fields | no | After S-01; GET→merge→PUT |
+| S-08 | suite-pagination | Suite Get Many (News Item envelope + reliable Calendar CalDAV; Deck/Files + Talk/Tasks/Contacts as they land) | no | After S-01 + S-06; News Item Get Many is the reference |
+| S-09 | suite-partial-update | Suite Update with only changed fields (Calendar/Deck + Talk/Tasks/Contacts as they land) | no | After S-01 + S-04; safe GET→whitelist-merge→PUT |
 | S-02 | shared-oauth2-credential | Shared Nextcloud OAuth2 credential (prove on Calendar) | no | After S-01; parallel with suite apps |
 | S-03 | nextcloud-files-drive | Nextcloud Files/Drive legacy-standard node | no | After S-01; parallel suite |
 | S-04 | nextcloud-deck | Nextcloud Deck boards/cards node | no | After S-01; parallel suite |
-| S-10 | deck-partial-update | Deck Update with whitelisted writable fields | no | After S-04; safe GET→merge→PUT |
 | S-05 | nextcloud-talk | Nextcloud Talk node | no | After S-01; webhook triggers in S-13 |
 | S-06 | nextcloud-news | Nextcloud News node | yes | After S-01; parallel suite; API v1.3 (v2 → S-14) |
 | S-14 | news-api-v2 | Migrate Nextcloud News node to API v2 | no | After S-06; blocked on upstream v2 readiness |
-| S-15 | suite-pagination | Refactor suite Get Many to News Item envelope (`items` + `nextOffset`) | no | After S-06; News Item Get Many is the reference |
 | S-07 | suite-polling-triggers | Polling triggers for Nextcloud suite changes | no | After S-01; expands with apps |
 | S-11 | nextcloud-tasks | Nextcloud Tasks node | no | After S-01; parallel suite |
 | S-12 | nextcloud-contacts | Nextcloud Contacts node (port from core n8n) | no | After S-01; FR-007 nice-to-have |
