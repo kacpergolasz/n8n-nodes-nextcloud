@@ -110,30 +110,38 @@ export async function deckRequest(
 	});
 }
 
-const deckCardSchema = z.object({
-	id: z.coerce.number(),
-	title: z.string(),
-	type: z.string().optional(),
-	order: z.number().optional(),
-	description: z.string().optional(),
-	duedate: z.union([z.string(), z.null()]).optional(),
-	stackId: z.number().optional(),
-});
+// `.passthrough()` keeps unknown Deck API fields (labels, assignees, …) so
+// GET → mergeDefined → PUT round-trips do not strip metadata.
+const deckCardSchema = z
+	.object({
+		id: z.coerce.number(),
+		title: z.string(),
+		type: z.string().optional(),
+		order: z.number().optional(),
+		description: z.string().optional(),
+		duedate: z.union([z.string(), z.null()]).optional(),
+		stackId: z.number().optional(),
+	})
+	.passthrough();
 
-const deckStackSchema = z.object({
-	id: z.coerce.number(),
-	title: z.string(),
-	order: z.number(),
-	cards: z.array(deckCardSchema).optional(),
-});
+const deckStackSchema = z
+	.object({
+		id: z.coerce.number(),
+		title: z.string(),
+		order: z.number(),
+		cards: z.array(deckCardSchema).optional(),
+	})
+	.passthrough();
 
-const deckBoardSchema = z.object({
-	id: z.coerce.number(),
-	title: z.string(),
-	color: z.string(),
-	archived: z.boolean().optional(),
-	deletedAt: z.union([z.number(), z.null()]).optional(),
-});
+const deckBoardSchema = z
+	.object({
+		id: z.coerce.number(),
+		title: z.string(),
+		color: z.string(),
+		archived: z.boolean().optional(),
+		deletedAt: z.union([z.number(), z.null()]).optional(),
+	})
+	.passthrough();
 
 export function parseDeckCard(data: unknown): DeckCard {
 	try {
