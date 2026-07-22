@@ -76,6 +76,8 @@ export function getSnapshot(
 		return {};
 	}
 
+	// Drop+log is defense-in-depth for direct callers. `runDirectoryPoll` only
+	// reaches here after `hasSnapshot`, which already rejects invalid entries.
 	const snapshot: DirectorySnapshot = {};
 	let droppedCount = 0;
 	for (const [path, entry] of Object.entries(raw)) {
