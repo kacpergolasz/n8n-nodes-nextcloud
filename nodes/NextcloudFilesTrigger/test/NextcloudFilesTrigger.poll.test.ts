@@ -189,6 +189,31 @@ describe('runDirectoryPoll', () => {
 		expect(getSnapshot(staticData)).toEqual(buildSnapshotFromListing(listing));
 	});
 
+	it('re-seeds without emitting when snapshot entries are invalid', async () => {
+		const listing = [
+			fileEntry('/Documents/ok.pdf', { etag: '"ok"' }),
+			fileEntry('/Documents/bad.pdf', { etag: '"bad"' }),
+		];
+		const staticData: IDataObject = {
+			[LAST_TIME_CHECKED_KEY]: '2026-07-20T06:00:00.000Z',
+			[WATCHED_FOLDER_KEY]: '/Documents',
+			[SNAPSHOT_KEY]: {
+				'/Documents/ok.pdf': { isFolder: false, etag: '"ok"' },
+				// Legacy/corrupt: non-boolean isFolder must not classify as created.
+				'/Documents/bad.pdf': { isFolder: 'false', etag: '"bad"' },
+			},
+		};
+
+		vi.mocked(loadDirectoryListing).mockResolvedValue(listing);
+
+		const result = await runDirectoryPoll(
+			createPollContext({ staticData, events: ['fileCreated'] }),
+		);
+
+		expect(result).toBeNull();
+		expect(getSnapshot(staticData)).toEqual(buildSnapshotFromListing(listing));
+	});
+
 	it('emits created events for new children after initialization', async () => {
 		const existing = fileEntry('/Documents/existing.pdf', { etag: '"existing"' });
 		const created = fileEntry('/Documents/new.pdf', { etag: '"new"' });

@@ -40,9 +40,31 @@ export function resolveFolderToWatch(context: IPollFunctions): string {
 	return normalizeFilesPath(value);
 }
 
+function isSnapshotEntry(value: unknown): value is {
+	isFolder: boolean;
+	etag?: unknown;
+	lastModified?: unknown;
+} {
+	return isPlainObject(value) && typeof value['isFolder'] === 'boolean';
+}
+
+/**
+ * True when static data holds a path-keyed snapshot object whose every entry
+ * has a boolean `isFolder`. Rejecting partial/corrupt entries here matters:
+ * `getSnapshot` would otherwise drop those keys and `classifyDirectoryChanges`
+ * would treat still-present listing paths as creates.
+ */
 export function hasSnapshot(staticData: IDataObject): boolean {
 	const raw = staticData[SNAPSHOT_KEY];
-	return raw !== undefined && raw !== null && typeof raw === 'object' && !Array.isArray(raw);
+	if (!isPlainObject(raw)) {
+		return false;
+	}
+	for (const entry of Object.values(raw)) {
+		if (!isSnapshotEntry(entry)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 export function getSnapshot(
@@ -57,19 +79,14 @@ export function getSnapshot(
 	const snapshot: DirectorySnapshot = {};
 	let droppedCount = 0;
 	for (const [path, entry] of Object.entries(raw)) {
-		if (!isPlainObject(entry)) {
+		if (!isSnapshotEntry(entry)) {
 			droppedCount += 1;
 			continue;
 		}
-		const isFolder = entry['isFolder'];
-		if (typeof isFolder !== 'boolean') {
-			droppedCount += 1;
-			continue;
-		}
-		const etag = entry['etag'];
-		const lastModified = entry['lastModified'];
+		const etag = entry.etag;
+		const lastModified = entry.lastModified;
 		snapshot[path] = {
-			isFolder,
+			isFolder: entry.isFolder,
 			...(typeof etag === 'string' ? { etag } : {}),
 			...(typeof lastModified === 'string' ? { lastModified } : {}),
 		};
