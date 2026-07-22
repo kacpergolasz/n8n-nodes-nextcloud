@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-07-21
+updated: 2026-07-22
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -43,7 +43,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-11 | nextcloud-tasks | automate Nextcloud Tasks | S-01 | — | proposed |
 | S-12 | nextcloud-contacts | automate Nextcloud Contacts (port from core n8n Nextcloud node) | S-01 | FR-007 | proposed |
 | S-13 | suite-webhook-triggers | use webhook triggers for suite changes (especially Talk) | S-01, S-05 | FR-010 | proposed |
-| F-02 | validation-refactoring | (foundation) validated parameter/response parsing replaces `as Type` casts | S-01 | — | proposed |
+| F-02 | validation-refactoring | (foundation) validated parameter/response parsing replaces `as Type` casts | S-01 | — | done |
 
 ## Streams
 
@@ -94,7 +94,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** Whether to standardize on hand-rolled guards, a shared helper module, or a schema library (e.g. Zod) for n8n parameter shapes.
 - **Risk:** Widespread `as boolean` / `as string` / `as IDataObject` casts today hide runtime type errors; leaving this untracked lets bad expression values fail late or silently misbehave.
-- **Status:** proposed
+- **Status:** done
 
 ## Slices
 
@@ -328,3 +328,4 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **S-03: user can automate Nextcloud Files/Drive at legacy-standard coverage (file/folder/share-style operations).** — Archived 2026-07-18 → `context/archive/2026-07-18-nextcloud-files-drive/`. Lesson: —.
 - **S-06: user can automate Nextcloud News.** — Archived 2026-07-21 → `context/archive/2026-07-20-nextcloud-news/`. Lesson: —.
 - **S-07: user can use polling triggers for suite changes.** — Archived 2026-07-21 → `context/archive/2026-07-19-suite-polling-triggers/`. Lesson: —.
+- **F-02: (foundation) node parameter reads and API response shaping use explicit validation/parsing helpers (e.g. `parseShareId`-style functions) instead of `as Type` casts throughout the package.** — Archived 2026-07-22 → `context/archive/2026-07-21-validation-refactoring/`. Lesson: —.
