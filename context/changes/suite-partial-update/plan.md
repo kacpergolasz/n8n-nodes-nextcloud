@@ -442,12 +442,12 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 
 #### Automated
 
-- [ ] 1.1 Paths exist: test/n8n-cli/README.md and deck/calendar/files folders
-- [ ] 1.2 README documents hybrid model (CLI create/activate/inspect, Webhook+curl start, no CLI execute)
+- [x] 1.1 Paths exist: test/n8n-cli/README.md and deck/calendar/files folders
+- [x] 1.2 README documents hybrid model (CLI create/activate/inspect, Webhook+curl start, no CLI execute)
 
 #### Manual
 
-- [ ] 1.3 n8n-cli workflow list succeeds against local n8n
+- [x] 1.3 n8n-cli workflow list succeeds against local n8n
 
 ### Phase 2: Deck Card Whitelist
 
