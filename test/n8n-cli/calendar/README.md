@@ -1,3 +1,3 @@
 # Calendar — n8n-cli live tests
 
-See [../README.md](../README.md) for the suite hybrid tradition (CLI create/activate/inspect + Webhook/`curl` to start). Workflows land here in later phases.
+See [../README.md](../README.md). Workflow names: `Calendar/<test-name>`. Artifacts land here in later phases.

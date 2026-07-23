@@ -148,7 +148,7 @@ export const cardDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['card'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 	},

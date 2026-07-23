@@ -1,0 +1,160 @@
+{
+	"name": "Deck/move-smoke",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "deck-move-smoke",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "b1000000-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "deck-move-smoke"
+		},
+		{
+			"parameters": {
+				"resource": "board",
+				"operation": "create",
+				"title": "n8n-cli live Deck/move-smoke"
+			},
+			"id": "b1000000-0000-4000-8000-000000000002",
+			"name": "Create a board",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stack",
+				"operation": "create",
+				"board": {
+					"__rl": true,
+					"value": "={{ $json.id }}",
+					"mode": "id"
+				},
+				"title": "Stack A"
+			},
+			"id": "b1000000-0000-4000-8000-000000000003",
+			"name": "Create stack A",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stack",
+				"operation": "create",
+				"board": {
+					"__rl": true,
+					"value": "={{ $('Create a board').item.json.id }}",
+					"mode": "id"
+				},
+				"title": "Stack B"
+			},
+			"id": "b1000000-0000-4000-8000-000000000004",
+			"name": "Create stack B",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "create",
+				"board": {
+					"__rl": true,
+					"value": "={{ $('Create a board').item.json.id }}",
+					"mode": "id"
+				},
+				"stack": {
+					"__rl": true,
+					"value": "={{ $('Create stack A').item.json.id }}",
+					"mode": "id"
+				},
+				"title": "Move me"
+			},
+			"id": "b1000000-0000-4000-8000-000000000005",
+			"name": "Create a card",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "move",
+				"board": {
+					"__rl": true,
+					"value": "={{ $('Create a board').item.json.id }}",
+					"mode": "id"
+				},
+				"cardId": "={{ $json.id }}",
+				"toStack": {
+					"__rl": true,
+					"value": "={{ $('Create stack B').item.json.id }}",
+					"mode": "id"
+				},
+				"order": 0
+			},
+			"id": "b1000000-0000-4000-8000-000000000006",
+			"name": "Move a card",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [1100, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Create a board", "type": "main", "index": 0 }]]
+		},
+		"Create a board": {
+			"main": [[{ "node": "Create stack A", "type": "main", "index": 0 }]]
+		},
+		"Create stack A": {
+			"main": [[{ "node": "Create stack B", "type": "main", "index": 0 }]]
+		},
+		"Create stack B": {
+			"main": [[{ "node": "Create a card", "type": "main", "index": 0 }]]
+		},
+		"Create a card": {
+			"main": [[{ "node": "Move a card", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

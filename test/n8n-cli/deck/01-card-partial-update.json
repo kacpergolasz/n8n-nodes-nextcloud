@@ -1,0 +1,183 @@
+{
+	"name": "Deck/card-partial-update",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "deck-card-partial-update",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "a1000000-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "deck-card-partial-update"
+		},
+		{
+			"parameters": {
+				"resource": "board",
+				"operation": "create",
+				"title": "n8n-cli live Deck/card-partial-update"
+			},
+			"id": "a1000000-0000-4000-8000-000000000002",
+			"name": "Create a board",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "stack",
+				"operation": "create",
+				"board": {
+					"__rl": true,
+					"value": "={{ $json.id }}",
+					"mode": "id"
+				},
+				"title": "Live stack"
+			},
+			"id": "a1000000-0000-4000-8000-000000000003",
+			"name": "Create a stack",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "create",
+				"board": {
+					"__rl": true,
+					"value": "={{ $('Create a board').item.json.id }}",
+					"mode": "id"
+				},
+				"stack": {
+					"__rl": true,
+					"value": "={{ $json.id }}",
+					"mode": "id"
+				},
+				"title": "Before partial update",
+				"description": "original description"
+			},
+			"id": "a1000000-0000-4000-8000-000000000004",
+			"name": "Create a card",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "get",
+				"board": {
+					"__rl": true,
+					"value": "={{ $('Create a board').item.json.id }}",
+					"mode": "id"
+				},
+				"cardId": "={{ $json.id }}"
+			},
+			"id": "a1000000-0000-4000-8000-000000000005",
+			"name": "Get card (before)",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "update",
+				"board": {
+					"__rl": true,
+					"value": "={{ $('Create a board').item.json.id }}",
+					"mode": "id"
+				},
+				"cardId": "={{ $json.id }}",
+				"title": "After partial update",
+				"description": "updated description only"
+			},
+			"id": "a1000000-0000-4000-8000-000000000006",
+			"name": "Update card",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [1100, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "get",
+				"board": {
+					"__rl": true,
+					"value": "={{ $('Create a board').item.json.id }}",
+					"mode": "id"
+				},
+				"cardId": "={{ $json.id }}"
+			},
+			"id": "a1000000-0000-4000-8000-000000000007",
+			"name": "Get card (after)",
+			"type": "CUSTOM.nextcloudDeck",
+			"typeVersion": 1,
+			"position": [1320, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "8UwpVTn1xgQ0s2g9",
+					"name": "Nextcloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Create a board", "type": "main", "index": 0 }]]
+		},
+		"Create a board": {
+			"main": [[{ "node": "Create a stack", "type": "main", "index": 0 }]]
+		},
+		"Create a stack": {
+			"main": [[{ "node": "Create a card", "type": "main", "index": 0 }]]
+		},
+		"Create a card": {
+			"main": [[{ "node": "Get card (before)", "type": "main", "index": 0 }]]
+		},
+		"Get card (before)": {
+			"main": [[{ "node": "Update card", "type": "main", "index": 0 }]]
+		},
+		"Update card": {
+			"main": [[{ "node": "Get card (after)", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

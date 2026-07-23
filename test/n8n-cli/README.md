@@ -8,25 +8,37 @@ Suite tradition for proving Nextcloud node behavior against a **local n8n instan
 
 | Responsibility | Tool |
 | --- | --- |
-| Workflow CRUD + activate | `n8n-cli` / `npx @n8n/cli` — `workflow create\|update\|get\|activate` |
-| Inspect runs | `execution list\|get` |
+| Workflow CRUD + activate | `n8n-cli` — `workflow create\|update\|get\|activate` |
+| Inspect runs | `n8n-cli execution list\|get --includeData` |
 | **Start** a live run | **Webhook** trigger + `curl` (after activate) |
 | Debug fallback | Manual Execute in the n8n editor |
 
-Prefer `--format=json` for scripting and assertions.
+Prefer `--format=json` for scripting and assertions. Use the global `n8n-cli` binary (not `npx @n8n/cli`).
+
+## Workflow naming in n8n
+
+Save every live workflow as **`{App}/{test-name}`** (slash-separated), matching the app folder:
+
+| App folder | Example workflow name |
+| --- | --- |
+| `deck/` | `Deck/card-partial-update` |
+| `calendar/` | `Calendar/create-get-fidelity` |
+| `files/` | `Files/share-update-fields` |
+
+The JSON `"name"` field must use this form so workflows sort under the app prefix in the n8n UI.
 
 ## Prerequisites
 
 1. Local n8n running with this package linked (build + `npm link` into `~/.n8n/custom` — see root README “Verification gate”).
 2. A Nextcloud API (or OAuth2) credential already on the instance. Reference it in workflow JSON by name/id — **never commit secrets**.
-3. API access for `@n8n/cli` via env (`N8N_URL`, `N8N_API_KEY`) or `npx @n8n/cli config` (`set-url` / `set-api-key`). Resolution order: flags → env → `~/.n8n-cli/config.json`.
+3. API access for `n8n-cli` via env (`N8N_URL`, `N8N_API_KEY`) or `n8n-cli config` (`set-url` / `set-api-key`). Resolution order: flags → env → `~/.n8n-cli/config.json`.
 
 Create an API key under **n8n → Settings → n8n API**.
 
 Sanity check:
 
 ```bash
-npx @n8n/cli workflow list --format=json
+n8n-cli workflow list --format=json
 ```
 
 ## Layout
@@ -41,8 +53,8 @@ test/n8n-cli/
 
 Each app folder holds:
 
-- One or more **Webhook-triggered** workflow JSON files
-- A short `README.md` with create → activate → curl → inspect steps and app-specific preconditions (board/card IDs, calendar slug, share id, etc.)
+- One or more **Webhook-triggered** workflow JSON files (name = `{App}/{test-name}`)
+- A short `README.md` with create → activate → curl → inspect steps
 
 ## Typical run loop
 
@@ -50,18 +62,18 @@ From an app folder (example: `deck/`):
 
 ```bash
 # 1. Create (or update) the workflow from JSON
-cat 01-card-partial-update.json | npx @n8n/cli workflow create --stdin --format=json
-# note the returned workflow id; patch credential ids if the create rejects unresolved refs
+n8n-cli workflow create --file=01-card-partial-update.json --format=json
+# note the returned workflow id; patch credential ids if create rejects unresolved refs
 
 # 2. Activate (required for Webhook path)
-npx @n8n/cli workflow activate <workflow-id>
+n8n-cli workflow activate <workflow-id>
 
 # 3. Start via webhook (path/method from the Webhook node in the JSON)
 curl -sS -X POST "http://localhost:5678/webhook/<path>"
 
 # 4. Inspect
-npx @n8n/cli execution list --limit=5 --format=json
-npx @n8n/cli execution get <execution-id> --format=json
+n8n-cli execution list --limit=5 --format=json
+n8n-cli execution get <execution-id> --includeData --format=json
 ```
 
 Production-style webhook URLs use `/webhook/…` after activate. Use `/webhook-test/…` only when testing from the editor’s “Listen” mode.
