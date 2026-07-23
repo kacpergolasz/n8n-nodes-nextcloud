@@ -442,26 +442,26 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 
 #### Automated
 
-- [x] 1.1 Paths exist: test/n8n-cli/README.md and deck/calendar/files folders
-- [x] 1.2 README documents hybrid model (CLI create/activate/inspect, Webhook+curl start, no CLI execute)
+- [x] 1.1 Paths exist: test/n8n-cli/README.md and deck/calendar/files folders — c7d691d
+- [x] 1.2 README documents hybrid model (CLI create/activate/inspect, Webhook+curl start, no CLI execute) — c7d691d
 
 #### Manual
 
-- [x] 1.3 n8n-cli workflow list succeeds against local n8n
+- [x] 1.3 n8n-cli workflow list succeeds against local n8n — c7d691d
 
 ### Phase 2: Deck Card Whitelist
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass for buildCardUpdatePayload
-- [ ] 2.2 Lint passes
-- [ ] 2.3 test/n8n-cli/deck/ has workflow artifact(s) + README
+- [x] 2.1 Unit tests pass for buildCardUpdatePayload
+- [x] 2.2 Lint passes
+- [x] 2.3 test/n8n-cli/deck/ has workflow artifact(s) + README
 
 #### Manual
 
-- [ ] 2.4 Hybrid Deck workflow succeeds (cli create/activate + curl + execution get)
-- [ ] 2.5 Updated card retains labels/assignees; only intended fields change
-- [ ] 2.6 Deck Move smoke still works
+- [x] 2.4 Hybrid Deck workflow succeeds (cli create/activate + curl + execution get)
+- [x] 2.5 Updated card retains labels/assignees; only intended fields change
+- [x] 2.6 Deck Move smoke still works
 
 ### Phase 3: Calendar ICS Translator
 

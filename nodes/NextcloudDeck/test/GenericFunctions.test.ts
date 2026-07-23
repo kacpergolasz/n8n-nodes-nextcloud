@@ -4,6 +4,7 @@ import {
 	buildBoardUrl,
 	buildBoardsUrl,
 	buildCardReorderUrl,
+	buildCardUpdatePayload,
 	buildCardUrl,
 	buildCardsUrl,
 	buildStackUrl,
@@ -140,6 +141,87 @@ describe('board helpers', () => {
 			color: '00ff00',
 			archived: false,
 		});
+	});
+});
+
+describe('buildCardUpdatePayload', () => {
+	const current = {
+		id: 10,
+		title: 'Current',
+		description: 'Keep me',
+		duedate: '2026-07-18T12:00:00.000Z',
+		type: 'plain',
+		order: 3,
+		stackId: 7,
+		owner: { primaryKey: 'alice', uid: 'alice', displayname: 'Alice' },
+		labels: [{ id: 1, title: 'Bug' }],
+		assignedUsers: [{ participant: { uid: 'alice' } }],
+	};
+
+	it('emits only whitelist keys and drops nested GET fields', () => {
+		const payload = buildCardUpdatePayload(current as never, { title: 'Renamed' });
+		expect(payload).toEqual({
+			title: 'Renamed',
+			description: 'Keep me',
+			duedate: '2026-07-18T12:00:00.000Z',
+			type: 'plain',
+			order: 3,
+			owner: 'alice',
+		});
+		expect(payload).not.toHaveProperty('id');
+		expect(payload).not.toHaveProperty('stackId');
+		expect(payload).not.toHaveProperty('labels');
+		expect(payload).not.toHaveProperty('assignedUsers');
+	});
+
+	it('keeps currents when patch is empty', () => {
+		expect(buildCardUpdatePayload(current as never, {})).toEqual({
+			title: 'Current',
+			description: 'Keep me',
+			duedate: '2026-07-18T12:00:00.000Z',
+			type: 'plain',
+			order: 3,
+			owner: 'alice',
+		});
+	});
+
+	it('overlays title, description, and duedate including null clear', () => {
+		expect(
+			buildCardUpdatePayload(current as never, {
+				title: 'New title',
+				description: 'New desc',
+				duedate: null,
+			}),
+		).toEqual({
+			title: 'New title',
+			description: 'New desc',
+			duedate: null,
+			type: 'plain',
+			order: 3,
+			owner: 'alice',
+		});
+	});
+
+	it('defaults missing type and order from current or plain/0', () => {
+		expect(
+			buildCardUpdatePayload(
+				{ id: 1, title: 'Bare', owner: 'bob' } as never,
+				{ title: 'Still bare' },
+			),
+		).toEqual({
+			title: 'Still bare',
+			description: '',
+			duedate: null,
+			type: 'plain',
+			order: 0,
+			owner: 'bob',
+		});
+	});
+
+	it('rejects cards without a resolvable owner uid', () => {
+		expect(() =>
+			buildCardUpdatePayload({ id: 1, title: 'No owner' } as never, {}),
+		).toThrow('Card owner is missing');
 	});
 });
 
