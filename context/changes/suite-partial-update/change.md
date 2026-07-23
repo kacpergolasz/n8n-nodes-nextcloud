@@ -1,7 +1,7 @@
 ---
 change_id: suite-partial-update
 title: Suite partial update
-status: plan_reviewed
+status: implementing
 created: 2026-07-22
 updated: 2026-07-23
 archived_at: null
