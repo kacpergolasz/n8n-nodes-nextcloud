@@ -1,13 +1,14 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
+	buildCardUpdatePayload,
 	deckRequest,
 	findCardOnBoard,
 	formatDeckDueDate,
-	mergeDefined,
 	parseCardAdditionalFields,
 	parseDeckCard,
 	resolveCardId,
+	type CardUpdatePatch,
 } from '../../GenericFunctions';
 import { parseString } from '../../../shared/parse';
 import { cardToJson } from '../shared/entityJson';
@@ -34,7 +35,7 @@ export async function cardUpdate(
 		context.getNodeParameter('additionalFields', itemIndex, {}),
 	);
 
-	const patch: IDataObject = {};
+	const patch: CardUpdatePatch = {};
 	if (title.trim()) {
 		patch.title = title;
 	}
@@ -47,7 +48,7 @@ export async function cardUpdate(
 		patch.duedate = formatDeckDueDate(dueDate);
 	}
 
-	const payload = mergeDefined(current, patch);
+	const payload = buildCardUpdatePayload(current, patch);
 	const card = parseDeckCard(
 		await deckRequest(
 			context,

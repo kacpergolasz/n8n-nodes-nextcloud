@@ -110,8 +110,9 @@ export async function deckRequest(
 	});
 }
 
-// `.passthrough()` keeps unknown Deck API fields (labels, assignees, …) so
-// GET → mergeDefined → PUT round-trips do not strip metadata.
+// `.passthrough()` keeps unknown Deck API fields (labels, assignees, …) on Get
+// output for workflow users. Card Update PUTs must use buildCardUpdatePayload —
+// never mergeDefined(fullGet, patch) — so nested/read-only fields are not sent.
 const deckCardSchema = z
 	.object({
 		id: z.coerce.number(),
@@ -405,5 +406,47 @@ export function buildBoardUpdatePayload(
 			? normalizeDeckColor(patch.color)
 			: normalizeDeckColor(current.color),
 		archived: patch.archived ?? current.archived ?? false,
+	};
+}
+
+export type CardUpdatePatch = {
+	title?: string;
+	description?: string;
+	duedate?: string | null;
+	type?: string;
+	order?: number;
+};
+
+/** Deck PUT requires `owner` as a string UID; GET usually returns an object. */
+function resolveCardOwnerUid(current: DeckCard): string {
+	const owner = (current as DeckCard & { owner?: unknown }).owner;
+	if (typeof owner === 'string' && owner.trim()) {
+		return owner.trim();
+	}
+	if (owner && typeof owner === 'object' && 'uid' in owner) {
+		const uid = String((owner as { uid?: unknown }).uid ?? '').trim();
+		if (uid) {
+			return uid;
+		}
+	}
+	throw new Error('Card owner is missing; cannot build update payload.');
+}
+
+/**
+ * PUT .../cards/{id} writable scalars only. Nested/read-only GET fields
+ * (labels, assignedUsers, id, stackId, …) must never enter the body.
+ * `owner` is required by Deck as a string UID — coerced from GET, not UI.
+ */
+export function buildCardUpdatePayload(
+	current: DeckCard,
+	patch: CardUpdatePatch = {},
+): IDataObject {
+	return {
+		title: patch.title?.trim() || current.title,
+		description: patch.description !== undefined ? patch.description : (current.description ?? ''),
+		duedate: patch.duedate !== undefined ? patch.duedate : (current.duedate ?? null),
+		type: patch.type ?? current.type ?? 'plain',
+		order: patch.order ?? current.order ?? 0,
+		owner: resolveCardOwnerUid(current),
 	};
 }
