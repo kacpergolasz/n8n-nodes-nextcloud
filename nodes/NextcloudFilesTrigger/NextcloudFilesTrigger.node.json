@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-nextcloud.nextcloudFilesTrigger",
+	"node": "n8n-nodes-nextcloud-complete.nextcloudFilesTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Data & Storage"],

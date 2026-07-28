@@ -1,9 +1,9 @@
 {
-	"name": "n8n-nodes-nextcloud",
-	"version": "0.1.0",
-	"description": "Nextcloud suite community nodes for n8n — WIP",
+	"name": "n8n-nodes-nextcloud-complete",
+	"version": "0.3.0",
+	"description": "Nextcloud suite community nodes for n8n — Calendar, Files, Deck, News, and polling triggers",
 	"license": "MIT",
-	"homepage": "https://github.com/kacpergolasz/n8n-nodes-monorepo/tree/main/packages/nextcloud",
+	"homepage": "https://github.com/kacpergolasz/n8n-nodes-nextcloud",
 	"keywords": [
 		"n8n-community-node-package"
 	],
@@ -13,7 +13,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/kacpergolasz/n8n-nodes-monorepo.git"
+		"url": "https://github.com/kacpergolasz/n8n-nodes-nextcloud.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",

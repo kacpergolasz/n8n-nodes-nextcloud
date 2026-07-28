@@ -1,321 +1,178 @@
 ![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
 
-# n8n-nodes-starter
+# n8n-nodes-nextcloud-complete
 
-This starter repository helps you build custom integrations for [n8n](https://n8n.io). It includes example nodes, credentials, the node linter, and all the tooling you need to get started.
+Automate Nextcloud from n8n with Google-style suite nodes — shared credentials, per-app resources, and list-or-type pickers.
 
-## Quick Start
+[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
-> [!TIP]
-> **New to building n8n nodes?** The fastest way to get started is with `npm create @n8n/node`. This command scaffolds a complete node package for you using the [@n8n/node-cli](https://www.npmjs.com/package/@n8n/node-cli).
+[Installation](#installation)  
+[Credentials](#credentials)  
+[Applications](#applications)  
+[Compatibility](#compatibility)  
+[Resources](#resources)  
+[License](#license)
 
-**To create a new node package from scratch:**
+## Installation
 
-```bash
-npm create @n8n/node
+Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
+
+In your n8n instance go to **Settings → Community Nodes → Install** and enter:
+
+```
+n8n-nodes-nextcloud-complete
 ```
 
-**Already using this starter? Start developing with:**
+## Credentials
 
-```bash
-npm run dev
-```
+One shared credential works across all suite nodes. Create either (or both):
 
-This starts n8n with your nodes loaded and hot reload enabled.
+| Credential | Auth | Notes |
+| --- | --- | --- |
+| **Nextcloud API** | Basic Auth (`baseUrl` / `username` / `appPassword`) | Default path; use a Nextcloud app password |
+| **Nextcloud OAuth2 API** | OAuth2 (`baseUrl` / `username` / client id & secret) | Confidential client; Nextcloud grants full account access (no scopes) |
 
-## What's Included
+On nodes that support both modes, set **Authentication** to **Basic Auth** or **OAuth2** and attach the matching credential. Resource fields support **From List** and **By ID**.
 
-This package currently includes:
-
-- **[Nextcloud Calendar](nodes/NextcloudCalendar/)** - CalDAV event Create / Get / Get Many / Update / Delete with list-or-type calendar pickers
-- **[Nextcloud Files](nodes/NextcloudFiles/)** - WebDAV file and folder Upload / Download / Delete / Move / Copy / List, plus OCS Share Create / Get Many / Update / Delete with path pickers
-- **[Nextcloud Files Trigger](nodes/NextcloudFilesTrigger/)** - Polling trigger for file/folder created and updated events on direct children of a watched folder (Depth 1)
-- **[Nextcloud API credential](credentials/NextcloudApi.credentials.ts)** - Shared Basic Auth (`baseUrl` / `username` / `appPassword`) reused by suite nodes
-- **[Nextcloud OAuth2 API credential](credentials/NextcloudOAuth2Api.credentials.ts)** - Shared OAuth2 (`baseUrl` / `username` / client id & secret) reused by suite nodes
-
-> [!TIP]
-> Attach the shared **Nextcloud API** or **Nextcloud OAuth2 API** credential to Nextcloud Calendar. On the Calendar node, use **Authentication** to choose **Basic Auth** or **OAuth2**; the matching credential picker appears for each mode. Calendar pickers support **From List** and **By ID** (slug or full `/remote.php/dav/...` path).
-
-Browse the Calendar node to understand CalDAV request patterns, then extend the suite with additional Nextcloud apps that reuse the same credentials.
-
-## Nextcloud OAuth2 API credential
-
-Use this when you prefer OAuth2 over app passwords. Nextcloud grants **full account access** (no scoped permissions) and requires a **confidential** OAuth2 client (client id + client secret).
+### OAuth2 setup
 
 1. In Nextcloud, open **Administration settings → Security** and create an OAuth2 client.
 2. Copy n8n's **OAuth Redirect URL** from the credential form into the Nextcloud client's redirect URI.
-3. In n8n, create a **Nextcloud OAuth2 API** credential: paste the client id and client secret, enter your server **Base URL** and CalDAV **Username** (same path user id as Basic Auth).
+3. In n8n, create a **Nextcloud OAuth2 API** credential with base URL, username, client id, and client secret.
 4. Complete the OAuth consent flow in n8n.
-5. On the **Nextcloud Calendar** node, set **Authentication** to **OAuth2** and attach the OAuth2 credential.
-
-Basic Auth workflows are unchanged: leave **Authentication** on **Basic Auth** (the default) and use the **Nextcloud API** credential.
 
 > [!WARNING]
-> **OAuth2 end-to-end flow untested.** The credential type and Calendar wiring load correctly in n8n, but live OAuth2 consent and CalDAV operations under OAuth2 have not been verified against a real Nextcloud instance — the maintainer's test instance does not expose OAuth2 (Administration → Security). If you have OAuth2 enabled, please report results or open an issue.
+> **OAuth2 end-to-end flow untested.** The credential type and Calendar wiring load correctly in n8n, but live OAuth2 consent and operations under OAuth2 have not been verified against a real Nextcloud instance. If you have OAuth2 enabled, please report results or open an issue.
+
+## Applications
+
+`[X]` available · `[]` planned. Fully planned apps are marked `(planned)` in the header only.
+
+### Calendar
+
+CalDAV events with calendar list-or-type pickers.
+
+**Event**
+- [X] Create
+- [X] Get
+- [X] Get Many
+- [X] Update
+- [X] Delete
 
-## Finding Inspiration
+**Trigger**
+- [] Event created / updated (polling)
 
-Looking for more examples? Check out these resources:
+### Files
 
-- **[npm Community Nodes](https://www.npmjs.com/search?q=keywords:n8n-community-node-package)** - Browse thousands of community-built nodes on npm using the `n8n-community-node-package` tag
-- **[n8n Built-in Nodes](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes)** - Study the source code of n8n's official nodes for production-ready patterns and best practices
-- **[n8n Credentials](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/credentials)** - See how authentication is implemented for various services
+WebDAV files/folders and OCS shares.
 
-These are excellent resources to understand how to structure your nodes, handle different API patterns, and implement advanced features.
+**File**
+- [X] Upload
+- [X] Download
+- [X] Delete
+- [X] Move
+- [X] Copy
 
-## Prerequisites
+**Folder**
+- [X] Create
+- [X] List
+- [X] Delete
+- [X] Move
+- [X] Copy
 
-Before you begin, install the following on your development machine:
+**Share**
+- [X] Create
+- [X] Get Many
+- [X] Update
+- [X] Delete
 
-### Required
+**Trigger**
+- [X] File / folder created or updated (polling, Depth 1)
 
-- **[Node.js](https://nodejs.org/)** (v22 or higher) and npm
-  - Linux/Mac/WSL: Install via [nvm](https://github.com/nvm-sh/nvm)
-  - Windows: Follow [Microsoft's NodeJS guide](https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-windows)
-- **[git](https://git-scm.com/downloads)**
+### Deck
 
-### Recommended
+Boards, stacks, and cards.
 
-- Follow n8n's [development environment setup guide](https://docs.n8n.io/integrations/creating-nodes/build/node-development-environment/)
+**Board**
+- [X] Create
+- [X] Get
+- [X] Get Many
+- [X] Update
+- [X] Delete
 
-> [!NOTE]
-> The `@n8n/node-cli` is included as a dev dependency and will be installed automatically when you run `npm install`. The CLI includes n8n for local development, so you don't need to install n8n globally.
+**Stack**
+- [X] Create
+- [X] Get Many
+- [] Update
+- [] Delete
 
-> [!IMPORTANT]
-> **Runtime dependency: Zod.** This package declares `zod` only as a `devDependency` (community-node `n8n.strict` forbids shipping it as a runtime dependency). At runtime, Zod must resolve from the **n8n host** (Cloud allowlists it via `n8n-workflow`; self-hosted installs normally get it from n8n's own dependencies). If nodes fail with `Cannot find module 'zod'`, ensure your n8n install provides Zod.
+**Card**
+- [X] Create
+- [X] Get
+- [X] Get Many
+- [X] Update
+- [X] Move
+- [X] Delete
 
-## Getting Started with this Starter
+**Trigger**
+- [] Card / board changed (polling)
 
-Follow these steps to create your own n8n community node package:
+### News
 
-### 1. Create Your Repository
+Nextcloud News API v1.3 (feeds, folders, items).
 
-[Generate a new repository](https://github.com/n8n-io/n8n-nodes-starter/generate) from this template, then clone it:
+**Feed**
+- [X] Create
+- [X] Get Many
+- [X] Rename
+- [X] Move
+- [X] Mark Read
+- [X] Get Favicon
+- [X] Delete
 
-```bash
-git clone https://github.com/<your-organization>/<your-repo-name>.git
-cd <your-repo-name>
-```
+**Folder**
+- [X] Create
+- [X] Get Many
+- [X] Rename
+- [X] Delete
 
-### 2. Install Dependencies
+**Item**
+- [X] Get Many
+- [X] Mark Read / Unread
+- [X] Mark Read / Unread Many
+- [X] Star / Unstar
+- [X] Star / Unstar Many
 
-```bash
-npm install
-```
+**Trigger**
+- [X] New article (polling)
 
-This installs all required dependencies including the `@n8n/node-cli`.
+### Talk (planned)
 
-### 3. Explore the Package
+Conversations, messages, participants, and message triggers (Talk / Spreed API).
 
-Browse the nodes in [nodes/](nodes/) and credentials in [credentials/](credentials/):
+### Tasks (planned)
 
-- Start with [nodes/NextcloudCalendar/](nodes/NextcloudCalendar/) for CalDAV event operations
-- Reuse [credentials/NextcloudApi.credentials.ts](credentials/NextcloudApi.credentials.ts) for shared Basic Auth
+Task lists, tasks, and task triggers (CalDAV / Tasks app).
 
-### 4. Build Your Node
+### Contacts (planned)
 
-Edit nodes to fit your use case, or create new node files by copying the structure from [nodes/NextcloudCalendar/](nodes/NextcloudCalendar/).
+Address books, contacts, and contact triggers (CardDAV).
 
-> [!TIP]
-> If you want to scaffold a completely new node package, use `npm create @n8n/node` to start fresh with the CLI's interactive generator.
+## Compatibility
 
-### 5. Configure Your Package
-
-Update `package.json` with your details:
-
-- `name` - Your package name (must start with `n8n-nodes-`)
-- `author` - Your name and email
-- `repository` - Your repository URL
-- `description` - What your node does
-
-Make sure your node is registered in the `n8n.nodes` array.
-
-### 6. Develop and Test Locally
-
-#### Day-to-day development
-
-Start n8n with your node loaded and hot reload:
-
-```bash
-npm run dev
-```
-
-This command runs `n8n-node dev` which:
-
-- Builds your node with watch mode
-- Starts n8n with your node available (bundled via `@n8n/node-cli` — no global n8n install required)
-- Automatically rebuilds when you make changes
-- Opens n8n in your browser (usually http://localhost:5678)
-
-Use this loop while editing nodes and credentials.
-
-#### Verification gate (community-node link path)
-
-Before treating a change as verified (or before npm publish), prove the package loads via the official community-node install path. This matches [Run your node locally](https://docs.n8n.io/connect/create-nodes/test-your-node/run-your-node-locally) and is the required gate for this package.
-
-1. Install n8n globally if you do not already have it:
-
-   ```bash
-   npm install n8n -g
-   ```
-
-2. In this package directory (`packages/nextcloud/`), build and link the package:
-
-   ```bash
-   npm run build
-   npm link
-   ```
-
-3. Link the package into your local n8n custom extensions directory. On Linux this is typically `~/.n8n/custom` (for example `/home/<username>/.n8n/custom`). If `N8N_CUSTOM_EXTENSIONS` is set, use that directory instead.
-
-   If `custom` does not exist yet:
-
-   ```bash
-   mkdir -p ~/.n8n/custom
-   cd ~/.n8n/custom
-   npm init -y
-   ```
-
-   Then link this package (name from `package.json`):
-
-   ```bash
-   cd ~/.n8n/custom
-   npm link n8n-nodes-nextcloud
-   ```
-
-4. Start n8n:
-
-   ```bash
-   n8n start
-   ```
-
-5. Open n8n in your browser and search the nodes panel by **node name**, not package name. Search for `Nextcloud Calendar` (and create a **Nextcloud API** credential to attach).
-
-> [!NOTE]
-> Learn more about CLI commands in the [@n8n/node-cli documentation](https://www.npmjs.com/package/@n8n/node-cli). Full official steps and troubleshooting: [Run your node locally](https://docs.n8n.io/connect/create-nodes/test-your-node/run-your-node-locally).
-
-### 7. Lint Your Code
-
-Check for errors:
-
-```bash
-npm run lint
-```
-
-Auto-fix issues when possible:
-
-```bash
-npm run lint:fix
-```
-
-### 8. Build for Production
-
-When ready to publish:
-
-```bash
-npm run build
-```
-
-This compiles your TypeScript code to the `dist/` folder.
-
-### 9. Prepare for Publishing
-
-Before publishing:
-
-1. **Update documentation**: Replace this README with your node's documentation. Use [README_TEMPLATE.md](README_TEMPLATE.md) as a starting point.
-2. **Update the LICENSE**: Add your details to the [LICENSE](LICENSE.md) file.
-3. **Test thoroughly**: Ensure your node works in different scenarios.
-
-### 10. Publish to npm
-
-Publishing is handled automatically by the included GitHub Actions workflow ([.github/workflows/publish.yml](.github/workflows/publish.yml)). It runs on every version tag push and publishes to npm with a provenance attestation — a requirement for n8n community nodes starting May 1, 2026.
-
-#### One-time setup
-
-Configure npm to trust this repository's GitHub Actions workflow so it can publish on your behalf. Log in to [npmjs.com](https://npmjs.com), open your package settings, and under **Publish access → Trusted Publishers** add a publisher with:
-
-- **Repository owner**: your GitHub username or org
-- **Repository name**: your repo name
-- **Workflow name**: `publish.yml`
-
-No token or secret needs to be stored in GitHub — the workflow uses GitHub's OIDC token instead.
-
-> [!NOTE]
-> If you prefer a traditional npm token, create a Granular Access Token on npmjs.com and store it as `NPM_TOKEN` in your repository's Actions secrets. See the comments at the top of `.github/workflows/publish.yml` for details.
-
-#### Releasing a new version
-
-```bash
-npm run release
-```
-
-This lints, builds, prompts for a version bump, updates the changelog, commits, tags, and pushes — which triggers the workflow to publish to npm.
-
-### 11. Submit for Verification (Optional)
-
-Get your node verified for n8n Cloud:
-
-1. Ensure your node meets the [requirements](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/):
-   - Uses MIT license ✅ (included in this starter)
-   - No external package dependencies
-   - Follows n8n's design guidelines
-   - Passes quality and security review
-
-2. Submit through the [n8n Creator Portal](https://creators.n8n.io/nodes)
-
-**Benefits of verification:**
-
-- Available directly in n8n Cloud
-- Discoverable in the n8n nodes panel
-- Verified badge for quality assurance
-- Increased visibility in the n8n community
-
-## Available Scripts
-
-This starter includes several npm scripts to streamline development:
-
-| Script                | Description                                                                 |
-| --------------------- | --------------------------------------------------------------------------- |
-| `npm run dev`         | Start n8n with your node and watch for changes (runs `n8n-node dev`)        |
-| `npm run build`       | Compile TypeScript to JavaScript for production (runs `n8n-node build`)     |
-| `npm run build:watch` | Build in watch mode (auto-rebuild on changes)                               |
-| `npm run lint`        | Check your code for errors and style issues (runs `n8n-node lint`)          |
-| `npm run lint:fix`    | Automatically fix linting issues when possible (runs `n8n-node lint --fix`) |
-| `npm run test`        | Run unit tests (Vitest)                                                     |
-| `npm run release`     | Create a new release (runs `n8n-node release`)                              |
-
-> [!TIP]
-> These scripts use the [@n8n/node-cli](https://www.npmjs.com/package/@n8n/node-cli) under the hood. You can also run CLI commands directly, e.g., `npx n8n-node dev`.
-
-## Troubleshooting
-
-### My node doesn't appear in n8n
-
-1. Make sure you ran `npm install` to install dependencies
-2. Check that your node is listed in `package.json` under `n8n.nodes`
-3. Restart the dev server with `npm run dev`
-4. Check the console for any error messages
-
-### Linting errors
-
-Run `npm run lint:fix` to automatically fix most common issues. For remaining errors, check the [n8n node development guidelines](https://docs.n8n.io/integrations/creating-nodes/).
-
-### TypeScript errors
-
-Make sure you're using Node.js v22 or higher and have run `npm install` to get all type definitions.
+- **n8n:** community nodes via local link or npm install (see [Run your node locally](https://docs.n8n.io/connect/create-nodes/test-your-node/run-your-node-locally))
+- **Node.js:** v22 or higher (development)
+- **Nextcloud:** self-hosted instances; minimum version TBD
+- **Runtime:** `zod` must resolve from the n8n host (declared as a `devDependency` only; community-node `n8n.strict` forbids shipping it as a runtime dependency)
 
 ## Resources
 
-- **[n8n Node Documentation](https://docs.n8n.io/integrations/creating-nodes/)** - Complete guide to building nodes
-- **[n8n Community Forum](https://community.n8n.io/)** - Get help and share your nodes
-- **[@n8n/node-cli Documentation](https://www.npmjs.com/package/@n8n/node-cli)** - CLI tool reference
-- **[n8n Creator Portal](https://creators.n8n.io/nodes)** - Submit your node for verification
-- **[Submit Community Nodes Guide](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/)** - Verification requirements and process
-
-## Contributing
-
-Have suggestions for improving this starter? [Open an issue](https://github.com/n8n-io/n8n-nodes-starter/issues) or submit a pull request!
+- [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
+- [Nextcloud developer documentation](https://docs.nextcloud.com/server/latest/developer_manual/)
+- [Nextcloud Talk API](https://nextcloud-talk.readthedocs.io/)
+- [n8n Community Forum](https://community.n8n.io/)
+- [n8n Creator Portal](https://creators.n8n.io/nodes)
 
 ## License
 
-[MIT](https://github.com/n8n-io/n8n-nodes-starter/blob/master/LICENSE.md)
+[MIT](./LICENSE.md)

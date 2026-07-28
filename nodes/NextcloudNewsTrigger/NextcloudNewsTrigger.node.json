@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-nextcloud.nextcloudNewsTrigger",
+	"node": "n8n-nodes-nextcloud-complete.nextcloudNewsTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
