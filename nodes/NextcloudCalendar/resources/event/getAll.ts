@@ -4,24 +4,58 @@ import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse
 import {
 	eventIdFromCalDavHref,
 	nextcloudRequest,
+	nodeDateToFilterMs,
 	parseDtStartFromIcs,
 	parseEventHrefAndIcsFromMultistatus,
 	parseIcsEventVerbose,
+	toCalDavUtcStamp,
 	unfoldIcsContent,
 } from '../../GenericFunctions';
 import type { EventOperationContext } from './types';
 
-function nodeDateToFilterMs(value: unknown): number | null {
-	if (value === undefined || value === null || value === '') return null;
-	if (typeof value === 'number') {
-		if (!Number.isFinite(value)) return null;
-		return value < 1e12 ? Math.round(value * 1000) : Math.round(value);
+/** Inclusive client-side DTSTART window; CalDAV `time-range` end is exclusive so bump by 1s. */
+const CALDAV_END_INCLUSIVE_SLACK_MS = 1000;
+
+export function buildListEventsRequest(
+	afterMs: number | null,
+	beforeMs: number | null,
+): { method: 'PROPFIND' | 'REPORT'; body: string } {
+	if (afterMs === null && beforeMs === null) {
+		return {
+			method: 'PROPFIND',
+			body: `<?xml version="1.0" encoding="utf-8" ?>
+<d:propfind xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+	<d:prop>
+		<d:getetag />
+		<cal:calendar-data />
+	</d:prop>
+</d:propfind>`,
+		};
 	}
-	if (typeof value === 'string') {
-		const parsed = Date.parse(value);
-		return Number.isNaN(parsed) ? null : parsed;
-	}
-	return null;
+
+	const startAttr = afterMs !== null ? ` start="${toCalDavUtcStamp(afterMs)}"` : '';
+	const endAttr =
+		beforeMs !== null
+			? ` end="${toCalDavUtcStamp(beforeMs + CALDAV_END_INCLUSIVE_SLACK_MS)}"`
+			: '';
+
+	return {
+		method: 'REPORT',
+		body: `<?xml version="1.0" encoding="utf-8" ?>
+<cal:calendar-query xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+	<d:prop>
+		<d:getetag />
+		<cal:calendar-data />
+	</d:prop>
+	<cal:filter>
+		<cal:comp-filter name="VCALENDAR">
+			<cal:comp-filter name="VEVENT">
+				<cal:time-range${startAttr}${endAttr} />
+			</cal:comp-filter>
+		</cal:comp-filter>
+	</cal:filter>
+</cal:calendar-query>`,
+	};
 }
 
 export async function eventGetAll(
@@ -38,15 +72,8 @@ export async function eventGetAll(
 	const beforeMs = nodeDateToFilterMs(context.getNodeParameter('before', itemIndex, ''));
 	const hasTimeFilter = afterMs !== null || beforeMs !== null;
 
-	const propfindBody = `<?xml version="1.0" encoding="utf-8" ?>
-<d:propfind xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
-	<d:prop>
-		<d:getetag />
-		<cal:calendar-data />
-	</d:prop>
-</d:propfind>`;
-
-	const response = await nextcloudRequest(context, 'PROPFIND', calendarUrl, propfindBody, {
+	const { method, body } = buildListEventsRequest(afterMs, beforeMs);
+	const response = await nextcloudRequest(context, method, calendarUrl, body, {
 		Depth: '1',
 		'Content-Type': 'application/xml; charset=utf-8',
 		Accept: 'application/xml',

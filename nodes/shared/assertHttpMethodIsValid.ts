@@ -1,12 +1,18 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 /** n8n's IHttpRequestMethods omits WebDAV verbs like PROPFIND, MKCOL, MOVE, and COPY. */
-export type NextcloudHttpMethod = IHttpRequestMethods | 'PROPFIND' | 'MKCOL' | 'MOVE' | 'COPY';
+export type NextcloudHttpMethod =
+	| IHttpRequestMethods
+	| 'PROPFIND'
+	| 'REPORT'
+	| 'MKCOL'
+	| 'MOVE'
+	| 'COPY';
 
 /**
  * Narrow suite WebDAV/CalDAV verbs to n8n's `IHttpRequestMethods` at the HTTP boundary.
  *
- * n8n's union is only DELETE|GET|HEAD|PATCH|POST|PUT — it omits PROPFIND, MKCOL, MOVE, COPY.
+ * n8n's union is only DELETE|GET|HEAD|PATCH|POST|PUT — it omits PROPFIND, REPORT, MKCOL, MOVE, COPY.
  * Runtime accepts those verbs; this assertion teaches TypeScript the call is safe without `as`.
  */
 export function assertHttpMethodIsValid(
@@ -22,6 +28,7 @@ export function assertHttpMethodIsValid(
 	] satisfies IHttpRequestMethods[];
 	const nextcloudMethods: string[] = [
 		'PROPFIND',
+		'REPORT',
 		'MKCOL',
 		'MOVE',
 		'COPY',

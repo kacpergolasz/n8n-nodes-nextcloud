@@ -31,6 +31,97 @@ function parseTagValue(xml: string, tagName: string): string | undefined {
 	return match?.[1]?.trim();
 }
 
+/** Decode common XML text entities (calendar-data is often entity-encoded by Sabre/DAV). */
+export function decodeXmlText(value: string): string {
+	return value
+		.replace(/&#x0*[dD];/g, '\r')
+		.replace(/&#x0*[aA];/g, '\n')
+		.replace(/&#13;/g, '\r')
+		.replace(/&#10;/g, '\n')
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&apos;/g, "'")
+		.replace(/&amp;/g, '&');
+}
+
+/**
+ * Parse a date string to UTC ms.
+ * Accepts ISO-8601 and Luxon `DateTime.toString()` (`[DateTime: 2026-08-12T14:29:22.402+02:00]`),
+ * which n8n often yields for expressions like `{{ $now.plus({ week: 2 }) }}`.
+ */
+function parseDateStringToMs(value: string): number | null {
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+
+	const luxonWrapped = trimmed.match(/^\[DateTime:\s*(.+?)\]$/i);
+	const candidate = (luxonWrapped?.[1] ?? trimmed).trim();
+	if (!candidate || /^Invalid DateTime$/i.test(candidate)) return null;
+
+	if (/^\d+(\.\d+)?$/.test(candidate)) {
+		const n = Number(candidate);
+		if (!Number.isFinite(n)) return null;
+		return n < 1e12 ? Math.round(n * 1000) : Math.round(n);
+	}
+
+	const parsed = Date.parse(candidate);
+	return Number.isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Coerce an n8n dateTime parameter (string, epoch, Date, or Luxon-like) to UTC ms.
+ * Returns null for empty / unparseable values so optional filters can be skipped.
+ */
+export function nodeDateToFilterMs(value: unknown): number | null {
+	if (value === undefined || value === null || value === '') return null;
+
+	if (typeof value === 'number') {
+		if (!Number.isFinite(value)) return null;
+		return value < 1e12 ? Math.round(value * 1000) : Math.round(value);
+	}
+
+	if (value instanceof Date) {
+		const ms = value.getTime();
+		return Number.isNaN(ms) ? null : ms;
+	}
+
+	if (typeof value === 'string') {
+		return parseDateStringToMs(value);
+	}
+
+	if (typeof value === 'object') {
+		if ('toMillis' in value && typeof value.toMillis === 'function') {
+			const ms = value.toMillis();
+			return Number.isFinite(ms) ? ms : null;
+		}
+		if ('toJSDate' in value && typeof value.toJSDate === 'function') {
+			const date = value.toJSDate();
+			if (date instanceof Date) {
+				const ms = date.getTime();
+				return Number.isNaN(ms) ? null : ms;
+			}
+		}
+		if ('toISO' in value && typeof value.toISO === 'function') {
+			const iso = value.toISO();
+			if (typeof iso === 'string' && iso.trim()) {
+				return parseDateStringToMs(iso);
+			}
+		}
+		// Proxied / serialized Luxon often only survives as `String(value)` → `[DateTime: …]`.
+		const asString = String(value);
+		if (asString && asString !== '[object Object]') {
+			return parseDateStringToMs(asString);
+		}
+	}
+
+	return null;
+}
+
+/** Format UTC milliseconds as CalDAV `time-range` stamp (`YYYYMMDDTHHMMSSZ`). */
+export function toCalDavUtcStamp(ms: number): string {
+	return new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
 /** Nextcloud exposes calendars under `{base}/remote.php/dav/calendars/{username}/`. */
 export function buildCalendarHomeUrl(credentials: NextcloudCredentialData): string {
 	const base = normalizeBaseUrl(credentials.baseUrl);
@@ -523,7 +614,10 @@ export function parseEventHrefAndIcsFromMultistatus(xml: string): { href: string
 		const href = parseTagValue(block, 'href');
 		if (!href || !href.endsWith('.ics')) continue;
 		const calendarData = parseTagValue(block, 'calendar-data');
-		out.push({ href, ics: calendarData });
+		out.push({
+			href,
+			ics: calendarData !== undefined ? decodeXmlText(calendarData) : undefined,
+		});
 	}
 
 	return out;

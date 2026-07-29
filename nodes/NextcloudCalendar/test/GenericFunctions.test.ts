@@ -2,17 +2,20 @@ import {
 	buildCalendarHomeUrl,
 	buildEventUrl,
 	buildICalendarPayload,
+	decodeXmlText,
 	escapeIcsTextValue,
 	eventIdFromCalDavHref,
 	getCredentials,
 	parseCalendarsFromXml,
 	icsDateOrDateTimeToIso,
+	nodeDateToFilterMs,
 	parseDtStartFromIcs,
 	parseEventHrefAndIcsFromMultistatus,
 	parseEventHrefsFromMultistatus,
 	parseIcsEventVerbose,
 	parseUserIdAndCalendarIdFromCalendarUrl,
 	resolveCredentialName,
+	toCalDavUtcStamp,
 	unescapeIcsText,
 	unfoldIcsContent,
 	resolveCalendarPath,
@@ -296,6 +299,68 @@ END:VEVENT
 END:VCALENDAR`,
 			},
 		]);
+	});
+
+	it('decodes entity-encoded calendar-data so DTSTART remains parseable', () => {
+		const xml = `
+			<d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+				<d:response>
+					<d:href>/remote.php/dav/calendars/alice/personal/a.ics</d:href>
+					<d:propstat><d:prop>
+						<cal:calendar-data>BEGIN:VCALENDAR&#13;&#10;BEGIN:VEVENT&#13;&#10;DTSTART:20260101T120000Z&#13;&#10;END:VEVENT&#13;&#10;END:VCALENDAR</cal:calendar-data>
+					</d:prop></d:propstat>
+				</d:response>
+			</d:multistatus>
+		`;
+
+		const [entry] = parseEventHrefAndIcsFromMultistatus(xml);
+		expect(entry?.ics).toMatch(/\r?\nDTSTART:20260101T120000Z\r?\n/);
+		expect(parseDtStartFromIcs(unfoldIcsContent(entry!.ics!))).toBe(
+			Date.UTC(2026, 0, 1, 12, 0, 0, 0),
+		);
+	});
+
+	it('decodeXmlText unescapes amp last', () => {
+		expect(decodeXmlText('a &amp;lt; b')).toBe('a &lt; b');
+		expect(decodeXmlText('a &lt; b &amp; c')).toBe('a < b & c');
+	});
+
+	it('nodeDateToFilterMs accepts string, Date, epoch, and Luxon-like values', () => {
+		expect(nodeDateToFilterMs('')).toBeNull();
+		expect(nodeDateToFilterMs(null)).toBeNull();
+		expect(nodeDateToFilterMs('2026-07-01T00:00:00.000Z')).toBe(Date.parse('2026-07-01T00:00:00.000Z'));
+		expect(nodeDateToFilterMs(new Date('2026-07-01T00:00:00.000Z'))).toBe(
+			Date.parse('2026-07-01T00:00:00.000Z'),
+		);
+		expect(nodeDateToFilterMs(1_788_640_000)).toBe(1_788_640_000_000);
+		expect(nodeDateToFilterMs(1_788_640_000_000)).toBe(1_788_640_000_000);
+		expect(
+			nodeDateToFilterMs({
+				toMillis: () => Date.parse('2026-07-01T00:00:00.000Z'),
+			}),
+		).toBe(Date.parse('2026-07-01T00:00:00.000Z'));
+		expect(
+			nodeDateToFilterMs({
+				toISO: () => '2026-07-01T00:00:00.000Z',
+			}),
+		).toBe(Date.parse('2026-07-01T00:00:00.000Z'));
+		expect(nodeDateToFilterMs({})).toBeNull();
+	});
+
+	it('nodeDateToFilterMs parses Luxon DateTime.toString from n8n expressions', () => {
+		expect(nodeDateToFilterMs('[DateTime: 2026-08-12T14:29:22.402+02:00]')).toBe(
+			Date.parse('2026-08-12T14:29:22.402+02:00'),
+		);
+		expect(
+			nodeDateToFilterMs({
+				toString: () => '[DateTime: 2026-08-12T14:29:22.402+02:00]',
+			}),
+		).toBe(Date.parse('2026-08-12T14:29:22.402+02:00'));
+		expect(nodeDateToFilterMs('[DateTime: Invalid DateTime]')).toBeNull();
+	});
+
+	it('toCalDavUtcStamp formats Zulu CalDAV stamps', () => {
+		expect(toCalDavUtcStamp(Date.parse('2026-07-01T09:30:00.000Z'))).toBe('20260701T093000Z');
 	});
 });
 
