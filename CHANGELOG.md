@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 (2026-07-29)
+
+### Bug Fixes
+
+- **Nextcloud Calendar** — Get Many After/Before filters now accept n8n Luxon `DateTime` values (e.g. `{{ $now.plus({ week: 2 }) }}` / `[DateTime: …]`), query CalDAV with `REPORT` `time-range`, and decode entity-encoded `calendar-data`
+
 ## 0.3.0 (2026-07-28)
 
 ### Features
