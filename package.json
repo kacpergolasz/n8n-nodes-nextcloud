@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-nextcloud-complete",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"description": "Nextcloud suite community nodes for n8n — Calendar, Files, Deck, News, and polling triggers",
 	"license": "MIT",
 	"homepage": "https://github.com/kacpergolasz/n8n-nodes-nextcloud",
