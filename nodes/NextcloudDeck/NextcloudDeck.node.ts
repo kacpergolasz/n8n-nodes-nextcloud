@@ -55,7 +55,6 @@ export class NextcloudDeck implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				// Card-first ordering matches primary workflow (cards → board → stack context)
-				// eslint-disable-next-line @n8n/community-nodes/options-sorted-alphabetically
 				options: [
 					{ name: 'Card', value: 'card' },
 					{ name: 'Board', value: 'board' },
