@@ -9,6 +9,8 @@ export { buildICalendarPayload, buildMinimalEventCalendar } from './build';
 export {
 	escapeIcsTextValue,
 	icsDateOrDateTimeToIso,
+	isoToFloatingIcsDateTime,
+	isoToIcsDate,
 	isoToIcsDateTime,
 	paramsToParamPart,
 	tzidFromParams,
@@ -17,6 +19,8 @@ export {
 	utcNowIcsDateTime,
 } from './dates';
 export { findFirstVEvent, parseIcs } from './parse';
+export { patchEventCalendar } from './patchEvent';
+export type { PatchEventOptions, PatchEventResult } from './patchEvent';
 export { foldIcsLine, serializeIcs } from './serialize';
 
 function lastByName(vevent: IcsComponent): Map<string, IcsProperty> {

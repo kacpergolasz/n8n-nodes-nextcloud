@@ -361,6 +361,36 @@ export function buildEventUrl(calendarPath: string, eventId: string): string {
 	return `${normalizedPath}${encodeURIComponent(suffix)}`;
 }
 
+/**
+ * Nextcloud Calendar UI deep link that opens the event editor.
+ *
+ * `objectId` is base64 of `{webroot}/remote.php/dav/calendars/{userId}/{calendarId}/{eventId}.ics`
+ * (same shape as `calendar.view.indexdirect.edit` / `/apps/calendar/edit/:objectId`).
+ * `eventId` is the CalDAV filename stem, not the ICS UID.
+ */
+export function buildCalendarEventWebUrl(
+	baseUrl: string,
+	userId: string,
+	calendarId: string,
+	eventId: string,
+): string {
+	const normalized = normalizeBaseUrl(baseUrl);
+	let origin = normalized;
+	let webroot = '';
+	try {
+		const parsed = new URL(normalized);
+		origin = parsed.origin;
+		webroot = parsed.pathname.replace(/\/+$/, '');
+	} catch {
+		// keep normalized as origin when URL parsing fails
+	}
+
+	const fileName = eventId.endsWith('.ics') ? eventId : `${eventId}.ics`;
+	const davObjectPath = `${webroot}/remote.php/dav/calendars/${userId}/${calendarId}/${fileName}`;
+	const objectId = Buffer.from(davObjectPath, 'utf8').toString('base64');
+	return `${origin}${webroot}/apps/calendar/edit/${objectId}`;
+}
+
 export function parseEventHrefsFromMultistatus(xml: string): string[] {
 	const hrefMatches = Array.from(xml.matchAll(/<[^>]*:?href[^>]*>(.*?)<\/[^>]*:?href>/gi));
 	return hrefMatches.map((match) => match[1]).filter((href) => href.endsWith('.ics'));

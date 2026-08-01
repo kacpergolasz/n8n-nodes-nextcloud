@@ -51,7 +51,7 @@ export const eventDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['event'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -64,7 +64,7 @@ export const eventDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['event'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -77,7 +77,7 @@ export const eventDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['event'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,7 +90,7 @@ export const eventDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['event'],
-				operation: ['create', 'update'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -105,6 +105,71 @@ export const eventDescription: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['event'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'All Day',
+				name: 'allDay',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the event is an all-day event. When true, start/end are stored as dates only.',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+			},
+			{
+				displayName: 'End',
+				name: 'end',
+				type: 'dateTime',
+				default: '',
+				description: 'New end date/time. For all-day events, the calendar date is used.',
+			},
+			{
+				displayName: 'Location',
+				name: 'location',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Start',
+				name: 'start',
+				type: 'dateTime',
+				default: '',
+				description: 'New start date/time. For all-day events, the calendar date is used.',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timezone',
+				type: 'string',
+				default: '',
+				placeholder: 'Europe/Warsaw',
+				description:
+					'IANA timezone for timed events (e.g. Europe/Warsaw). Ignored for all-day events. Leave unset to keep the current timezone.',
+			},
+		],
 	},
 	{
 		displayName: 'Return All',
