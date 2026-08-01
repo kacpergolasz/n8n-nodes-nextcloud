@@ -467,13 +467,13 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 
 #### Automated
 
-- [x] 3.1 Unit ICS round-trip tests pass
-- [x] 3.2 Lint passes
-- [x] 3.3 Create path uses serializer
+- [x] 3.1 Unit ICS round-trip tests pass — ef0c7e8
+- [x] 3.2 Lint passes — ef0c7e8
+- [x] 3.3 Create path uses serializer — ef0c7e8
 
 #### Manual
 
-- [x] 3.4 Hybrid Calendar create→get workflow succeeds
+- [x] 3.4 Hybrid Calendar create→get workflow succeeds — ef0c7e8
 - [ ] 3.5 Created event looks correct in Nextcloud Calendar UI
 
 ### Phase 4: Calendar Partial Update
