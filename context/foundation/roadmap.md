@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-07-22
+updated: 2026-08-01
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -280,6 +280,14 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Issue:** `execute` reads `resource` via `getNodeParameter('resource', 0)` while every other parameter uses loop index `i`. In multi-item runs where `resource` is driven by an expression, every item is dispatched using the first item's resource.
 - **Scope:** Audit all suite node `execute` implementations (`NextcloudDeck`, `NextcloudFiles`, `NextcloudCalendar`, and future nodes).
 - **Known baseline (2026-07-19):** `NextcloudDeck` uses index `0`; `NextcloudFiles` uses index `i`; `NextcloudCalendar` has no `resource` parameter.
+
+### ICS date / duration value class (Calendar follow-up)
+
+- **Source:** Bugbot review 2026-08-01 during S-09 — same-day timed → all-day patch needed an ad-hoc `addOneIcsDate` exclusive-end bump in `patchEvent.ts`.
+- **Issue:** ICS DATE / DATE-TIME / DURATION rules (RFC 5545 exclusive DTEND, all-day vs timed, DURATION vs DTEND, TZID floating) are scattered across `ics/dates.ts`, `patchEvent.ts`, and GenericFunctions helpers as free functions with easy-to-miss edge cases.
+- **Follow-up:** Introduce a dedicated class (or small type + methods) for ICS date and duration values — parse, normalize, add days, convert all-day ↔ timed, enforce exclusive end — and migrate Calendar patch/build paths onto it. Revisit when Tasks/Contacts CalDAV surfaces need the same rules.
+- **Prerequisites:** S-09 Calendar Update path stable.
+- **Status:** proposed
 
 ## Open Roadmap Questions
 
