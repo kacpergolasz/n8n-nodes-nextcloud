@@ -95,6 +95,18 @@ export const eventDescription: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Location',
+		name: 'location',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['event'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
