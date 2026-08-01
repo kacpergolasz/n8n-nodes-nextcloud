@@ -511,15 +511,15 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 
 #### Automated
 
-- [ ] 5.1 buildShareUpdateBody unit tests still pass
-- [ ] 5.2 Lint passes
-- [ ] 5.3 test/n8n-cli/files/ has workflow + README
+- [x] 5.1 buildShareUpdateBody unit tests still pass
+- [x] 5.2 Lint passes
+- [x] 5.3 test/n8n-cli/files/ has workflow + README
 
 #### Manual
 
-- [ ] 5.4 Hybrid Files workflow succeeds
-- [ ] 5.5 Only selected collection keys change on the share
-- [ ] 5.6 Clear password / publicUpload false still work when keys present
+- [x] 5.4 Hybrid Files workflow succeeds
+- [x] 5.5 Only selected collection keys change on the share
+- [x] 5.6 Clear password / publicUpload false still work when keys present
 
 ### Phase 6: Suite Update Convention
 

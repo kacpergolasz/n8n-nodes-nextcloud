@@ -28,7 +28,7 @@ import { shareDelete } from './resources/share/delete';
 import { shareGetAll } from './resources/share/getAll';
 import { shareUpdate } from './resources/share/update';
 import type { ShareOperationContext } from './resources/share/types';
-import { getHttpStatusCode } from './shared/httpStatus';
+import { formatFilesErrorMessage, getHttpStatusCode } from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
 import { nodeApiErrorPayload, parseRequiredString } from '../shared/parse';
 
@@ -157,8 +157,7 @@ export class NextcloudFiles implements INodeType {
 					appPassword: credentials.appPassword,
 					username: credentials.username,
 				});
-				const message =
-					statusCode === 404 ? 'Resource not found (404)' : scrubbedMessage;
+				const message = formatFilesErrorMessage(statusCode, scrubbedMessage);
 
 				if (this.continueOnFail()) {
 					returnData.push({
@@ -177,6 +176,9 @@ export class NextcloudFiles implements INodeType {
 						statusCode !== undefined ? { httpCode: statusCode } : undefined,
 					),
 					{
+						// Pass message explicitly — otherwise NodeApiError replaces it with the
+						// generic status-code text (e.g. 404 → "The resource you are requesting…").
+						message,
 						itemIndex: i,
 						...(statusCode !== undefined ? { httpCode: String(statusCode) } : {}),
 					},

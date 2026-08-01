@@ -749,6 +749,10 @@ export function unwrapOcsResponse(response: unknown): unknown {
 /**
  * Authenticated OCS request against the files_sharing API.
  * Forces JSON output and unwraps the `ocs.data` envelope.
+ *
+ * OCS/v2 maps business failures (e.g. past expireDate) onto HTTP 4xx with a JSON
+ * envelope. Ignore HTTP status so we can surface `ocs.meta.message` instead of
+ * n8n's generic NodeApiError 404 text.
  */
 export async function ocsRequest(
 	context: NextcloudRequestContext,
@@ -770,13 +774,10 @@ export async function ocsRequest(
 		headers['Content-Type'] = 'application/x-www-form-urlencoded';
 	}
 
-	const response = await nextcloudRequest(
-		context,
-		method,
-		url,
-		formBody,
-		headers,
-	);
+	const response = await nextcloudRequest(context, method, url, formBody, headers, {
+		json: true,
+		ignoreHttpStatusErrors: true,
+	});
 
 	return unwrapOcsResponse(response);
 }

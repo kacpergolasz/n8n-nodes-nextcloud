@@ -281,4 +281,23 @@ describe('Nextcloud Files OCS helpers', () => {
 		expect(error?.message).toBe('Not found');
 		expect(error?.statusCode).toBe(404);
 	});
+
+	it('unwrapOcsResponse surfaces localized expireDate validation messages', () => {
+		const error = (() => {
+			try {
+				unwrapOcsResponse({
+					ocs: {
+						meta: { status: 'failure', statuscode: 404, message: 'Data ważności już minęła' },
+						data: [],
+					},
+				});
+			} catch (caught) {
+				return caught as Error & { statusCode?: number };
+			}
+			return undefined;
+		})();
+
+		expect(error?.message).toBe('Data ważności już minęła');
+		expect(error?.statusCode).toBe(404);
+	});
 });
