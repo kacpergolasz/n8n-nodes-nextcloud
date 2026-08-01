@@ -153,6 +153,17 @@ END:VCALENDAR`;
 		expect(serialized).toMatch(/DTEND;VALUE=DATE:20260512/);
 	});
 
+	it('bumps exclusive DTEND when same-day timed event becomes all-day without new dates', () => {
+		// RICH_ICS is 10:00–11:00 same calendar day → DATE start/end would collide without +1 day.
+		const ast = parseIcs(RICH_ICS);
+		const result = patchEventCalendar(ast, { allDay: true }, { now: FIXED_NOW });
+
+		expect(result.changed).toBe(true);
+		const serialized = serializeIcs(result.calendar);
+		expect(serialized).toMatch(/DTSTART;VALUE=DATE:20260511/);
+		expect(serialized).toMatch(/DTEND;VALUE=DATE:20260512/);
+	});
+
 	it('preserves TZID on timed events when timezone field is unset', () => {
 		const ast = parseIcs(RICH_ICS);
 		const result = patchEventCalendar(
