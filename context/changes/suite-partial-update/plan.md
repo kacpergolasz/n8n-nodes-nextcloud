@@ -453,27 +453,27 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 
 #### Automated
 
-- [x] 2.1 Unit tests pass for buildCardUpdatePayload
-- [x] 2.2 Lint passes
-- [x] 2.3 test/n8n-cli/deck/ has workflow artifact(s) + README
+- [x] 2.1 Unit tests pass for buildCardUpdatePayload — 2775a32
+- [x] 2.2 Lint passes — 2775a32
+- [x] 2.3 test/n8n-cli/deck/ has workflow artifact(s) + README — 2775a32
 
 #### Manual
 
-- [x] 2.4 Hybrid Deck workflow succeeds (cli create/activate + curl + execution get)
-- [x] 2.5 Updated card retains labels/assignees; only intended fields change
-- [x] 2.6 Deck Move smoke still works
+- [x] 2.4 Hybrid Deck workflow succeeds (cli create/activate + curl + execution get) — 2775a32
+- [x] 2.5 Updated card retains labels/assignees; only intended fields change — 2775a32
+- [x] 2.6 Deck Move smoke still works — 2775a32
 
 ### Phase 3: Calendar ICS Translator
 
 #### Automated
 
-- [ ] 3.1 Unit ICS round-trip tests pass
-- [ ] 3.2 Lint passes
-- [ ] 3.3 Create path uses serializer
+- [x] 3.1 Unit ICS round-trip tests pass
+- [x] 3.2 Lint passes
+- [x] 3.3 Create path uses serializer
 
 #### Manual
 
-- [ ] 3.4 Hybrid Calendar create→get workflow succeeds
+- [x] 3.4 Hybrid Calendar create→get workflow succeeds
 - [ ] 3.5 Created event looks correct in Nextcloud Calendar UI
 
 ### Phase 4: Calendar Partial Update

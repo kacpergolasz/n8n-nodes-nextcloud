@@ -13,17 +13,21 @@ import type {
 	NextcloudCalendarOption,
 	NextcloudCredentialData,
 	NextcloudCredentialName,
-	NextcloudEventInput,
 } from './EventInterface';
+
+export {
+	buildICalendarPayload,
+	escapeIcsTextValue,
+	icsDateOrDateTimeToIso,
+	parseIcsEventVerbose,
+	unescapeIcsText,
+	unfoldIcsContent,
+} from './ics';
 
 const CALENDAR_ROOT_MARKER = '/remote.php/dav/calendars/';
 
 function normalizeBaseUrl(baseUrl: string): string {
 	return baseUrl.replace(/\/+$/, '');
-}
-
-function sanitizeFileNamePart(value: string): string {
-	return value.replace(/[^a-zA-Z0-9_-]/g, '-');
 }
 
 function parseTagValue(xml: string, tagName: string): string | undefined {
@@ -355,223 +359,6 @@ export function buildEventUrl(calendarPath: string, eventId: string): string {
 	const suffix = eventId.endsWith('.ics') ? eventId : `${eventId}.ics`;
 	const normalizedPath = calendarPath.endsWith('/') ? calendarPath : `${calendarPath}/`;
 	return `${normalizedPath}${encodeURIComponent(suffix)}`;
-}
-
-export function buildICalendarPayload(input: NextcloudEventInput, uid?: string): string {
-	const uidValue = uid ?? `${Date.now()}-${sanitizeFileNamePart(input.summary)}@n8n-nextcloud`;
-	const escapedSummary = escapeIcsTextValue(input.summary);
-	const escapedDescription = escapeIcsTextValue(input.description ?? '');
-	const escapedLocation = escapeIcsTextValue(input.location ?? '');
-	const dtStamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-	const dtStart = input.start.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-	const dtEnd = input.end.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-
-	return [
-		'BEGIN:VCALENDAR',
-		'VERSION:2.0',
-		'PRODID:-//n8n//Nextcloud Calendar Node//EN',
-		'BEGIN:VEVENT',
-		`UID:${uidValue}`,
-		`DTSTAMP:${dtStamp}`,
-		`DTSTART:${dtStart}`,
-		`DTEND:${dtEnd}`,
-		`SUMMARY:${escapedSummary}`,
-		`DESCRIPTION:${escapedDescription}`,
-		`LOCATION:${escapedLocation}`,
-		'END:VEVENT',
-		'END:VCALENDAR',
-	].join('\r\n');
-}
-
-/** RFC 5545 line folding: remove CRLF followed by a single space or tab. */
-export function unfoldIcsContent(content: string): string {
-	return content.replace(/\r?\n[ \t]/g, '');
-}
-
-/** RFC 5545 TEXT: escape `\`, `;`, `,`, and newlines (CR/LF → `\n`). */
-export function escapeIcsTextValue(value: string): string {
-	return value
-		.replace(/\\/g, '\\\\')
-		.replace(/;/g, '\\;')
-		.replace(/,/g, '\\,')
-		.replace(/\r\n|\n|\r/g, '\\n');
-}
-
-export function unescapeIcsText(value: string): string {
-	return value.replace(/\\([\\,;nN])/g, (_, ch: string) => {
-		if (ch === 'n' || ch === 'N') return '\n';
-		return ch;
-	});
-}
-
-/**
- * Normalizes ICS DATE / DATE-TIME values to ISO-8601-like strings.
- * All-day (VALUE=DATE or bare YYYYMMDD) → `YYYY-MM-DDT00:00:00Z` (UTC day boundary).
- * UTC / Zulu datetimes → full ISO with Z. Floating local times → `YYYY-MM-DDTHH:mm:ss` without offset.
- */
-export function icsDateOrDateTimeToIso(paramPart: string, value: string): string | undefined {
-	const v = value.trim();
-	const params = paramPart.toUpperCase();
-	const dateOnly = params.includes(';VALUE=DATE') || /^\d{8}$/.test(v);
-
-	if (dateOnly && /^\d{8}$/.test(v)) {
-		return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}T00:00:00Z`;
-	}
-
-	const m = v.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/);
-	if (m) {
-		const isoDate = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`;
-		return m[7] === 'Z' ? `${isoDate}Z` : isoDate;
-	}
-
-	if (/^\d{8}$/.test(v)) {
-		return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}T00:00:00Z`;
-	}
-
-	return v.length > 0 ? v : undefined;
-}
-
-function tzidFromParamPart(paramPart: string): string | undefined {
-	const m = paramPart.match(/(?:^|;)TZID=([^;:]+)/i);
-	return m?.[1]?.trim();
-}
-
-/**
- * Parses the first VEVENT in an iCalendar blob into optional JSON fields (omit missing properties).
- * Excludes UID. Suitable for "get event" style responses.
- */
-export function parseIcsEventVerbose(rawIcs: string): IDataObject {
-	const unfolded = unfoldIcsContent(rawIcs.trim());
-	const veMatch = unfolded.match(/BEGIN:VEVENT([\s\S]*?)END:VEVENT/i);
-	if (!veMatch) return {};
-
-	let vBody = veMatch[1] ?? '';
-	vBody = vBody.replace(/BEGIN:VALARM[\s\S]*?END:VALARM/gi, '');
-
-	type PropEntry = { params: string; value: string };
-	const lastByName: Record<string, PropEntry> = {};
-	const attendees: string[] = [];
-
-	for (const rawLine of vBody.split(/\r?\n/)) {
-		const line = rawLine.trim();
-		if (!line || line.startsWith('BEGIN:') || line.startsWith('END:')) continue;
-
-		const colon = line.indexOf(':');
-		if (colon === -1) continue;
-
-		const lhs = line.slice(0, colon);
-		const value = line.slice(colon + 1);
-		const semi = lhs.indexOf(';');
-		const propName = (semi === -1 ? lhs : lhs.slice(0, semi)).toUpperCase();
-		const paramPart = semi === -1 ? '' : lhs.slice(semi);
-
-		if (propName === 'ATTENDEE') {
-			const t = unescapeIcsText(value).trim();
-			if (t) attendees.push(t);
-			continue;
-		}
-
-		lastByName[propName] = { params: paramPart, value };
-	}
-
-	const out: IDataObject = {};
-
-	const setIf = (key: string, val: IDataObject[string]) => {
-		if (val === undefined || val === null) return;
-		if (typeof val === 'string' && val.length === 0) return;
-		if (Array.isArray(val) && val.length === 0) return;
-		out[key] = val;
-	};
-
-	const dtStart = lastByName.DTSTART;
-	if (dtStart) {
-		const iso = icsDateOrDateTimeToIso(dtStart.params, dtStart.value);
-		setIf('date_start', iso);
-		const tz = tzidFromParamPart(dtStart.params);
-		setIf('start_tzid', tz);
-	}
-
-	const dtEnd = lastByName.DTEND;
-	if (dtEnd) {
-		const iso = icsDateOrDateTimeToIso(dtEnd.params, dtEnd.value);
-		setIf('date_end', iso);
-		const tz = tzidFromParamPart(dtEnd.params);
-		setIf('end_tzid', tz);
-	}
-
-	const created = lastByName.CREATED;
-	if (created) {
-		setIf('created_at', icsDateOrDateTimeToIso(created.params, created.value));
-	}
-
-	const lastMod = lastByName['LAST-MODIFIED'];
-	if (lastMod) {
-		setIf('updated_at', icsDateOrDateTimeToIso(lastMod.params, lastMod.value));
-	}
-
-	const dtStamp = lastByName.DTSTAMP;
-	if (dtStamp) {
-		setIf('dtstamp', icsDateOrDateTimeToIso(dtStamp.params, dtStamp.value));
-	}
-
-	const summary = lastByName.SUMMARY;
-	if (summary) setIf('summary', unescapeIcsText(summary.value));
-
-	const description = lastByName.DESCRIPTION;
-	if (description) setIf('description', unescapeIcsText(description.value));
-
-	const location = lastByName.LOCATION;
-	if (location) setIf('location', unescapeIcsText(location.value));
-
-	const status = lastByName.STATUS;
-	if (status) setIf('status', status.value.trim());
-
-	const transp = lastByName.TRANSP;
-	if (transp) setIf('transp', transp.value.trim());
-
-	const url = lastByName.URL;
-	if (url) setIf('url', unescapeIcsText(url.value));
-
-	const organizer = lastByName.ORGANIZER;
-	if (organizer) setIf('organizer', unescapeIcsText(organizer.value));
-
-	const rrule = lastByName.RRULE;
-	if (rrule) setIf('recurrence_rule', rrule.value.trim());
-
-	const rid = lastByName['RECURRENCE-ID'];
-	if (rid) {
-		setIf('recurrence_id', icsDateOrDateTimeToIso(rid.params, rid.value));
-		const tz = tzidFromParamPart(rid.params);
-		setIf('recurrence_id_tzid', tz);
-	}
-
-	const cls = lastByName.CLASS;
-	if (cls) setIf('class', cls.value.trim());
-
-	const priority = lastByName.PRIORITY;
-	if (priority) {
-		const n = parseInt(priority.value.trim(), 10);
-		setIf('priority', Number.isFinite(n) ? n : priority.value.trim());
-	}
-
-	const sequence = lastByName.SEQUENCE;
-	if (sequence) {
-		const n = parseInt(sequence.value.trim(), 10);
-		setIf('sequence', Number.isFinite(n) ? n : sequence.value.trim());
-	}
-
-	const categories = lastByName.CATEGORIES;
-	if (categories) {
-		const parts = categories.value.split(',').map((p) => unescapeIcsText(p.trim()));
-		setIf('categories', parts.filter(Boolean));
-	}
-
-	const geo = lastByName.GEO;
-	if (geo) setIf('geo', geo.value.trim());
-
-	setIf('attendees', attendees.length ? attendees : undefined);
-
-	return out;
 }
 
 export function parseEventHrefsFromMultistatus(xml: string): string[] {
