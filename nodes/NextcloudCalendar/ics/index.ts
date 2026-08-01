@@ -10,6 +10,7 @@ export {
 	escapeIcsTextValue,
 	icsDateOrDateTimeToIso,
 	isoToFloatingIcsDateTime,
+	isoToFloatingIcsDateTimeInTzid,
 	isoToIcsDate,
 	isoToIcsDateTime,
 	paramsToParamPart,

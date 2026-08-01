@@ -88,11 +88,49 @@ export function isoToIcsDate(iso: string): string {
 }
 
 /**
- * Convert ISO datetime to floating ICS DATE-TIME (no Z) for TZID-local values.
- * `2026-05-10T09:00:00.000Z` → `20260510T090000`.
+ * Convert ISO datetime to floating ICS DATE-TIME (no Z) for already-local wall-clock values.
+ * Prefer {@link isoToFloatingIcsDateTimeInTzid} when writing TZID properties from UTC/`Z` input.
  */
 export function isoToFloatingIcsDateTime(iso: string): string {
 	return isoToIcsDateTime(iso).replace(/Z$/i, '');
+}
+
+function hasExplicitUtcOrOffset(iso: string): boolean {
+	return /Z$/i.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso);
+}
+
+function formatInstantAsFloatingInTzid(date: Date, tzid: string): string {
+	const parts = new Intl.DateTimeFormat('en-US', {
+		timeZone: tzid,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hourCycle: 'h23',
+	}).formatToParts(date);
+	const get = (type: Intl.DateTimeFormatPartTypes): string =>
+		parts.find((p) => p.type === type)?.value ?? '';
+	return `${get('year')}${get('month')}${get('day')}T${get('hour')}${get('minute')}${get('second')}`;
+}
+
+/**
+ * Convert ISO datetime to floating ICS DATE-TIME in a target IANA timezone.
+ * UTC (`…Z`) and offset forms are projected to wall-clock in `tzid`.
+ * Floating (no Z / offset) values are treated as already-local wall-clock digits.
+ */
+export function isoToFloatingIcsDateTimeInTzid(iso: string, tzid: string): string {
+	const trimmed = iso.trim();
+	if (hasExplicitUtcOrOffset(trimmed)) {
+		const date = new Date(trimmed);
+		if (Number.isNaN(date.getTime())) {
+			throw new Error(`Invalid datetime for timezone conversion: ${iso}`);
+		}
+		// Invalid IANA tzid → RangeError from Intl (wrapped as NodeOperationError in Update).
+		return formatInstantAsFloatingInTzid(date, tzid);
+	}
+	return isoToFloatingIcsDateTime(trimmed);
 }
 
 /** Current UTC instant as ICS DATE-TIME (`…Z`). */
