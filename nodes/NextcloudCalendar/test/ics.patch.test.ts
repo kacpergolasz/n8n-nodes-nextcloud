@@ -226,7 +226,7 @@ END:VCALENDAR`;
 		expect(dtStart.value).toBe('20260511T100000');
 	});
 
-	it('setProp replaces the last duplicate property (matches lastProp)', () => {
+	it('setProp collapses duplicate properties to a single value', () => {
 		const dupes = `BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:dup@example.com
@@ -242,9 +242,8 @@ END:VCALENDAR`;
 		const result = patchEventCalendar(ast, { summary: 'Patched' }, { now: FIXED_NOW });
 		const vevent = findFirstVEvent(result.calendar)!;
 		const summaries = vevent.properties.filter((p) => p.name.toUpperCase() === 'SUMMARY');
-		expect(summaries).toHaveLength(2);
-		expect(summaries[0].value).toBe('First');
-		expect(summaries[1].value).toBe('Patched');
+		expect(summaries).toHaveLength(1);
+		expect(summaries[0].value).toBe('Patched');
 		expect(lastProp('SUMMARY', result.calendar)?.value).toBe('Patched');
 	});
 

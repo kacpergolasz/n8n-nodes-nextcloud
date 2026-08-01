@@ -131,6 +131,20 @@ describe('Nextcloud Calendar GenericFunctions', () => {
 		expect(webUrl).toBe(`https://cloud.example.com/nextcloud/apps/calendar/edit/${objectId}`);
 	});
 
+	it('encodes webUrl DAV path segments like CalDAV builders', () => {
+		const webUrl = buildCalendarEventWebUrl(
+			'https://cloud.example.com/',
+			'user@host',
+			'work/team',
+			'my event',
+		);
+		const objectId = Buffer.from(
+			'/remote.php/dav/calendars/user%40host/work/team/my%20event.ics',
+			'utf8',
+		).toString('base64');
+		expect(webUrl).toBe(`https://cloud.example.com/apps/calendar/edit/${objectId}`);
+	});
+
 	it('derives event id from CalDAV href', () => {
 		expect(eventIdFromCalDavHref('/remote.php/dav/calendars/alice/personal/abc123.ics')).toBe(
 			'abc123',
