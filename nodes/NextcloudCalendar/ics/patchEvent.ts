@@ -118,6 +118,18 @@ function buildDtProp(
 	};
 }
 
+/** RFC 5545 DATE DTEND is exclusive — bump YYYYMMDD by one calendar day. */
+function addOneIcsDate(yyyymmdd: string): string {
+	const y = Number(yyyymmdd.slice(0, 4));
+	const m = Number(yyyymmdd.slice(4, 6));
+	const d = Number(yyyymmdd.slice(6, 8));
+	const next = new Date(Date.UTC(y, m - 1, d + 1));
+	const yy = String(next.getUTCFullYear());
+	const mm = String(next.getUTCMonth() + 1).padStart(2, '0');
+	const dd = String(next.getUTCDate()).padStart(2, '0');
+	return `${yy}${mm}${dd}`;
+}
+
 function readSequence(vevent: IcsComponent): number {
 	const seq = lastProp(vevent, 'SEQUENCE');
 	if (!seq) return 0;
@@ -234,7 +246,12 @@ export function patchEventCalendar(
 		}
 
 		const newStart = buildDtProp('DTSTART', startIso, { allDay: nextAllDay, tzid: nextTzid });
-		const newEnd = buildDtProp('DTEND', endIso, { allDay: nextAllDay, tzid: nextTzid });
+		let newEnd = buildDtProp('DTEND', endIso, { allDay: nextAllDay, tzid: nextTzid });
+
+		// Same-day timed → all-day yields identical DATE values; exclusive DTEND needs +1 day.
+		if (nextAllDay && newEnd.value <= newStart.value) {
+			newEnd = { ...newEnd, value: addOneIcsDate(newStart.value) };
+		}
 
 		if (normalizeDateProp(curStart) !== normalizeDateProp(newStart)) {
 			setProp(vevent, newStart);
