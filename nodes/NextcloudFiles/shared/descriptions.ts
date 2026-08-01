@@ -66,34 +66,53 @@ export const shareUpdatePasswordFieldDescription =
 	'Password to set on the public link. Leave empty to remove password protection. Must meet your Nextcloud server share password policy.';
 
 export const shareUpdateFieldsField: INodeProperties = {
-	displayName: 'Fields to Update',
+	displayName: 'Update Fields',
 	name: 'updateFields',
-	type: 'multiOptions',
+	type: 'collection',
+	placeholder: 'Add Field',
+	default: {},
+	description: 'Share properties to change in this request. Only added fields are sent.',
 	options: [
-		{ name: 'Expire Date', value: 'expireDate' },
-		{ name: 'Password', value: 'password' },
-		{ name: 'Permissions', value: 'permissions' },
-		{ name: 'Public Upload', value: 'publicUpload' },
+		{
+			displayName: 'Expire Date',
+			name: 'expireDate',
+			type: 'string',
+			default: '',
+			placeholder: 'YYYY-MM-DD',
+			description:
+				'Expiration date to set (YYYY-MM-DD, today or later on the server). Leave empty to remove the expiration date.',
+		},
+		{
+			displayName: 'Password',
+			name: 'password',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description: shareUpdatePasswordFieldDescription,
+		},
+		{
+			displayName: 'Permissions',
+			name: 'permissions',
+			type: 'multiOptions',
+			options: [
+				{ name: 'Create', value: 'create' },
+				{ name: 'Delete', value: 'delete' },
+				{ name: 'Read', value: 'read' },
+				{ name: 'Share', value: 'share' },
+				{ name: 'Update', value: 'update' },
+			],
+			default: [],
+			description:
+				'Permissions to apply. Public link shares support Read only (Create for folder uploads). Leave empty to set Read-only on public links.',
+		},
+		{
+			displayName: 'Public Upload',
+			name: 'publicUpload',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to allow uploads to a public shared folder',
+		},
 	],
-	default: [],
-	required: true,
-	description: 'Choose which share properties to change in this request',
-};
-
-export const shareUpdatePermissionsField: INodeProperties = {
-	displayName: 'Permissions',
-	name: 'updatePermissions',
-	type: 'multiOptions',
-	options: [
-		{ name: 'Create', value: 'create' },
-		{ name: 'Delete', value: 'delete' },
-		{ name: 'Read', value: 'read' },
-		{ name: 'Share', value: 'share' },
-		{ name: 'Update', value: 'update' },
-	],
-	default: [],
-	description:
-		'Permissions to apply. Public link shares support Read only (Create for folder uploads). Leave empty to set Read-only on public links.',
 };
 
 export const shareIdField: INodeProperties = {

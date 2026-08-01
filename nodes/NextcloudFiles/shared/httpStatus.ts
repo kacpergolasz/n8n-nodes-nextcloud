@@ -28,3 +28,33 @@ export function getHttpStatusCode(error: unknown): number | undefined {
 
 	return undefined;
 }
+
+/**
+ * Format user-facing Files errors.
+ *
+ * Nextcloud's OCS Share API reuses HTTP/OCS 404 for validation failures
+ * (e.g. "Expiration date is in the past"). Prefer the scrubbed server message
+ * when it is more specific than a bare not-found / transport 404 string.
+ */
+export function formatFilesErrorMessage(
+	statusCode: number | undefined,
+	scrubbedMessage: string,
+): string {
+	const trimmed = scrubbedMessage.trim();
+
+	if (statusCode === 404) {
+		if (
+			!trimmed ||
+			/^not found\.?$/i.test(trimmed) ||
+			/^resource not found/i.test(trimmed) ||
+			/the resource you are requesting could not be found/i.test(trimmed) ||
+			/status code 404/i.test(trimmed) ||
+			/^request failed/i.test(trimmed)
+		) {
+			return 'Resource not found (404)';
+		}
+		return trimmed;
+	}
+
+	return trimmed || 'Unknown error';
+}

@@ -6,8 +6,6 @@ import {
 	sharePasswordFieldDescription,
 	sharePermissionsField,
 	shareUpdateFieldsField,
-	shareUpdatePasswordFieldDescription,
-	shareUpdatePermissionsField,
 } from '../../shared/descriptions';
 
 const showOnlyForShare = {
@@ -101,31 +99,6 @@ export const shareDescription: INodeProperties[] = [
 		},
 	},
 	{
-		...shareUpdatePermissionsField,
-		displayOptions: {
-			show: {
-				resource: ['share'],
-				operation: ['update'],
-				updateFields: ['permissions'],
-			},
-		},
-	},
-	{
-		displayName: 'Password',
-		name: 'password',
-		type: 'string',
-		typeOptions: { password: true },
-		default: '',
-		description: shareUpdatePasswordFieldDescription,
-		displayOptions: {
-			show: {
-				resource: ['share'],
-				operation: ['update'],
-				updateFields: ['password'],
-			},
-		},
-	},
-	{
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
@@ -145,40 +118,12 @@ export const shareDescription: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'YYYY-MM-DD',
-		description: 'Expiration date to set. Leave empty to remove the expiration date.',
-		displayOptions: {
-			show: {
-				resource: ['share'],
-				operation: ['update'],
-				updateFields: ['expireDate'],
-			},
-		},
-	},
-	{
-		displayName: 'Expire Date',
-		name: 'expireDate',
-		type: 'string',
-		default: '',
-		placeholder: 'YYYY-MM-DD',
-		description: 'Optional expiration date for public link shares',
+		description:
+			'Optional expiration date for public link shares (YYYY-MM-DD, today or later on the server)',
 		displayOptions: {
 			show: {
 				resource: ['share'],
 				operation: ['create'],
-			},
-		},
-	},
-	{
-		displayName: 'Public Upload',
-		name: 'publicUpload',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to allow uploads to a public shared folder',
-		displayOptions: {
-			show: {
-				resource: ['share'],
-				operation: ['update'],
-				updateFields: ['publicUpload'],
 			},
 		},
 	},
