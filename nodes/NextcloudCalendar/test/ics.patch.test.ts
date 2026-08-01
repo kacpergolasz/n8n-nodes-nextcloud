@@ -296,6 +296,76 @@ END:VCALENDAR`;
 		).toThrow(/DURATION instead of DTEND/);
 	});
 
+	it('writes DTEND and removes DURATION when End is provided on a DURATION-only event', () => {
+		const durationOnly = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:duration@end@example.com
+DTSTAMP:20260101T100000Z
+SUMMARY:Dur
+DTSTART:20260511T100000Z
+DURATION:PT1H
+END:VEVENT
+END:VCALENDAR`;
+
+		const ast = parseIcs(durationOnly);
+		const result = patchEventCalendar(
+			ast,
+			{ end: '2026-05-11T12:00:00.000Z' },
+			{ now: FIXED_NOW },
+		);
+
+		expect(result.changed).toBe(true);
+		expect(lastProp('DTEND', result.calendar)?.value).toBe('20260511T120000Z');
+		expect(lastProp('DURATION', result.calendar)).toBeUndefined();
+		expect(serializeIcs(result.calendar)).not.toMatch(/DURATION:/);
+	});
+
+	it('rejects turning off All Day without Start and End', () => {
+		const allDay = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:allday@example.com
+DTSTAMP:20260101T100000Z
+SUMMARY:Day
+DTSTART;VALUE=DATE:20260511
+DTEND;VALUE=DATE:20260512
+END:VEVENT
+END:VCALENDAR`;
+
+		const ast = parseIcs(allDay);
+		expect(() =>
+			patchEventCalendar(ast, { allDay: false }, { now: FIXED_NOW }),
+		).toThrow(/Cannot turn off All Day without Start and End/);
+	});
+
+	it('converts all-day to timed when Start and End are provided', () => {
+		const allDay = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:allday-timed@example.com
+DTSTAMP:20260101T100000Z
+SUMMARY:Day
+DTSTART;VALUE=DATE:20260511
+DTEND;VALUE=DATE:20260512
+END:VEVENT
+END:VCALENDAR`;
+
+		const ast = parseIcs(allDay);
+		const result = patchEventCalendar(
+			ast,
+			{
+				allDay: false,
+				start: '2026-05-11T09:00:00.000Z',
+				end: '2026-05-11T10:00:00.000Z',
+			},
+			{ now: FIXED_NOW },
+		);
+
+		expect(result.changed).toBe(true);
+		const dtStart = lastProp('DTSTART', result.calendar)!;
+		expect(dtStart.params.some((p) => p.name.toUpperCase() === 'VALUE')).toBe(false);
+		expect(dtStart.value).toBe('20260511T090000Z');
+		expect(lastProp('DTEND', result.calendar)?.value).toBe('20260511T100000Z');
+	});
+
 	it('keeps UID stable across patch', () => {
 		const ast = parseIcs(RICH_ICS);
 		patchEventCalendar(ast, { summary: 'x', location: 'y' }, { now: FIXED_NOW });
