@@ -92,6 +92,7 @@ All Phase 1–4 Manual checkboxes are `[x]` with commit SHAs (`c7d691d` … `fcc
   - Confidence: HIGH.
   - Blind spot: Prevalence of DURATION on target instances.
 - **Decision**: Fixed via Fix B
+- **Follow-up (Bugbot 2026-08-01)**: Fix B’s “set End → writes DTEND” path left `DURATION` in place (RFC 5545 forbids both). Now removes `DURATION` when `DTEND` is written. Separately, turning off All Day without Start/End reused DATE values as invalid bare `YYYYMMDD` DATE-TIME — now requires Start and End for all-day → timed.
 
 ### F4 — Non-whitelist `updateFields` keys bypass empty-collection guard
 
