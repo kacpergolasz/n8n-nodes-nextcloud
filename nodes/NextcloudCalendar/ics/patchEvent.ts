@@ -210,6 +210,14 @@ export function patchEventCalendar(
 			nextTzid = curStart ? tzidFromParams(curStart.params) : undefined;
 		}
 
+		// All-day DATE values reused as timed DATE-TIME would emit bare YYYYMMDD (invalid RFC 5545).
+		if (currentAllDay && !nextAllDay && (patch.start === undefined || patch.end === undefined)) {
+			throw new Error(
+				'Cannot turn off All Day without Start and End date/times. ' +
+					'Provide Start and End under Update Fields as timed values, or leave All Day on.',
+			);
+		}
+
 		const startIso = patch.start ?? (curStart ? existingValueAsIsoish(curStart) : undefined);
 		const endIso = patch.end ?? (curEnd ? existingValueAsIsoish(curEnd) : undefined);
 
@@ -219,7 +227,7 @@ export function patchEventCalendar(
 				throw new Error(
 					'This calendar event uses DURATION instead of DTEND. ' +
 						'Update Fields cannot change Start, End, All Day, or Timezone unless you also set End ' +
-						'(which writes DTEND). Add End under Update Fields, or open the event in Nextcloud Calendar ' +
+						'(which writes DTEND and removes DURATION). Add End under Update Fields, or open the event in Nextcloud Calendar ' +
 						'so it is stored with DTEND instead of DURATION. Summary, Description, and Location updates still work.',
 				);
 			}
@@ -241,6 +249,12 @@ export function patchEventCalendar(
 		}
 		if (normalizeDateProp(curEnd) !== normalizeDateProp(newEnd)) {
 			setProp(vevent, newEnd);
+			changed = true;
+		}
+
+		// RFC 5545 forbids DTEND and DURATION on the same VEVENT.
+		if (lastProp(vevent, 'DURATION') && lastProp(vevent, 'DTEND')) {
+			removeProp(vevent, 'DURATION');
 			changed = true;
 		}
 	}
