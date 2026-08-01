@@ -474,23 +474,23 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 #### Manual
 
 - [x] 3.4 Hybrid Calendar create→get workflow succeeds — ef0c7e8
-- [ ] 3.5 Created event looks correct in Nextcloud Calendar UI
+- [x] 3.5 Created event looks correct in Nextcloud Calendar UI
 
 ### Phase 4: Calendar Partial Update
 
 #### Automated
 
-- [ ] 4.1 Unit tests pass (patch, SEQUENCE, preserve-unknown)
-- [ ] 4.2 Lint passes
-- [ ] 4.3 Phase 4 workflow JSON present under test/n8n-cli/calendar/
-- [ ] 4.8 faker-js devDependency + calendar rich-event generator script documented
+- [x] 4.1 Unit tests pass (patch, SEQUENCE, preserve-unknown)
+- [x] 4.2 Lint passes
+- [x] 4.3 Phase 4 workflow JSON present under test/n8n-cli/calendar/
+- [x] 4.8 faker-js devDependency + calendar rich-event generator script documented
 
 #### Manual
 
-- [ ] 4.4 Hybrid partial-update workflows succeed
-- [ ] 4.5 Rich ICS properties survive Update
-- [ ] 4.6 SEQUENCE bumps on meaningful edits; DTSTAMP refreshes
-- [ ] 4.7 Create regression still works
+- [x] 4.4 Hybrid partial-update workflows succeed
+- [x] 4.5 Rich ICS properties survive Update
+- [x] 4.6 SEQUENCE bumps on meaningful edits; DTSTAMP refreshes
+- [x] 4.7 Create regression still works
 
 ### Phase 5: Files Update Fields Collection
 

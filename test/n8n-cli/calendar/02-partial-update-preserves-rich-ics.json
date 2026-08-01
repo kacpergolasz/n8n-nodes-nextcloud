@@ -1,0 +1,105 @@
+{
+	"name": "Calendar/partial-update-preserves-rich-ics",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "calendar-partial-update-preserves-rich-ics",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "c2000000-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "calendar-partial-update-preserves-rich-ics"
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"eventId": "n8n-cli-rich-partial-update"
+			},
+			"id": "c2000000-0000-4000-8000-000000000002",
+			"name": "Get event (before)",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "update",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"eventId": "n8n-cli-rich-partial-update",
+				"updateFields": {
+					"summary": "n8n-cli partial update — summary only"
+				}
+			},
+			"id": "c2000000-0000-4000-8000-000000000003",
+			"name": "Update summary only",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"eventId": "n8n-cli-rich-partial-update"
+			},
+			"id": "c2000000-0000-4000-8000-000000000004",
+			"name": "Get event (after)",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Get event (before)", "type": "main", "index": 0 }]]
+		},
+		"Get event (before)": {
+			"main": [[{ "node": "Update summary only", "type": "main", "index": 0 }]]
+		},
+		"Update summary only": {
+			"main": [[{ "node": "Get event (after)", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

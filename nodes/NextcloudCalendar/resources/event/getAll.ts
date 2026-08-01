@@ -2,6 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
 import {
+	buildCalendarEventWebUrl,
 	eventIdFromCalDavHref,
 	nextcloudRequest,
 	parseDtStartFromIcs,
@@ -28,7 +29,7 @@ export async function eventGetAll(
 	context: IExecuteFunctions,
 	ctx: EventOperationContext,
 ): Promise<INodeExecutionData[]> {
-	const { itemIndex, calendarUrl, calendarId, userId } = ctx;
+	const { itemIndex, calendarUrl, calendarId, userId, credentials } = ctx;
 	const returnAll = parseRequiredBoolean(
 		context.getNodeParameter('returnAll', itemIndex, false),
 		'Return All',
@@ -68,13 +69,17 @@ export async function eventGetAll(
 	}
 
 	const sliced = returnAll ? filtered : filtered.slice(0, limit);
-	return sliced.map(({ href, ics }) => ({
-		json: {
-			eventId: eventIdFromCalDavHref(href),
-			calendarId,
-			userId,
-			...parseIcsEventVerbose(ics),
-		},
-		pairedItem: { item: itemIndex },
-	}));
+	return sliced.map(({ href, ics }) => {
+		const eventId = eventIdFromCalDavHref(href);
+		return {
+			json: {
+				eventId,
+				calendarId,
+				userId,
+				webUrl: buildCalendarEventWebUrl(credentials.baseUrl, userId, calendarId, eventId),
+				...parseIcsEventVerbose(ics),
+			},
+			pairedItem: { item: itemIndex },
+		};
+	});
 }

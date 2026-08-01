@@ -1,4 +1,5 @@
 import {
+	buildCalendarEventWebUrl,
 	buildCalendarHomeUrl,
 	buildEventUrl,
 	buildICalendarPayload,
@@ -100,6 +101,34 @@ describe('Nextcloud Calendar GenericFunctions', () => {
 		expect(
 			buildEventUrl('https://cloud.example.com/remote.php/dav/calendars/alice/personal/', 'abc123'),
 		).toEqual('https://cloud.example.com/remote.php/dav/calendars/alice/personal/abc123.ics');
+	});
+
+	it('builds Calendar UI webUrl from baseUrl + user + calendar + eventId', () => {
+		const webUrl = buildCalendarEventWebUrl(
+			'https://cloud.example.com/',
+			'alice',
+			'personal',
+			'abc123',
+		);
+		const objectId = Buffer.from(
+			'/remote.php/dav/calendars/alice/personal/abc123.ics',
+			'utf8',
+		).toString('base64');
+		expect(webUrl).toBe(`https://cloud.example.com/apps/calendar/edit/${objectId}`);
+	});
+
+	it('includes webroot in Calendar UI webUrl for subdirectory installs', () => {
+		const webUrl = buildCalendarEventWebUrl(
+			'https://cloud.example.com/nextcloud',
+			'alice',
+			'personal',
+			'abc123',
+		);
+		const objectId = Buffer.from(
+			'/nextcloud/remote.php/dav/calendars/alice/personal/abc123.ics',
+			'utf8',
+		).toString('base64');
+		expect(webUrl).toBe(`https://cloud.example.com/nextcloud/apps/calendar/edit/${objectId}`);
 	});
 
 	it('derives event id from CalDAV href', () => {

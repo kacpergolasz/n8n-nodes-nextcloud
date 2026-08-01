@@ -1,0 +1,106 @@
+{
+	"name": "Calendar/sequence-and-times",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "calendar-sequence-and-times",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "c3000000-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "calendar-sequence-and-times"
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"eventId": "n8n-cli-rich-partial-update"
+			},
+			"id": "c3000000-0000-4000-8000-000000000002",
+			"name": "Get event (before)",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "update",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"eventId": "n8n-cli-rich-partial-update",
+				"updateFields": {
+					"start": "2031-03-20T09:00:00Z",
+					"end": "2031-03-20T09:45:00Z"
+				}
+			},
+			"id": "c3000000-0000-4000-8000-000000000003",
+			"name": "Update start/end",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"eventId": "n8n-cli-rich-partial-update"
+			},
+			"id": "c3000000-0000-4000-8000-000000000004",
+			"name": "Get event (after)",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Get event (before)", "type": "main", "index": 0 }]]
+		},
+		"Get event (before)": {
+			"main": [[{ "node": "Update start/end", "type": "main", "index": 0 }]]
+		},
+		"Update start/end": {
+			"main": [[{ "node": "Get event (after)", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

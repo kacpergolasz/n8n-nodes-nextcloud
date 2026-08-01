@@ -26,3 +26,21 @@ export type NextcloudEventInput = {
 	timezone?: string;
 	location?: string;
 };
+
+/**
+ * Partial Calendar event Update Fields patch.
+ * Only defined keys are applied; omitted keys leave existing ICS properties untouched.
+ */
+export type EventUpdatePatch = {
+	summary?: string;
+	description?: string;
+	location?: string;
+	/** ISO-8601-like datetime from n8n dateTime. */
+	start?: string;
+	/** ISO-8601-like datetime from n8n dateTime. */
+	end?: string;
+	/** When true, emit VALUE=DATE; when false, emit DATE-TIME. */
+	allDay?: boolean;
+	/** IANA TZID for timed events (e.g. Europe/Warsaw). Ignored when all-day. */
+	timezone?: string;
+};

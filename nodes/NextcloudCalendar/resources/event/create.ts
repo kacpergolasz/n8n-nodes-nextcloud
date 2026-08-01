@@ -1,14 +1,19 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { parseRequiredString, parseString } from '../../../shared/parse';
-import { buildEventUrl, buildICalendarPayload, nextcloudRequest } from '../../GenericFunctions';
+import {
+	buildCalendarEventWebUrl,
+	buildEventUrl,
+	buildICalendarPayload,
+	nextcloudRequest,
+} from '../../GenericFunctions';
 import type { EventOperationContext } from './types';
 
 export async function eventCreate(
 	context: IExecuteFunctions,
 	ctx: EventOperationContext,
 ): Promise<INodeExecutionData> {
-	const { itemIndex, calendarUrl, calendarId, userId } = ctx;
+	const { itemIndex, calendarUrl, calendarId, userId, credentials } = ctx;
 	const summary = parseRequiredString(context.getNodeParameter('summary', itemIndex), 'Summary');
 	const start = parseRequiredString(context.getNodeParameter('start', itemIndex), 'Start');
 	const end = parseRequiredString(context.getNodeParameter('end', itemIndex), 'End');
@@ -29,7 +34,13 @@ export async function eventCreate(
 	});
 
 	return {
-		json: { eventId, calendarId, userId, created: true },
+		json: {
+			eventId,
+			calendarId,
+			userId,
+			webUrl: buildCalendarEventWebUrl(credentials.baseUrl, userId, calendarId, eventId),
+			created: true,
+		},
 		pairedItem: { item: itemIndex },
 	};
 }
