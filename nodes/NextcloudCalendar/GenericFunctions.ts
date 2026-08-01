@@ -386,7 +386,12 @@ export function buildCalendarEventWebUrl(
 	}
 
 	const fileName = eventId.endsWith('.ics') ? eventId : `${eventId}.ics`;
-	const davObjectPath = `${webroot}/remote.php/dav/calendars/${userId}/${calendarId}/${fileName}`;
+	const encodedCalendar = calendarId
+		.split('/')
+		.filter(Boolean)
+		.map((segment) => encodeURIComponent(segment))
+		.join('/');
+	const davObjectPath = `${webroot}/remote.php/dav/calendars/${encodeURIComponent(userId)}/${encodedCalendar}/${encodeURIComponent(fileName)}`;
 	const objectId = Buffer.from(davObjectPath, 'utf8').toString('base64');
 	return `${origin}${webroot}/apps/calendar/edit/${objectId}`;
 }

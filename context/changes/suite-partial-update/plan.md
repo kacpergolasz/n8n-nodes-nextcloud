@@ -354,6 +354,8 @@ Restructure Files share Update UI to Google-style **Update Fields** collection; 
 
 **Contract**: Webhook-triggered workflow JSON + README with hybrid n8n-cli/curl steps; document target share id / create-share setup.
 
+> **Impl-review addendum (2026-08-01, F6):** Also shipped OCS error-message surfacing (`formatFilesErrorMessage` prefers server validation text on HTTP 404; `ocsRequest` uses `ignoreHttpStatusErrors`) so live expireDate failures are readable. Intentional extra — keep.
+
 ### Success Criteria:
 
 #### Automated Verification:

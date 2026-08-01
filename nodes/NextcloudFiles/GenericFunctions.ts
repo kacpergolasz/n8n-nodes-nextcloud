@@ -10,6 +10,7 @@ import {
 } from '../shared/parse';
 import type { NextcloudRequestContext } from '../shared/requestContext';
 import type { DirectoryEntry, ParsedShare } from './FilesInterface';
+import { getHttpStatusCode } from './shared/httpStatus';
 
 export type { NextcloudHttpMethod };
 
@@ -592,8 +593,9 @@ export function parseSharePasswordValidationResult(response: unknown): string | 
 
 /**
  * Validate a share password against the Nextcloud password_policy app (sharing context).
- * Returns an error message when validation fails, or undefined when the password is accepted,
- * the password_policy app is unavailable, or the validate request cannot be completed.
+ * Returns an error message when validation fails or the policy endpoint is unreachable
+ * (transport / 5xx / unknown). Returns undefined when the password is accepted, or when
+ * the password_policy app appears missing (HTTP 404/405/501 — fail open).
  */
 export async function validateSharePassword(
 	context: NextcloudRequestContext,
@@ -619,8 +621,17 @@ export async function validateSharePassword(
 			{ json: true },
 		);
 		return parseSharePasswordValidationResult(response);
-	} catch {
-		return undefined;
+	} catch (error) {
+		const status = getHttpStatusCode(error);
+		// password_policy app missing / not routable → keep historical fail-open
+		if (status === 404 || status === 405 || status === 501) {
+			return undefined;
+		}
+		const detail = status !== undefined ? ` (HTTP ${status})` : '';
+		return (
+			`Could not validate share password against the server password policy${detail}. ` +
+			'Retry later, or confirm the password_policy app is reachable.'
+		);
 	}
 }
 

@@ -49,6 +49,8 @@ Update path:
 
 Create uses the same serializer (do not force empty DESCRIPTION/LOCATION).
 
+**Known limitation:** Changing TZID via Update Fields may leave an orphan `VTIMEZONE` component until a later slice rewrites timezone definitions.
+
 **Tasks / Contacts:** When their API is chosen (CalDAV vs JSON OCS vs other), reuse these lessons if the body is ICS/vCard; otherwise use whitelist-merge or sparse PUT. Do **not** invent field whitelists until the API is selected.
 
 ## UX language
