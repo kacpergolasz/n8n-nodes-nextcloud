@@ -511,22 +511,22 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 
 #### Automated
 
-- [x] 5.1 buildShareUpdateBody unit tests still pass
-- [x] 5.2 Lint passes
-- [x] 5.3 test/n8n-cli/files/ has workflow + README
+- [x] 5.1 buildShareUpdateBody unit tests still pass — 0a2408c
+- [x] 5.2 Lint passes — 0a2408c
+- [x] 5.3 test/n8n-cli/files/ has workflow + README — 0a2408c
 
 #### Manual
 
-- [x] 5.4 Hybrid Files workflow succeeds
-- [x] 5.5 Only selected collection keys change on the share
-- [x] 5.6 Clear password / publicUpload false still work when keys present
+- [x] 5.4 Hybrid Files workflow succeeds — 0a2408c
+- [x] 5.5 Only selected collection keys change on the share — 0a2408c
+- [x] 5.6 Clear password / publicUpload false still work when keys present — 0a2408c
 
 ### Phase 6: Suite Update Convention
 
 #### Automated
 
-- [ ] 6.1 context/foundation/update-convention.md exists and README links to it
+- [x] 6.1 context/foundation/update-convention.md exists and README links to it
 
 #### Manual
 
-- [ ] 6.2 Convention note alone is enough to pick the correct Update pattern for a new app
+- [x] 6.2 Convention note alone is enough to pick the correct Update pattern for a new app
