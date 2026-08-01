@@ -64,12 +64,29 @@ export function tzidFromParams(params: { name: string; value?: string }[]): stri
 	return found?.value?.trim();
 }
 
+function hasExplicitUtcOrOffset(iso: string): boolean {
+	return /Z$/i.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso);
+}
+
 /**
  * Convert an ISO-8601-like datetime (n8n dateTime) to ICS DATE-TIME.
- * `2026-05-10T09:00:00.000Z` → `20260510T090000Z`; floating times keep no Z.
+ * UTC / offset forms → `YYYYMMDDTHHMMSSZ`. Floating (no Z/offset) → `YYYYMMDDTHHMMSS`.
  */
 export function isoToIcsDateTime(iso: string): string {
-	return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+	const trimmed = iso.trim();
+	if (hasExplicitUtcOrOffset(trimmed)) {
+		const date = new Date(trimmed);
+		if (Number.isNaN(date.getTime())) {
+			throw new Error(`Invalid datetime for ICS conversion: ${iso}`);
+		}
+		return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+	}
+	// Floating wall-clock: keep digits only (no Z).
+	const floating = trimmed.replace(/[-:]/g, '').replace(/\.\d+/, '');
+	if (!/^\d{8}T\d{6}$/.test(floating)) {
+		throw new Error(`Invalid floating datetime for ICS conversion: ${iso}`);
+	}
+	return floating;
 }
 
 /**
@@ -93,10 +110,6 @@ export function isoToIcsDate(iso: string): string {
  */
 export function isoToFloatingIcsDateTime(iso: string): string {
 	return isoToIcsDateTime(iso).replace(/Z$/i, '');
-}
-
-function hasExplicitUtcOrOffset(iso: string): boolean {
-	return /Z$/i.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso);
 }
 
 function formatInstantAsFloatingInTzid(date: Date, tzid: string): string {

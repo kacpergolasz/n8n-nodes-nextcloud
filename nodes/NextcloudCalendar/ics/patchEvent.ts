@@ -36,15 +36,8 @@ function lastProp(vevent: IcsComponent, name: string): IcsProperty | undefined {
 
 function setProp(vevent: IcsComponent, prop: IcsProperty): void {
 	const upper = prop.name.toUpperCase();
-	let idx = -1;
-	for (let i = 0; i < vevent.properties.length; i++) {
-		if (vevent.properties[i].name.toUpperCase() === upper) idx = i;
-	}
-	if (idx >= 0) {
-		vevent.properties[idx] = prop;
-	} else {
-		vevent.properties.push(prop);
-	}
+	vevent.properties = vevent.properties.filter((p) => p.name.toUpperCase() !== upper);
+	vevent.properties.push(prop);
 }
 
 /** Update a text property value while preserving existing params (e.g. LANGUAGE, ALTREP). */
