@@ -192,7 +192,108 @@ END:VCALENDAR`;
 		expect(result.changed).toBe(true);
 		const dtStart = lastProp('DTSTART', result.calendar)!;
 		expect(tzidFromParams(dtStart.params)).toBe('Europe/Berlin');
+		// 10:00 UTC on 2026-05-11 → 12:00 CEST in Europe/Berlin
+		expect(dtStart.value).toBe('20260511T120000');
+		expect(lastProp('DTEND', result.calendar)?.value).toBe('20260511T130000');
+	});
+
+	it('converts UTC Z start/end to wall-clock when preserving TZID', () => {
+		const ast = parseIcs(RICH_ICS);
+		const result = patchEventCalendar(
+			ast,
+			{
+				start: '2026-05-11T12:00:00.000Z',
+				end: '2026-05-11T13:00:00.000Z',
+			},
+			{ now: FIXED_NOW },
+		);
+
+		expect(result.changed).toBe(true);
+		const dtStart = lastProp('DTSTART', result.calendar)!;
+		expect(tzidFromParams(dtStart.params)).toBe('Europe/Warsaw');
+		// 12:00 UTC → 14:00 CEST in Europe/Warsaw
+		expect(dtStart.value).toBe('20260511T140000');
+		expect(lastProp('DTEND', result.calendar)?.value).toBe('20260511T150000');
+	});
+
+	it('treats empty timezone as omit (keeps current TZID)', () => {
+		const ast = parseIcs(RICH_ICS);
+		const result = patchEventCalendar(ast, { timezone: '' }, { now: FIXED_NOW });
+
+		expect(result.changed).toBe(false);
+		const dtStart = lastProp('DTSTART', result.calendar)!;
+		expect(tzidFromParams(dtStart.params)).toBe('Europe/Warsaw');
 		expect(dtStart.value).toBe('20260511T100000');
+	});
+
+	it('setProp replaces the last duplicate property (matches lastProp)', () => {
+		const dupes = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:dup@example.com
+DTSTAMP:20260101T100000Z
+SUMMARY:First
+SUMMARY:Last
+DTSTART:20260511T100000Z
+DTEND:20260511T110000Z
+END:VEVENT
+END:VCALENDAR`;
+
+		const ast = parseIcs(dupes);
+		const result = patchEventCalendar(ast, { summary: 'Patched' }, { now: FIXED_NOW });
+		const vevent = findFirstVEvent(result.calendar)!;
+		const summaries = vevent.properties.filter((p) => p.name.toUpperCase() === 'SUMMARY');
+		expect(summaries).toHaveLength(2);
+		expect(summaries[0].value).toBe('First');
+		expect(summaries[1].value).toBe('Patched');
+		expect(lastProp('SUMMARY', result.calendar)?.value).toBe('Patched');
+	});
+
+	it('preserves LANGUAGE/ALTREP params when patching SUMMARY/DESCRIPTION/LOCATION', () => {
+		const withParams = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:params@example.com
+DTSTAMP:20260101T100000Z
+SUMMARY;LANGUAGE=en:Old
+DESCRIPTION;ALTREP="CID:desc":Keep params
+LOCATION;LANGUAGE=pl:HQ
+DTSTART:20260511T100000Z
+DTEND:20260511T110000Z
+END:VEVENT
+END:VCALENDAR`;
+
+		const ast = parseIcs(withParams);
+		patchEventCalendar(
+			ast,
+			{ summary: 'New', description: 'Updated', location: 'Office' },
+			{ now: FIXED_NOW },
+		);
+
+		const summary = lastProp('SUMMARY', ast)!;
+		expect(summary.value).toBe('New');
+		expect(summary.params).toEqual([{ name: 'LANGUAGE', value: 'en' }]);
+		const description = lastProp('DESCRIPTION', ast)!;
+		expect(description.value).toBe('Updated');
+		expect(description.params.some((p) => p.name.toUpperCase() === 'ALTREP')).toBe(true);
+		const location = lastProp('LOCATION', ast)!;
+		expect(location.value).toBe('Office');
+		expect(location.params).toEqual([{ name: 'LANGUAGE', value: 'pl' }]);
+	});
+
+	it('rejects date/timezone patches on DURATION-only events with a clear error', () => {
+		const durationOnly = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:duration@example.com
+DTSTAMP:20260101T100000Z
+SUMMARY:Dur
+DTSTART:20260511T100000Z
+DURATION:PT1H
+END:VEVENT
+END:VCALENDAR`;
+
+		const ast = parseIcs(durationOnly);
+		expect(() =>
+			patchEventCalendar(ast, { timezone: 'Europe/Berlin' }, { now: FIXED_NOW }),
+		).toThrow(/DURATION instead of DTEND/);
 	});
 
 	it('keeps UID stable across patch', () => {

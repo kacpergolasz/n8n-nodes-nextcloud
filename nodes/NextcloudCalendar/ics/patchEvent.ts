@@ -1,7 +1,7 @@
 import type { EventUpdatePatch } from '../EventInterface';
 import {
 	escapeIcsTextValue,
-	isoToFloatingIcsDateTime,
+	isoToFloatingIcsDateTimeInTzid,
 	isoToIcsDate,
 	isoToIcsDateTime,
 	tzidFromParams,
@@ -36,12 +36,25 @@ function lastProp(vevent: IcsComponent, name: string): IcsProperty | undefined {
 
 function setProp(vevent: IcsComponent, prop: IcsProperty): void {
 	const upper = prop.name.toUpperCase();
-	const idx = vevent.properties.findIndex((p) => p.name.toUpperCase() === upper);
+	let idx = -1;
+	for (let i = 0; i < vevent.properties.length; i++) {
+		if (vevent.properties[i].name.toUpperCase() === upper) idx = i;
+	}
 	if (idx >= 0) {
 		vevent.properties[idx] = prop;
 	} else {
 		vevent.properties.push(prop);
 	}
+}
+
+/** Update a text property value while preserving existing params (e.g. LANGUAGE, ALTREP). */
+function setTextProp(vevent: IcsComponent, name: string, value: string): void {
+	const existing = lastProp(vevent, name);
+	setProp(vevent, {
+		name,
+		params: existing?.params ? [...existing.params] : [],
+		value,
+	});
 }
 
 function removeProp(vevent: IcsComponent, name: string): void {
@@ -102,7 +115,7 @@ function buildDtProp(
 		return {
 			name,
 			params: [{ name: 'TZID', value: mode.tzid }],
-			value: isoToFloatingIcsDateTime(iso),
+			value: isoToFloatingIcsDateTimeInTzid(iso, mode.tzid),
 		};
 	}
 	return {
@@ -140,11 +153,7 @@ export function patchEventCalendar(
 	if (patch.summary !== undefined) {
 		const current = normalizeText(lastProp(vevent, 'SUMMARY'));
 		if (current !== patch.summary) {
-			setProp(vevent, {
-				name: 'SUMMARY',
-				params: [],
-				value: escapeIcsTextValue(patch.summary),
-			});
+			setTextProp(vevent, 'SUMMARY', escapeIcsTextValue(patch.summary));
 			changed = true;
 		}
 	}
@@ -155,11 +164,7 @@ export function patchEventCalendar(
 			if (patch.description === '') {
 				removeProp(vevent, 'DESCRIPTION');
 			} else {
-				setProp(vevent, {
-					name: 'DESCRIPTION',
-					params: [],
-					value: escapeIcsTextValue(patch.description),
-				});
+				setTextProp(vevent, 'DESCRIPTION', escapeIcsTextValue(patch.description));
 			}
 			changed = true;
 		}
@@ -171,11 +176,7 @@ export function patchEventCalendar(
 			if (patch.location === '') {
 				removeProp(vevent, 'LOCATION');
 			} else {
-				setProp(vevent, {
-					name: 'LOCATION',
-					params: [],
-					value: escapeIcsTextValue(patch.location),
-				});
+				setTextProp(vevent, 'LOCATION', escapeIcsTextValue(patch.location));
 			}
 			changed = true;
 		}
@@ -198,7 +199,13 @@ export function patchEventCalendar(
 			nextTzid = undefined;
 		} else if (patch.timezone !== undefined) {
 			const trimmed = patch.timezone.trim();
-			nextTzid = trimmed.length > 0 ? trimmed : undefined;
+			// Empty/whitespace = omit (keep current TZID), matching Update Fields UI copy.
+			nextTzid =
+				trimmed.length > 0
+					? trimmed
+					: curStart
+						? tzidFromParams(curStart.params)
+						: undefined;
 		} else {
 			nextTzid = curStart ? tzidFromParams(curStart.params) : undefined;
 		}
@@ -207,8 +214,21 @@ export function patchEventCalendar(
 		const endIso = patch.end ?? (curEnd ? existingValueAsIsoish(curEnd) : undefined);
 
 		if (!startIso || !endIso) {
+			const hasDuration = Boolean(lastProp(vevent, 'DURATION'));
+			if (!endIso && hasDuration) {
+				throw new Error(
+					'This calendar event uses DURATION instead of DTEND. ' +
+						'Update Fields cannot change Start, End, All Day, or Timezone unless you also set End ' +
+						'(which writes DTEND). Add End under Update Fields, or open the event in Nextcloud Calendar ' +
+						'so it is stored with DTEND instead of DURATION. Summary, Description, and Location updates still work.',
+				);
+			}
+			const missing: string[] = [];
+			if (!startIso) missing.push('DTSTART');
+			if (!endIso) missing.push('DTEND');
 			throw new Error(
-				'Start and End are required when changing all-day or timezone without existing DTSTART/DTEND',
+				`Cannot apply Start, End, All Day, or Timezone: the event is missing ${missing.join(' and ')}. ` +
+					'Provide the missing value(s) under Update Fields, or ensure the stored ICS includes DTSTART and DTEND.',
 			);
 		}
 
