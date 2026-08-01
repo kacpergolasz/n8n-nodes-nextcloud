@@ -72,6 +72,29 @@ export function isoToIcsDateTime(iso: string): string {
 	return iso.replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
+/**
+ * Convert an ISO-8601-like datetime to ICS DATE (`YYYYMMDD`) for all-day events.
+ * Uses the calendar date portion only.
+ */
+export function isoToIcsDate(iso: string): string {
+	const trimmed = iso.trim();
+	const m = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+	if (m) return `${m[1]}${m[2]}${m[3]}`;
+	if (/^\d{8}$/.test(trimmed)) return trimmed;
+	const ics = isoToIcsDateTime(trimmed);
+	const datePart = ics.slice(0, 8);
+	if (/^\d{8}$/.test(datePart)) return datePart;
+	throw new Error(`Invalid date for all-day conversion: ${iso}`);
+}
+
+/**
+ * Convert ISO datetime to floating ICS DATE-TIME (no Z) for TZID-local values.
+ * `2026-05-10T09:00:00.000Z` → `20260510T090000`.
+ */
+export function isoToFloatingIcsDateTime(iso: string): string {
+	return isoToIcsDateTime(iso).replace(/Z$/i, '');
+}
+
 /** Current UTC instant as ICS DATE-TIME (`…Z`). */
 export function utcNowIcsDateTime(now: Date = new Date()): string {
 	return now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
