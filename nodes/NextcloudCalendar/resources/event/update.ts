@@ -46,7 +46,16 @@ function parseUpdateFields(raw: unknown): EventUpdatePatch {
 		patch.allDay = parseRequiredBoolean(raw.allDay, 'All Day');
 	}
 	if ('timezone' in raw) {
-		patch.timezone = parseOptionalString(raw.timezone, 'Timezone') ?? '';
+		const timezone = parseOptionalString(raw.timezone, 'Timezone');
+		if (timezone !== undefined && timezone.trim().length > 0) {
+			patch.timezone = timezone.trim();
+		}
+	}
+
+	if (Object.keys(patch).length === 0) {
+		throw new Error(
+			'Select at least one field to update (summary, description, start, end, location, all day, or timezone)',
+		);
 	}
 
 	return patch;
@@ -75,9 +84,16 @@ export async function eventUpdate(
 	});
 	const ics = parseRequiredString(response, 'ICS response');
 
-	const calendar = parseIcs(ics);
-	patchEventCalendar(calendar, patch);
-	const payload = serializeIcs(calendar);
+	let payload: string;
+	try {
+		const calendar = parseIcs(ics);
+		patchEventCalendar(calendar, patch);
+		payload = serializeIcs(calendar);
+	} catch (error) {
+		throw new NodeOperationError(context.getNode(), getErrorMessage(error), {
+			itemIndex,
+		});
+	}
 
 	await nextcloudRequest(context, 'PUT', eventUrl, payload, {
 		'Content-Type': 'text/calendar; charset=utf-8',

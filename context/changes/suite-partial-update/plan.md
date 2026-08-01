@@ -124,7 +124,9 @@ Replace card Update’s `mergeDefined(fullGet, patch)` with `buildCardUpdatePayl
 
 **Intent**: Add `CardUpdatePatch` + `buildCardUpdatePayload(current, patch)` that emits only writable scalars needed for Deck card PUT, taking unchanged values from `current` when the patch omits them.
 
-**Contract**: Whitelist keys: `title`, `description`, `duedate`, `type`, `order` (and only those for Update). Exclude `id`, `stackId` (Update preserves stack via URL path from `findCardOnBoard`), `labels`, `assignedUsers`, attachments, timestamps, soft-delete, nested objects. `title` required by API — use `patch.title?.trim() || current.title`. Clear due date: `duedate: null`. Default missing `type`/`order` from current (e.g. `type` → `'plain'`, `order` → `0` if absent — match board’s `archived ?? false` style). Rewrite the `.passthrough()` comment: passthrough remains for Get output, not PUT round-trip. Do **not** change `moveCard`.
+**Contract**: Whitelist keys: `title`, `description`, `duedate`, `type`, `order`, plus required coerced `owner` (Deck API requires a string UID — take from GET via `resolveCardOwnerUid`, never from Update UI). Exclude `id`, `stackId` (Update preserves stack via URL path from `findCardOnBoard`), `labels`, `assignedUsers`, attachments, timestamps, soft-delete, nested objects. `title` required by API — use `patch.title?.trim() || current.title`. Clear due date: `duedate: null`. Default missing `type`/`order` from current (e.g. `type` → `'plain'`, `order` → `0` if absent — match board’s `archived ?? false` style). Rewrite the `.passthrough()` comment: passthrough remains for Get output, not PUT round-trip. Do **not** change `moveCard`.
+
+> **Impl-review addendum (2026-08-01, F5):** `owner` was discovered as a required PUT scalar during implementation; plan whitelist updated to match shipped `buildCardUpdatePayload`.
 
 #### 2. Wire card Update
 
@@ -148,7 +150,7 @@ Replace card Update’s `mergeDefined(fullGet, patch)` with `buildCardUpdatePayl
 
 **Intent**: Mirror the board whitelist test for cards.
 
-**Contract**: Assert payload contains only whitelist keys; fake `labels`/`assignedUsers` on `current` do not appear; empty patch keeps currents; partial title/description/duedate (incl. null) overlays correctly.
+**Contract**: Assert payload contains only whitelist keys (including coerced `owner`); fake `labels`/`assignedUsers` on `current` do not appear; empty patch keeps currents; partial title/description/duedate (incl. null) overlays correctly.
 
 #### 5. Live Deck verification
 
@@ -157,6 +159,8 @@ Replace card Update’s `mergeDefined(fullGet, patch)` with `buildCardUpdatePayl
 **Intent**: Prove against local n8n that card Update changes selected fields without dropping labels/assignees visible on a subsequent Get.
 
 **Contract**: At least one **Webhook-triggered** workflow JSON (e.g. get card → update title/description → get card) plus `README.md` with hybrid steps: `workflow create` → `activate` → `curl` webhook → `execution get`. Preconditions: Deck board/card with labels exist on the target Nextcloud (document how to pick IDs via node params or pinned data).
+
+> **Impl-review addendum (2026-08-01, F9):** Also shipped `test/n8n-cli/deck/02-move-smoke.json` to support Manual criterion 2.6 (Deck Move smoke). Intentional extra — keep.
 
 ### Success Criteria:
 
@@ -290,6 +294,16 @@ Wire GET → AST patch → SEQUENCE/DTSTAMP → PUT; expose Google-style Update 
 - documents seed steps (curl CalDAV PUT to the test calendar, or a one-shot seed workflow).
 README covers hybrid run (create → activate → curl → `execution get`): run generator → seed → run partial-update workflows → confirm SEQUENCE and preserve-unknown via Get / spot-check. Do not rely on node Create alone for rich structure.
 
+#### 7. Calendar event `webUrl` deep links (impl-review addendum)
+
+**File**: `nodes/NextcloudCalendar/GenericFunctions.ts` (`buildCalendarEventWebUrl`), wired from `resources/event/{create,get,getAll,update}.ts`
+
+**Intent**: Return a Nextcloud Calendar UI deep link alongside event identity so workflows can open the object in the web UI.
+
+**Contract**: `webUrl` on Create / Get / Get Many / Update JSON output. Built from credential `baseUrl` + user + calendar + eventId (filename stem). Covered by unit tests; documented in CHANGELOG.
+
+> **Impl-review addendum (2026-08-01, F6):** Shipped with Phase 4; kept after triage (Fix A — document, do not remove).
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -422,6 +436,7 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 - Pre-1.0 package: Calendar Update param shape changes (required → Update Fields); Files `updateFields` string[] + siblings → collection object — existing saved workflows may break; document in PR / convention note.
 - Deck card Update UI largely unchanged (payload safety fix only).
 - No data migration on Nextcloud side.
+- **Impl-review addendum (2026-08-01, F9):** `CHANGELOG.md` Unreleased notes for this slice are intentional release hygiene (not a phase deliverable) — keep.
 
 ## References
 
