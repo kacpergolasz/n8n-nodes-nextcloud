@@ -1,0 +1,80 @@
+{
+	"name": "Calendar/create-get-fidelity",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "calendar-create-get-fidelity",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "b1000000-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "calendar-create-get-fidelity"
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "create",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"summary": "n8n-cli live Calendar/create-get-fidelity",
+				"start": "2030-06-15T10:00:00Z",
+				"end": "2030-06-15T10:30:00Z",
+				"description": "",
+				"location": "Live test room"
+			},
+			"id": "b1000000-0000-4000-8000-000000000002",
+			"name": "Create event",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"calendar": {
+					"__rl": true,
+					"value": "personal",
+					"mode": "id"
+				},
+				"eventId": "={{ $json.eventId }}"
+			},
+			"id": "b1000000-0000-4000-8000-000000000003",
+			"name": "Get event",
+			"type": "CUSTOM.nextcloudCalendar",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Create event", "type": "main", "index": 0 }]]
+		},
+		"Create event": {
+			"main": [[{ "node": "Get event", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

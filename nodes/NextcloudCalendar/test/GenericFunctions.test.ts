@@ -123,7 +123,20 @@ describe('Nextcloud Calendar GenericFunctions', () => {
 		expect(payload).toContain('BEGIN:VEVENT');
 		expect(payload).toContain('SUMMARY:Team Sync');
 		expect(payload).toContain('DESCRIPTION:Weekly sync');
+		expect(payload).not.toMatch(/LOCATION:/);
 		expect(payload).toContain('END:VCALENDAR');
+	});
+
+	it('omits empty optional DESCRIPTION and LOCATION on create payload', () => {
+		const payload = buildICalendarPayload({
+			summary: 'Bare',
+			start: '2026-05-10T09:00:00Z',
+			end: '2026-05-10T09:30:00Z',
+		});
+
+		expect(payload).toContain('SUMMARY:Bare');
+		expect(payload).not.toMatch(/DESCRIPTION:/);
+		expect(payload).not.toMatch(/LOCATION:/);
 	});
 
 	it('escapes RFC 5545 TEXT specials in iCalendar payload fields', () => {

@@ -13,7 +13,14 @@ export async function eventCreate(
 	const start = parseRequiredString(context.getNodeParameter('start', itemIndex), 'Start');
 	const end = parseRequiredString(context.getNodeParameter('end', itemIndex), 'End');
 	const description = parseString(context.getNodeParameter('description', itemIndex, ''), 'Description');
-	const payload = buildICalendarPayload({ summary, start, end, description });
+	const location = parseString(context.getNodeParameter('location', itemIndex, ''), 'Location');
+	const payload = buildICalendarPayload({
+		summary,
+		start,
+		end,
+		...(description ? { description } : {}),
+		...(location ? { location } : {}),
+	});
 	const eventId = `${Date.now()}-${itemIndex}`;
 	const eventUrl = buildEventUrl(calendarUrl, eventId);
 
