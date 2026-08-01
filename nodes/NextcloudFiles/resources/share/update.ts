@@ -9,12 +9,64 @@ import {
 } from '../../GenericFunctions';
 import {
 	getErrorMessage,
+	isPlainObject,
 	parsePositiveInt,
 	parseRequiredBoolean,
 	parseString,
 	parseStringArray,
 } from '../../../shared/parse';
 import type { ShareOperationContext } from './types';
+
+const SHARE_UPDATE_FIELD_KEYS = new Set([
+	'permissions',
+	'password',
+	'expireDate',
+	'publicUpload',
+]);
+
+function parseShareUpdateFields(raw: unknown): {
+	fieldsToUpdate: string[];
+	permissions?: string[];
+	password?: string;
+	expireDate?: string;
+	publicUpload?: boolean;
+} {
+	if (!isPlainObject(raw)) {
+		throw new Error(
+			'Select at least one field to update (permissions, password, expire date, or public upload)',
+		);
+	}
+
+	const fieldsToUpdate = Object.keys(raw).filter((key) => SHARE_UPDATE_FIELD_KEYS.has(key));
+	if (fieldsToUpdate.length === 0) {
+		throw new Error(
+			'Select at least one field to update (permissions, password, expire date, or public upload)',
+		);
+	}
+
+	const result: {
+		fieldsToUpdate: string[];
+		permissions?: string[];
+		password?: string;
+		expireDate?: string;
+		publicUpload?: boolean;
+	} = { fieldsToUpdate };
+
+	if ('permissions' in raw) {
+		result.permissions = parseStringArray(raw.permissions, 'Permissions');
+	}
+	if ('password' in raw) {
+		result.password = parseString(raw.password, 'Password');
+	}
+	if ('expireDate' in raw) {
+		result.expireDate = parseString(raw.expireDate, 'Expire date');
+	}
+	if ('publicUpload' in raw) {
+		result.publicUpload = parseRequiredBoolean(raw.publicUpload, 'Public upload');
+	}
+
+	return result;
+}
 
 export async function shareUpdate(
 	context: IExecuteFunctions,
@@ -33,29 +85,23 @@ export async function shareUpdate(
 	const existingData = await ocsRequest(context, 'GET', `shares/${shareId}`);
 	const existingShare = parseShare(existingData);
 
-	const updateFields = parseStringArray(
-		context.getNodeParameter('updateFields', itemIndex, []),
-		'Update fields',
-	);
-	const updatePermissions = parseStringArray(
-		context.getNodeParameter('updatePermissions', itemIndex, []),
-		'Update permissions',
-	);
-	const password = parseString(context.getNodeParameter('password', itemIndex, ''), 'Password');
-	const expireDate = parseString(context.getNodeParameter('expireDate', itemIndex, ''), 'Expire date');
-	const publicUpload = parseRequiredBoolean(
-		context.getNodeParameter('publicUpload', itemIndex, false),
-		'Public upload',
-	);
+	let update: ReturnType<typeof parseShareUpdateFields>;
+	try {
+		update = parseShareUpdateFields(context.getNodeParameter('updateFields', itemIndex, {}));
+	} catch (error) {
+		throw new NodeOperationError(context.getNode(), getErrorMessage(error), {
+			itemIndex,
+		});
+	}
 
 	let body: IDataObject;
 	try {
 		body = buildShareUpdateBody({
-			fieldsToUpdate: updateFields,
-			permissions: updatePermissions,
-			password,
-			expireDate,
-			publicUpload,
+			fieldsToUpdate: update.fieldsToUpdate,
+			permissions: update.permissions,
+			password: update.password,
+			expireDate: update.expireDate,
+			publicUpload: update.publicUpload,
 			shareType: existingShare.shareType,
 		});
 	} catch (error) {
@@ -65,7 +111,7 @@ export async function shareUpdate(
 	}
 
 	if (
-		updateFields.includes('password') &&
+		update.fieldsToUpdate.includes('password') &&
 		typeof body.password === 'string' &&
 		body.password.length > 0
 	) {

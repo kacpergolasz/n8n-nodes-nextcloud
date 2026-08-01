@@ -1,0 +1,129 @@
+{
+	"name": "Files/share-update-fields",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "files-share-update-fields",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "c1000000-0000-4000-8000-000000000001",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"webhookId": "files-share-update-fields"
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "create",
+				"path": {
+					"__rl": true,
+					"value": "={{ '/n8n-cli-files-' + Date.now() }}",
+					"mode": "id"
+				}
+			},
+			"id": "c1000000-0000-4000-8000-000000000002",
+			"name": "Create folder",
+			"type": "CUSTOM.nextcloudFiles",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "share",
+				"operation": "create",
+				"path": {
+					"__rl": true,
+					"value": "={{ $json.path }}",
+					"mode": "id"
+				},
+				"shareType": 3,
+				"permissions": ["read", "create"],
+				"password": "LiveTestPw1!",
+				"expireDate": "2030-01-15",
+				"publicUpload": true,
+				"note": "n8n-cli live Files/share-update-fields"
+			},
+			"id": "c1000000-0000-4000-8000-000000000003",
+			"name": "Create public share",
+			"type": "CUSTOM.nextcloudFiles",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "share",
+				"operation": "update",
+				"shareId": "={{ $json.id }}",
+				"updateFields": {
+					"expireDate": "2031-06-30"
+				}
+			},
+			"id": "c1000000-0000-4000-8000-000000000004",
+			"name": "Update expireDate only",
+			"type": "CUSTOM.nextcloudFiles",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "share",
+				"operation": "update",
+				"shareId": "={{ $json.id }}",
+				"updateFields": {
+					"password": "",
+					"publicUpload": false
+				}
+			},
+			"id": "c1000000-0000-4000-8000-000000000005",
+			"name": "Clear password + publicUpload false",
+			"type": "CUSTOM.nextcloudFiles",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"credentials": {
+				"nextcloudApi": {
+					"id": "CwOIprgOYYtl3Kt9",
+					"name": "Nextcloud account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Create folder", "type": "main", "index": 0 }]]
+		},
+		"Create folder": {
+			"main": [[{ "node": "Create public share", "type": "main", "index": 0 }]]
+		},
+		"Create public share": {
+			"main": [[{ "node": "Update expireDate only", "type": "main", "index": 0 }]]
+		},
+		"Update expireDate only": {
+			"main": [[{ "node": "Clear password + publicUpload false", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
