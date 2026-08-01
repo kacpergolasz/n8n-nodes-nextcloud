@@ -525,8 +525,8 @@ ICS parse/serialize is per-item on Update/Create; acceptable for single-event op
 
 #### Automated
 
-- [x] 6.1 context/foundation/update-convention.md exists and README links to it
+- [x] 6.1 context/foundation/update-convention.md exists and README links to it — 4db94bd
 
 #### Manual
 
-- [x] 6.2 Convention note alone is enough to pick the correct Update pattern for a new app
+- [x] 6.2 Convention note alone is enough to pick the correct Update pattern for a new app — 4db94bd
