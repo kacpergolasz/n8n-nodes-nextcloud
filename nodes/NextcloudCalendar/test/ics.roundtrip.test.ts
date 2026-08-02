@@ -158,6 +158,16 @@ describe('Calendar ICS translator round-trip', () => {
 		expect(payload).not.toMatch(/LOCATION:/);
 	});
 
+	it('rejects Create when End is not after Start', () => {
+		expect(() =>
+			buildICalendarPayload({
+				summary: 'Inverted',
+				start: '2026-05-11T10:00:00Z',
+				end: '2026-05-11T08:00:00Z',
+			}),
+		).toThrow(/End must be after Start/);
+	});
+
 	it('projects verbose Get JSON without exposing UID (VALARM stripped from projection)', () => {
 		const projected = parseIcsEventVerbose(RICH_ICS);
 		expect(projected).not.toHaveProperty('uid');

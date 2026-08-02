@@ -1,5 +1,5 @@
 import type { NextcloudEventInput } from '../EventInterface';
-import { escapeIcsTextValue, isoToIcsDateTime, utcNowIcsDateTime } from './dates';
+import { assertIcsEndAfterStart, escapeIcsTextValue, isoToIcsDateTime, utcNowIcsDateTime } from './dates';
 import { serializeIcs } from './serialize';
 import type { IcsComponent, IcsProperty } from './types';
 
@@ -21,11 +21,15 @@ function rawProp(name: string, value: string): IcsProperty {
  */
 export function buildMinimalEventCalendar(input: NextcloudEventInput, uid?: string): IcsComponent {
 	const uidValue = uid ?? `${Date.now()}-${sanitizeFileNamePart(input.summary)}@n8n-nextcloud`;
+	const dtStart = isoToIcsDateTime(input.start);
+	const dtEnd = isoToIcsDateTime(input.end);
+	assertIcsEndAfterStart(dtStart, dtEnd);
+
 	const properties: IcsProperty[] = [
 		rawProp('UID', uidValue),
 		rawProp('DTSTAMP', utcNowIcsDateTime()),
-		rawProp('DTSTART', isoToIcsDateTime(input.start)),
-		rawProp('DTEND', isoToIcsDateTime(input.end)),
+		rawProp('DTSTART', dtStart),
+		rawProp('DTEND', dtEnd),
 		textProp('SUMMARY', input.summary),
 	];
 
