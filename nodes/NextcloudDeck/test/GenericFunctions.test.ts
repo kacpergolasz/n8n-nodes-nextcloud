@@ -1,3 +1,4 @@
+import type { DeckCard } from '../DeckInterface';
 import {
 	buildBoardUndoDeleteUrl,
 	buildBoardUpdatePayload,
@@ -145,7 +146,7 @@ describe('board helpers', () => {
 });
 
 describe('buildCardUpdatePayload', () => {
-	const current = {
+	const current: DeckCard = {
 		id: 10,
 		title: 'Current',
 		description: 'Keep me',
@@ -153,13 +154,18 @@ describe('buildCardUpdatePayload', () => {
 		type: 'plain',
 		order: 3,
 		stackId: 7,
+		owner: { uid: 'alice' },
+	};
+	// Nested GET-only fields stay on the wire object via passthrough, not on DeckCard.
+	const currentFromGet = {
+		...current,
 		owner: { primaryKey: 'alice', uid: 'alice', displayname: 'Alice' },
 		labels: [{ id: 1, title: 'Bug' }],
 		assignedUsers: [{ participant: { uid: 'alice' } }],
 	};
 
 	it('emits only whitelist keys and drops nested GET fields', () => {
-		const payload = buildCardUpdatePayload(current as never, { title: 'Renamed' });
+		const payload = buildCardUpdatePayload(parseDeckCard(currentFromGet), { title: 'Renamed' });
 		expect(payload).toEqual({
 			title: 'Renamed',
 			description: 'Keep me',
@@ -175,7 +181,7 @@ describe('buildCardUpdatePayload', () => {
 	});
 
 	it('keeps currents when patch is empty', () => {
-		expect(buildCardUpdatePayload(current as never, {})).toEqual({
+		expect(buildCardUpdatePayload(current, {})).toEqual({
 			title: 'Current',
 			description: 'Keep me',
 			duedate: '2026-07-18T12:00:00.000Z',
@@ -187,7 +193,7 @@ describe('buildCardUpdatePayload', () => {
 
 	it('overlays title, description, and duedate including null clear', () => {
 		expect(
-			buildCardUpdatePayload(current as never, {
+			buildCardUpdatePayload(current, {
 				title: 'New title',
 				description: 'New desc',
 				duedate: null,
@@ -204,10 +210,7 @@ describe('buildCardUpdatePayload', () => {
 
 	it('defaults missing type and order from current or plain/0', () => {
 		expect(
-			buildCardUpdatePayload(
-				{ id: 1, title: 'Bare', owner: 'bob' } as never,
-				{ title: 'Still bare' },
-			),
+			buildCardUpdatePayload({ id: 1, title: 'Bare', owner: 'bob' }, { title: 'Still bare' }),
 		).toEqual({
 			title: 'Still bare',
 			description: '',
@@ -219,9 +222,9 @@ describe('buildCardUpdatePayload', () => {
 	});
 
 	it('rejects cards without a resolvable owner uid', () => {
-		expect(() =>
-			buildCardUpdatePayload({ id: 1, title: 'No owner' } as never, {}),
-		).toThrow('Card owner is missing');
+		expect(() => buildCardUpdatePayload({ id: 1, title: 'No owner' }, {})).toThrow(
+			'Card owner is missing',
+		);
 	});
 });
 

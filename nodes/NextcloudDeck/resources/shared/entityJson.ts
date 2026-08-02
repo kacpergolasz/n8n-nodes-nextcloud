@@ -1,15 +1,21 @@
 import type { IDataObject } from 'n8n-workflow';
 
-import type { DeckBoard, DeckCard, DeckStack } from '../../DeckInterface';
+import type { DeckBoard, DeckCard, DeckStack } from '../../DeckSchemas';
 
 export function boardToJson(board: DeckBoard): IDataObject {
-	return { ...board };
+	// TODO
+	// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+	return { ...board } as IDataObject;
 }
 
 export function stackToJson(stack: DeckStack): IDataObject {
-	return { ...stack };
+	// TODO
+	// eslint-disable-next-line @typescript-eslint/consistent-type-assertions	
+	return { ...stack } as IDataObject;
 }
 
 export function cardToJson(card: DeckCard): IDataObject {
-	return { ...card };
+	// TODO
+	// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+	return { ...card } as IDataObject;
 }
