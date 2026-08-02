@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import { validateSharePassword } from '../GenericFunctions';
 import type { NextcloudRequestContext } from '../../shared/requestContext';
 
