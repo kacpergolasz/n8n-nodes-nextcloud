@@ -150,3 +150,22 @@ export function isoToFloatingIcsDateTimeInTzid(iso: string, tzid: string): strin
 export function utcNowIcsDateTime(now: Date = new Date()): string {
 	return now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
+
+/** Comparable key for ICS DATE / DATE-TIME values (trailing Z ignored). */
+export function icsDateTimeCompareKey(value: string): string {
+	return value.trim().replace(/Z$/i, '');
+}
+
+/**
+ * RFC 5545: DTEND must be later than DTSTART.
+ * Call after normalizing both sides to the same ICS representation (and after
+ * exclusive all-day DTEND bump when start/end fall on the same DATE).
+ */
+export function assertIcsEndAfterStart(startIcs: string, endIcs: string): void {
+	if (icsDateTimeCompareKey(endIcs) <= icsDateTimeCompareKey(startIcs)) {
+		throw new Error(
+			'End must be after Start. Provide an End date/time later than Start ' +
+				'(for all-day events, End is exclusive — use the day after the last day of the event).',
+		);
+	}
+}

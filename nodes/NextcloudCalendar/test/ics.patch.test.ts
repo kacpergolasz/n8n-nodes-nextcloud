@@ -347,6 +347,49 @@ END:VCALENDAR`;
 		).toThrow(/Cannot turn off All Day without Start and End/);
 	});
 
+	it('rejects timed Update when End is not after Start', () => {
+		const ast = parseIcs(RICH_ICS);
+		// Existing event is 10:00–11:00; move Start past End.
+		expect(() =>
+			patchEventCalendar(ast, { start: '2026-05-11T12:00:00' }, { now: FIXED_NOW }),
+		).toThrow(/End must be after Start/);
+
+		const ast2 = parseIcs(RICH_ICS);
+		expect(() =>
+			patchEventCalendar(ast2, { end: '2026-05-11T08:00:00' }, { now: FIXED_NOW }),
+		).toThrow(/End must be after Start/);
+
+		const ast3 = parseIcs(RICH_ICS);
+		expect(() =>
+			patchEventCalendar(
+				ast3,
+				{ start: '2026-05-11T10:00:00', end: '2026-05-11T10:00:00' },
+				{ now: FIXED_NOW },
+			),
+		).toThrow(/End must be after Start/);
+	});
+
+	it('rejects all-day Update when End date is before Start', () => {
+		const allDay = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:allday-invert@example.com
+DTSTAMP:20260101T100000Z
+SUMMARY:Day
+DTSTART;VALUE=DATE:20260511
+DTEND;VALUE=DATE:20260512
+END:VEVENT
+END:VCALENDAR`;
+
+		const ast = parseIcs(allDay);
+		expect(() =>
+			patchEventCalendar(
+				ast,
+				{ start: '2026-05-15', end: '2026-05-10' },
+				{ now: FIXED_NOW },
+			),
+		).toThrow(/End must be after Start/);
+	});
+
 	it('converts all-day to timed when Start and End are provided', () => {
 		const allDay = `BEGIN:VCALENDAR
 BEGIN:VEVENT

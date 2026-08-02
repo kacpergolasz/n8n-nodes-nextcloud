@@ -1,5 +1,6 @@
 import type { EventUpdatePatch } from '../EventInterface';
 import {
+	assertIcsEndAfterStart,
 	escapeIcsTextValue,
 	isoToFloatingIcsDateTimeInTzid,
 	isoToIcsDate,
@@ -249,9 +250,11 @@ export function patchEventCalendar(
 		let newEnd = buildDtProp('DTEND', endIso, { allDay: nextAllDay, tzid: nextTzid });
 
 		// Same-day timed → all-day yields identical DATE values; exclusive DTEND needs +1 day.
-		if (nextAllDay && newEnd.value <= newStart.value) {
+		if (nextAllDay && newEnd.value === newStart.value) {
 			newEnd = { ...newEnd, value: addOneIcsDate(newStart.value) };
 		}
+
+		assertIcsEndAfterStart(newStart.value, newEnd.value);
 
 		if (normalizeDateProp(curStart) !== normalizeDateProp(newStart)) {
 			setProp(vevent, newStart);
