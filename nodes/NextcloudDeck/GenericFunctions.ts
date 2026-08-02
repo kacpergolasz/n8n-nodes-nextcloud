@@ -1,23 +1,25 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-} from 'n8n-workflow';
-import { z } from 'zod';
+import type { IDataObject, IExecuteFunctions, IHttpRequestMethods } from 'n8n-workflow';
 
-import type {
-	DeckBoard,
-	DeckCard,
-	DeckPickerOption,
-	DeckStack,
-} from './DeckInterface';
+import type { DeckPickerOption } from './DeckInterface';
 import {
 	isPlainObject,
 	parseNextcloudCredentials,
-	throwParseError,
 	type NextcloudCredentialData,
 } from '../shared/parse';
 import type { NextcloudRequestContext } from '../shared/requestContext';
+import type { DeckStack, DeckCard, DeckBoard } from './DeckSchemas';
+import { parseDeckStacks, parseDeckCard, parseDeckBoards } from './DeckSchemas';
+
+export type { DeckStack, DeckCard, DeckBoard } from './DeckSchemas';
+export {
+	parseDeckStacks,
+	parseDeckCard,
+	parseDeckBoards,
+	parseDeckBoard,
+	parseDeckStack,
+	parseBoardAdditionalFields,
+	parseCardAdditionalFields,
+} from './DeckSchemas';
 
 function normalizeBaseUrl(baseUrl: string): string {
 	return baseUrl.replace(/\/+$/, '');
@@ -110,118 +112,6 @@ export async function deckRequest(
 	});
 }
 
-// `.passthrough()` keeps unknown Deck API fields (labels, assignees, …) on Get
-// output for workflow users. Card Update PUTs must use buildCardUpdatePayload —
-// never mergeDefined(fullGet, patch) — so nested/read-only fields are not sent.
-const deckCardSchema = z
-	.object({
-		id: z.coerce.number(),
-		title: z.string(),
-		type: z.string().optional(),
-		order: z.number().optional(),
-		description: z.string().optional(),
-		duedate: z.union([z.string(), z.null()]).optional(),
-		stackId: z.number().optional(),
-	})
-	.passthrough();
-
-const deckStackSchema = z
-	.object({
-		id: z.coerce.number(),
-		title: z.string(),
-		order: z.number(),
-		cards: z.array(deckCardSchema).optional(),
-	})
-	.passthrough();
-
-const deckBoardSchema = z
-	.object({
-		id: z.coerce.number(),
-		title: z.string(),
-		color: z.string(),
-		archived: z.boolean().optional(),
-		deletedAt: z.union([z.number(), z.null()]).optional(),
-	})
-	.passthrough();
-
-export function parseDeckCard(data: unknown): DeckCard {
-	try {
-		return deckCardSchema.parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid Deck card payload');
-	}
-}
-
-export function parseDeckStack(data: unknown): DeckStack {
-	try {
-		return deckStackSchema.parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid Deck stack payload');
-	}
-}
-
-export function parseDeckBoard(data: unknown): DeckBoard {
-	try {
-		return deckBoardSchema.parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid Deck board payload');
-	}
-}
-
-export function parseDeckBoards(data: unknown): DeckBoard[] {
-	try {
-		return z.array(deckBoardSchema).parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid Deck boards payload');
-	}
-}
-
-export function parseDeckStacks(data: unknown): DeckStack[] {
-	try {
-		return z.array(deckStackSchema).parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid Deck stacks payload');
-	}
-}
-
-const boardAdditionalFieldsSchema = z
-	.object({
-		archived: z.boolean().optional(),
-	})
-	.passthrough();
-
-const cardAdditionalFieldsSchema = z
-	.object({
-		clearDueDate: z.boolean().optional(),
-	})
-	.passthrough();
-
-export function parseBoardAdditionalFields(raw: unknown): { archived?: boolean } {
-	if (!isPlainObject(raw)) {
-		return {};
-	}
-	try {
-		const parsed = boardAdditionalFieldsSchema.parse(raw);
-		return typeof parsed.archived === 'boolean' ? { archived: parsed.archived } : {};
-	} catch (error) {
-		throwParseError(error, 'Invalid board additional fields');
-	}
-}
-
-export function parseCardAdditionalFields(raw: unknown): { clearDueDate?: boolean } {
-	if (!isPlainObject(raw)) {
-		return {};
-	}
-	try {
-		const parsed = cardAdditionalFieldsSchema.parse(raw);
-		return typeof parsed.clearDueDate === 'boolean'
-			? { clearDueDate: parsed.clearDueDate }
-			: {};
-	} catch (error) {
-		throwParseError(error, 'Invalid card additional fields');
-	}
-}
-
 /** Locate a card on a board by id (summary from nested stack payloads). */
 export function findCardInStacks(stacks: DeckStack[], cardId: string): DeckCard | undefined {
 	return flattenCardsFromStacks(stacks).find((card) => String(card.id) === cardId);
@@ -257,11 +147,7 @@ export async function deleteCard(
 	cardId: string,
 ): Promise<void> {
 	const { stackId } = await findCardOnBoard(context, boardId, cardId);
-	await deckRequest(
-		context,
-		'DELETE',
-		`/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
-	);
+	await deckRequest(context, 'DELETE', `/boards/${boardId}/stacks/${stackId}/cards/${cardId}`);
 }
 
 export async function moveCard(
@@ -272,7 +158,7 @@ export async function moveCard(
 	order: number,
 ): Promise<DeckCard> {
 	const { card } = await findCardOnBoard(context, boardId, cardId);
-	const payload = mergeDefined(card, {
+	const payload = mergeDefined(Object.fromEntries(Object.entries(card)), {
 		stackId: Number(toStackId),
 		order,
 	});
@@ -287,9 +173,7 @@ export async function moveCard(
 	);
 }
 
-export async function loadBoards(
-	context: NextcloudRequestContext,
-): Promise<DeckPickerOption[]> {
+export async function loadBoards(context: NextcloudRequestContext): Promise<DeckPickerOption[]> {
 	const boards = filterActiveBoards(parseDeckBoards(await deckRequest(context, 'GET', '/boards')));
 
 	return boards.map((board) => ({
@@ -334,14 +218,38 @@ export function resolveCardId(cardInput: unknown): string {
 }
 
 /** Overlay patch keys that are not `undefined` onto target (partial-update safety). */
-export function mergeDefined(target: IDataObject, patch: IDataObject): IDataObject {
-	const result: IDataObject = { ...target };
+export function mergeDefined(
+	target: Record<string, unknown>,
+	patch: Record<string, unknown>,
+): IDataObject {
+	const result: IDataObject = {};
+	for (const [key, value] of Object.entries(target)) {
+		if (isIDataObjectValue(value)) {
+			result[key] = value;
+		}
+	}
 	for (const [key, value] of Object.entries(patch)) {
-		if (value !== undefined) {
+		if (value !== undefined && isIDataObjectValue(value)) {
 			result[key] = value;
 		}
 	}
 	return result;
+}
+
+function isIDataObjectValue(
+	value: unknown,
+): value is IDataObject[string] {
+	if (value === null || value === undefined) {
+		return true;
+	}
+	const t = typeof value;
+	if (t === 'string' || t === 'number' || t === 'boolean') {
+		return true;
+	}
+	if (Array.isArray(value)) {
+		return value.every((item) => isIDataObjectValue(item));
+	}
+	return isPlainObject(value);
 }
 
 /** Flatten nested `cards[]` from stack payloads; optional stack id filter. */
@@ -419,14 +327,17 @@ export type CardUpdatePatch = {
 
 /** Deck PUT requires `owner` as a string UID; GET usually returns an object. */
 function resolveCardOwnerUid(current: DeckCard): string {
-	const owner = (current as DeckCard & { owner?: unknown }).owner;
+	const owner = current.owner;
 	if (typeof owner === 'string' && owner.trim()) {
 		return owner.trim();
 	}
-	if (owner && typeof owner === 'object' && 'uid' in owner) {
-		const uid = String((owner as { uid?: unknown }).uid ?? '').trim();
-		if (uid) {
-			return uid;
+	if (owner && typeof owner === 'object') {
+		const raw = owner.uid ?? owner.primaryKey;
+		if (raw !== undefined && raw !== null) {
+			const text = String(raw).trim();
+			if (text) {
+				return text;
+			}
 		}
 	}
 	throw new Error('Card owner is missing; cannot build update payload.');
