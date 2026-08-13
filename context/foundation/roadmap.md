@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-08-01
+updated: 2026-08-13
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -286,6 +286,22 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Source:** Bugbot review 2026-08-01 during S-09 — same-day timed → all-day patch needed an ad-hoc `addOneIcsDate` exclusive-end bump in `patchEvent.ts`.
 - **Issue:** ICS DATE / DATE-TIME / DURATION rules (RFC 5545 exclusive DTEND, all-day vs timed, DURATION vs DTEND, TZID floating) are scattered across `ics/dates.ts`, `patchEvent.ts`, and GenericFunctions helpers as free functions with easy-to-miss edge cases.
 - **Follow-up:** Introduce a dedicated class (or small type + methods) for ICS date and duration values — parse, normalize, add days, convert all-day ↔ timed, enforce exclusive end — and migrate Calendar patch/build paths onto it. Revisit when Tasks/Contacts CalDAV surfaces need the same rules.
+- **Prerequisites:** S-09 Calendar Update path stable.
+- **Status:** proposed
+
+### Calendar timezone-only Update shifts event instant
+
+- **Source:** Bugbot review 2026-08-13 during S-09 — `nodes/NextcloudCalendar/ics/patchEvent.ts` (~227–250); cross-checked against `context/changes/suite-partial-update/` (new gap; not in follow-ups).
+- **Issue:** Changing only `timezone` on a TZID floating event rebuilds DTSTART/DTEND via `existingValueAsIsoish` + `isoToFloatingIcsDateTimeInTzid`. Floating (no `Z`/offset) digits are treated as already-local wall-clock in the *new* TZID, so the absolute instant moves by the offset delta and SEQUENCE bumps. Existing overlay unit test covers UTC→TZID only; Phase 1–4 F1 fixed `Z` → preserved-TZID conversion, not TZID→TZID rebinding. Plan/convention only document orphan `VTIMEZONE`.
+- **Follow-up:** When timezone changes and start/end are not in the patch, convert the existing instant from the old TZID into wall-clock in the new TZID (or document intentional wall-clock preserve). Fits the ICS date/duration value-class investigation above.
+- **Prerequisites:** S-09 Calendar Update path stable.
+- **Status:** proposed
+
+### Calendar Update Fields `allDay` boolean default footgun
+
+- **Source:** Bugbot review 2026-08-13 during S-09 — `nodes/NextcloudCalendar/resources/event/index.ts` (~122–128); cross-checked against `context/changes/suite-partial-update/` (new; same class as Phase 1–4 F2 for empty timezone).
+- **Issue:** Update Fields `allDay` defaults to `false`. Adding that option alone puts `allDay: false` in the patch. On an existing all-day event, `patchEventCalendar` treats it as all-day → timed without Start/End and throws (guard from Phase 1–4 F3 follow-up is intentional; the collection default that triggers it is not).
+- **Follow-up:** Match the Timezone omit pattern — do not treat collection-default `false` as an explicit toggle unless the user meant to change all-day mode (e.g. omit unless changed, or require Start/End only when flipping, with UI copy that adding All Day implies a mode change).
 - **Prerequisites:** S-09 Calendar Update path stable.
 - **Status:** proposed
 
