@@ -42,6 +42,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | done |
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | done |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | done |
+| F-03 | pin-mock-from-types | (foundation) generate n8n pin-data fixtures from entity TypeScript types for UI mocking | F-02 | — | proposed |
 
 ## Streams
 
@@ -52,7 +53,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | A | Credential & Calendar proof | `F-01` → `S-01` → `S-02` | Quality-first validation path; OAuth follows once Calendar proves the shared credential. Suite Get Many / CalDAV depth lives in Stream D (`S-08`). |
 | B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` → `S-14` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. News API v2 (`S-14`) follows the v1.3 News node. |
 | C | Triggers | `S-07` / `S-13` | Polling after Calendar exists; webhooks after Talk (`S-05`) for FR-010 value. |
-| D | Quality / debt | `F-02` / `S-08` / `S-09` | Cross-cutting validation helpers, suite-wide Get Many (News Item envelope + reliable Calendar CalDAV), and safe partial Update; can run in parallel once patterns exist (`S-01` / `S-04` / `S-06`). |
+| D | Quality / debt | `F-02` / `F-03` / `S-08` / `S-09` | Cross-cutting validation helpers, pin-data fixtures from entity types, suite-wide Get Many (News Item envelope + reliable Calendar CalDAV), and safe partial Update; can run in parallel once patterns exist (`S-01` / `S-04` / `S-06`). |
 
 ## Baseline
 
@@ -86,13 +87,26 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** (foundation) node parameter reads and API response shaping use explicit validation/parsing helpers (e.g. `parseShareId`-style functions) instead of `as Type` casts throughout the package.
 - **Change ID:** validation-refactoring
 - **PRD refs:** —
-- **Unlocks:** safer multi-item runs and expression-driven parameters across all suite nodes
+- **Unlocks:** safer multi-item runs and expression-driven parameters across all suite nodes; F-03 (typed entity contracts as input to pin-mock fixtures)
 - **Prerequisites:** S-01
-- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-11, S-12, S-13
+- **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-07, S-08, S-09, S-11, S-12, S-13, F-03
 - **Blockers:** —
 - **Unknowns:** Whether to standardize on hand-rolled guards, a shared helper module, or a schema library (e.g. Zod) for n8n parameter shapes.
 - **Risk:** Widespread `as boolean` / `as string` / `as IDataObject` casts today hide runtime type errors; leaving this untracked lets bad expression values fail late or silently misbehave.
 - **Status:** done
+
+### F-03: Pin-mock fixtures from entity TypeScript types
+
+- **Outcome:** (foundation) developer can run a package command that turns suite entity TypeScript types (e.g. `DeckCard`, `NewsItem`, `FilesInterface` shapes) into n8n pin-data fixtures shaped as `[{ "json": { … } }]`, then paste or import them into the editor OUTPUT pin/mock flow for consistent UI testing without live Nextcloud calls.
+- **Change ID:** pin-mock-from-types
+- **PRD refs:** —
+- **Unlocks:** faster local workflow verification and edge-case mock setups across suite nodes without relying on live API responses
+- **Prerequisites:** F-02
+- **Parallel with:** S-02, S-05, S-08, S-09, S-11, S-12, S-13, S-14
+- **Blockers:** —
+- **Unknowns:** Generate sample JSON directly vs JSON Schema intermediate (`ts-json-schema-generator` / Zod → faker); whether fixtures live as committed `fixtures/*.json` next to `*Interface.ts` or are printed on demand; whether workflow `pinData` import is in scope vs paste-only.
+- **Risk:** n8n UI pin/mock does not consume TypeScript types or JSON Schema — only concrete item JSON. Without a generate→fixture path, mocks drift from entity contracts and Schema Preview / MCP `prepare_test_pin_data` will not cover community-node types.
+- **Status:** proposed
 
 ## Slices
 
@@ -271,6 +285,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-12 | nextcloud-contacts | Nextcloud Contacts node (port from core n8n) | no | After S-01; FR-007 nice-to-have |
 | S-13 | suite-webhook-triggers | Webhook triggers for Nextcloud suite (Talk-first) | no | After S-01 + S-05; FR-010 |
 | F-02 | validation-refactoring | Replace `as Type` casts with validation helpers | no | After S-01; cross-cutting quality |
+| F-03 | pin-mock-from-types | Generate n8n pin-data fixtures from entity TypeScript types | yes | After F-02; DX for UI pin/mock — sample `[{ json }]` not schema-in-UI |
 
 ## Investigations
 
