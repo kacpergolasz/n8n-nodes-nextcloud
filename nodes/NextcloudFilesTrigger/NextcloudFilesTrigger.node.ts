@@ -37,6 +37,7 @@ export class NextcloudFilesTrigger implements INodeType {
 					'Folder whose immediate children are watched for create and update events — e.g. /Documents',
 				required: true,
 				modes: [
+					// eslint-disable-next-line @n8n/community-nodes/require-param-default
 					{
 						displayName: 'From List',
 						name: 'list',
@@ -46,6 +47,7 @@ export class NextcloudFilesTrigger implements INodeType {
 							searchable: true,
 						},
 					},
+					// eslint-disable-next-line @n8n/community-nodes/require-param-default
 					{
 						displayName: 'By ID',
 						name: 'id',

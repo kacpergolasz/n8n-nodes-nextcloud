@@ -37,6 +37,7 @@ export class NextcloudNewsTrigger implements INodeType {
 				description:
 					'Optional News folder to watch. Leave empty to watch all folders (or narrow with Feed).',
 				modes: [
+					// eslint-disable-next-line @n8n/community-nodes/require-param-default
 					{
 						displayName: 'From List',
 						name: 'list',
@@ -46,6 +47,7 @@ export class NextcloudNewsTrigger implements INodeType {
 							searchable: true,
 						},
 					},
+					// eslint-disable-next-line @n8n/community-nodes/require-param-default
 					{
 						displayName: 'By ID',
 						name: 'id',
@@ -65,6 +67,7 @@ export class NextcloudNewsTrigger implements INodeType {
 					loadOptionsDependsOn: ['folder.value'],
 				},
 				modes: [
+					// eslint-disable-next-line @n8n/community-nodes/require-param-default
 					{
 						displayName: 'From List',
 						name: 'list',
@@ -74,6 +77,7 @@ export class NextcloudNewsTrigger implements INodeType {
 							searchable: true,
 						},
 					},
+					// eslint-disable-next-line @n8n/community-nodes/require-param-default
 					{
 						displayName: 'By ID',
 						name: 'id',
