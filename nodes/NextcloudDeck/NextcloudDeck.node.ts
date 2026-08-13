@@ -54,10 +54,9 @@ export class NextcloudDeck implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				// Card-first ordering matches primary workflow (cards → board → stack context)
 				options: [
-					{ name: 'Card', value: 'card' },
 					{ name: 'Board', value: 'board' },
+					{ name: 'Card', value: 'card' },
 					{ name: 'Stack', value: 'stack' },
 				],
 				default: 'card',

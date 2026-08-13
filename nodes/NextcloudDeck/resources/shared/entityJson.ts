@@ -1,21 +1,16 @@
 import type { IDataObject } from 'n8n-workflow';
 
 import type { DeckBoard, DeckCard, DeckStack } from '../../DeckSchemas';
+import { mergeDefined } from '../../GenericFunctions';
 
 export function boardToJson(board: DeckBoard): IDataObject {
-	// TODO
-	// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-	return { ...board } as IDataObject;
+	return mergeDefined({ ...board }, {});
 }
 
 export function stackToJson(stack: DeckStack): IDataObject {
-	// TODO
-	// eslint-disable-next-line @typescript-eslint/consistent-type-assertions	
-	return { ...stack } as IDataObject;
+	return mergeDefined({ ...stack }, {});
 }
 
 export function cardToJson(card: DeckCard): IDataObject {
-	// TODO
-	// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-	return { ...card } as IDataObject;
+	return mergeDefined({ ...card }, {});
 }
