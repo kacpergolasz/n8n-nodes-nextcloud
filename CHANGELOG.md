@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.x.x] — Unreleased
+## [0.3.3]
+
+> 13 Aug 2026
 
 ### Added
 
@@ -36,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### 0.3.2
 
+> 29 July 2026
+
 - init [`f2675d0`](https://github.com/kacpergolasz/n8n-nodes-nextcloud/commit/f2675d016d7083380899691353cba9c7423d816a)
 - feat(shared-basic-auth-calendar): Calendar node + canary cutover (p2) [`54fccbb`](https://github.com/kacpergolasz/n8n-nodes-nextcloud/commit/54fccbb9268e05a50394fcd80096fd44364957f8)
 - updates typescript [`a58758a`](https://github.com/kacpergolasz/n8n-nodes-nextcloud/commit/a58758a363d4184477521c7a2a9fef8430dc622d)
-- Files share password policy validation fails closed on transport / 5xx when the endpoint is reachable; still fails open if the `password_policy` app appears missing (404/405/501).
