@@ -1,8 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { deckRequest, parseDeckStacks } from '../../GenericFunctions';
+import { createDeckClient, toNodeJson } from '../../GenericFunctions';
+import { getStacks } from '../../repositories/DeckStack.repository';
 import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
-import { stackToJson } from '../shared/entityJson';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import type { StackOperationContext } from './types';
 
 export async function stackGetAll(
@@ -15,10 +16,14 @@ export async function stackGetAll(
 		'Return All',
 	);
 	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 10), 'Limit');
-	const stacks = parseDeckStacks(await deckRequest(context, 'GET', `/boards/${boardId}/stacks`));
+	const stacks = unwrapResult(
+		await getStacks(await createDeckClient(context), {
+			boardId: parseRequiredNumber(boardId, 'Board'),
+		}),
+	);
 	const sliced = returnAll ? stacks : stacks.slice(0, limit);
 	return sliced.map((stack) => ({
-		json: stackToJson(stack),
+		json: toNodeJson(stack),
 		pairedItem: { item: itemIndex },
 	}));
 }

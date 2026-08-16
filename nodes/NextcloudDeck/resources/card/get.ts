@@ -1,7 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { findCardOnBoard, resolveCardId } from '../../GenericFunctions';
-import { cardToJson } from '../shared/entityJson';
+import { createDeckClient, resolveCardId, toNodeJson } from '../../GenericFunctions';
+import { parseRequiredNumber } from '../../../shared/parse';
+import { getCard } from '../../repositories/DeckCard.repository';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { resolveCardStackId } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
 
 export async function cardGet(
@@ -10,9 +13,17 @@ export async function cardGet(
 ): Promise<INodeExecutionData> {
 	const { itemIndex, boardId } = ctx;
 	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex));
-	const { card } = await findCardOnBoard(context, boardId, cardId);
+	const client = await createDeckClient(context);
+	const parsedBoardId = parseRequiredNumber(boardId, 'Board');
+	const card = unwrapResult(
+		await getCard(client, {
+			boardId: parsedBoardId,
+			stackId: await resolveCardStackId(client, parsedBoardId, cardId),
+			cardId: parseRequiredNumber(cardId, 'Card'),
+		}),
+	);
 	return {
-		json: cardToJson(card),
+		json: toNodeJson(card),
 		pairedItem: { item: itemIndex },
 	};
 }

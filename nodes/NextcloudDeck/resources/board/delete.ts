@@ -1,6 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { deckRequest } from '../../GenericFunctions';
+import { createDeckClient } from '../../GenericFunctions';
+import { deleteBoard } from '../../repositories/DeckBoard.repository';
+import { parseRequiredNumber } from '../../../shared/parse';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import { resolveBoardFromInput } from '../shared/resolveInput';
 import type { BoardOperationContext } from './types';
 
@@ -10,7 +13,11 @@ export async function boardDelete(
 ): Promise<INodeExecutionData> {
 	const { itemIndex } = ctx;
 	const boardId = resolveBoardFromInput(context, itemIndex);
-	await deckRequest(context, 'DELETE', `/boards/${boardId}`);
+	unwrapResult(
+		await deleteBoard(await createDeckClient(context), {
+			boardId: parseRequiredNumber(boardId, 'Board'),
+		}),
+	);
 	return {
 		json: { id: boardId, deleted: true },
 		pairedItem: { item: itemIndex },

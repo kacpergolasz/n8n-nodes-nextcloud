@@ -1,4 +1,5 @@
-import type { DeckCard } from '../DeckInterface';
+import type { DeckCard } from '../repositories/DeckCard.repository';
+import type { DeckBoard } from '../repositories/DeckBoard.repository';
 import {
 	buildBoardUndoDeleteUrl,
 	buildBoardUpdatePayload,
@@ -12,16 +13,12 @@ import {
 	buildStacksUrl,
 	deckApiBase,
 	filterActiveBoards,
-	flattenCardsFromStacks,
-	findCardInStacks,
 	mergeDefined,
 	normalizeDeckColor,
-	parseDeckBoard,
-	parseDeckCard,
-	parseDeckStack,
 	resolveBoardId,
 	resolveCardId,
 	resolveStackId,
+	toNodeJson,
 } from '../GenericFunctions';
 
 const BASE = 'https://cloud.example.com';
@@ -87,30 +84,6 @@ describe('resolve resource ids', () => {
 	});
 });
 
-describe('findCardInStacks', () => {
-	it('finds a card by id across stacks', () => {
-		const card = findCardInStacks(
-			[
-				{
-					id: 1,
-					title: 'Todo',
-					order: 0,
-					cards: [{ id: 10, title: 'A', order: 0 }],
-				},
-				{
-					id: 2,
-					title: 'Done',
-					order: 1,
-					cards: [{ id: 20, title: 'B', order: 0 }],
-				},
-			],
-			'20',
-		);
-		expect(card?.id).toBe(20);
-		expect(card?.stackId).toBe(2);
-	});
-});
-
 describe('board helpers', () => {
 	it('normalizes deck colors by stripping leading hash', () => {
 		expect(normalizeDeckColor('#FF0000')).toBe('ff0000');
@@ -122,24 +95,52 @@ describe('board helpers', () => {
 			{ id: 1, title: 'Active', color: 'ff0000', deletedAt: 0 },
 			{ id: 2, title: 'Deleted', color: '00ff00', deletedAt: 1710000000 },
 			{ id: 3, title: 'Legacy', color: '0000ff' },
-		]);
+		] as unknown as DeckBoard[]);
 		expect(boards.map((board) => board.id)).toEqual([1, 3]);
 	});
+});
 
-	it('builds PUT payload with only title, color, and archived', () => {
-		expect(
-			buildBoardUpdatePayload(
-				{
-					id: 10,
-					title: 'Current',
-					color: 'ff0000',
-					archived: false,
-				},
-				{ title: 'Renamed', color: '#00ff00' },
-			),
-		).toEqual({
+describe('buildBoardUpdatePayload', () => {
+	const current: DeckBoard = {
+		id: 10,
+		title: 'Current',
+		color: 'ff0000',
+		owner: { primaryKey: 'alice', uid: 'alice', displayname: 'Alice' },
+		archived: true,
+		labels: [],
+		acl: [],
+		permissions: {
+			PERMISSION_READ: true,
+			PERMISSION_EDIT: true,
+			PERMISSION_MANAGE: true,
+			PERMISSION_SHARE: true,
+		},
+		users: [],
+		deletedAt: 0,
+	};
+
+	it('always emits title, color, and archived', () => {
+		expect(buildBoardUpdatePayload(current, { title: 'Renamed' })).toEqual({
 			title: 'Renamed',
-			color: '00ff00',
+			color: 'ff0000',
+			archived: true,
+		});
+	});
+
+	it('keeps currents when patch is empty and does not unarchive', () => {
+		expect(buildBoardUpdatePayload(current, {})).toEqual({
+			title: 'Current',
+			color: 'ff0000',
+			archived: true,
+		});
+	});
+
+	it('normalizes patched color and overlays archived', () => {
+		expect(
+			buildBoardUpdatePayload(current, { color: '#0082C9', archived: false }),
+		).toEqual({
+			title: 'Current',
+			color: '0082c9',
 			archived: false,
 		});
 	});
@@ -154,18 +155,33 @@ describe('buildCardUpdatePayload', () => {
 		type: 'plain',
 		order: 3,
 		stackId: 7,
-		owner: { uid: 'alice' },
+		owner: 'alice',
+		archived: false,
+		done: null,
+		labels: [],
+		assignedUsers: [],
+		attachments: [],
+		attachmentCount: null,
+		commentsUnread: 0,
+		overdue: 0,
+		createdAt: 0,
+		lastModified: 0,
+		deletedAt: 0,
 	};
-	// Nested GET-only fields stay on the wire object via passthrough, not on DeckCard.
-	const currentFromGet = {
+	const currentFromGet: DeckCard = {
 		...current,
-		owner: { primaryKey: 'alice', uid: 'alice', displayname: 'Alice' },
-		labels: [{ id: 1, title: 'Bug' }],
-		assignedUsers: [{ participant: { uid: 'alice' } }],
+		labels: [{ id: 1, title: 'Bug', color: 'ff0000', boardId: 10, cardId: null }],
+		assignedUsers: [
+			{
+				id: 1,
+				participant: { primaryKey: 'alice', uid: 'alice', displayname: 'Alice' },
+				cardId: 10,
+			},
+		],
 	};
 
 	it('emits only whitelist keys and drops nested GET fields', () => {
-		const payload = buildCardUpdatePayload(parseDeckCard(currentFromGet), { title: 'Renamed' });
+		const payload = buildCardUpdatePayload(currentFromGet, { title: 'Renamed' });
 		expect(payload).toEqual({
 			title: 'Renamed',
 			description: 'Keep me',
@@ -210,7 +226,10 @@ describe('buildCardUpdatePayload', () => {
 
 	it('defaults missing type and order from current or plain/0', () => {
 		expect(
-			buildCardUpdatePayload({ id: 1, title: 'Bare', owner: 'bob' }, { title: 'Still bare' }),
+			buildCardUpdatePayload(
+				{ id: 1, title: 'Bare', owner: 'bob' } as unknown as DeckCard,
+				{ title: 'Still bare' },
+			),
 		).toEqual({
 			title: 'Still bare',
 			description: '',
@@ -222,9 +241,21 @@ describe('buildCardUpdatePayload', () => {
 	});
 
 	it('rejects cards without a resolvable owner uid', () => {
-		expect(() => buildCardUpdatePayload({ id: 1, title: 'No owner' }, {})).toThrow(
-			'Card owner is missing',
-		);
+		expect(() =>
+			buildCardUpdatePayload({ id: 1, title: 'No owner' } as unknown as DeckCard, {}),
+		).toThrow('Card owner is missing');
+	});
+
+	it('coerces GET owner objects to a string uid for PUT', () => {
+		expect(
+			buildCardUpdatePayload(
+				{
+					...current,
+					owner: { primaryKey: 'alice', uid: 'alice', displayname: 'Alice' },
+				},
+				{ title: 'Still alice' },
+			),
+		).toMatchObject({ owner: 'alice', title: 'Still alice' });
 	});
 });
 
@@ -245,49 +276,14 @@ describe('mergeDefined', () => {
 	});
 });
 
-describe('flattenCardsFromStacks', () => {
-	it('returns cards across stacks in order', () => {
-		const cards = flattenCardsFromStacks([
-			{
-				id: 1,
-				title: 'Todo',
-				order: 0,
-				cards: [
-					{ id: 10, title: 'A', order: 0 },
-					{ id: 11, title: 'B', order: 1 },
-				],
-			},
-			{
-				id: 2,
-				title: 'Done',
-				order: 1,
-				cards: [{ id: 20, title: 'C', order: 0 }],
-			},
-		]);
-		expect(cards.map((card) => card.id)).toEqual([10, 11, 20]);
-		expect(cards[0].stackId).toBe(1);
-		expect(cards[2].stackId).toBe(2);
-	});
-
-	it('honors an optional stack filter', () => {
-		const cards = flattenCardsFromStacks(
-			[
-				{
-					id: 1,
-					title: 'Todo',
-					order: 0,
-					cards: [{ id: 10, title: 'A', order: 0 }],
-				},
-				{
-					id: 2,
-					title: 'Done',
-					order: 1,
-					cards: [{ id: 20, title: 'C', order: 0 }],
-				},
-			],
-			'2',
-		);
-		expect(cards.map((card) => card.id)).toEqual([20]);
+describe('toNodeJson', () => {
+	it('keeps extra passthrough keys that are JSON-safe', () => {
+		expect(toNodeJson({ id: 1, title: 'Card', commentsCount: 0, lastEditor: null })).toEqual({
+			id: 1,
+			title: 'Card',
+			commentsCount: 0,
+			lastEditor: null,
+		});
 	});
 });
 
@@ -295,19 +291,36 @@ describe('loadBoards mapping', () => {
 	it('maps board ids to string picker values', async () => {
 		const { loadBoards } = await import('../GenericFunctions');
 
+		const board = (id: number, title: string, deletedAt: number) => ({
+			id,
+			title,
+			color: '0082c9',
+			owner: { primaryKey: 'alice', uid: 'alice', displayname: 'Alice' },
+			archived: false,
+			labels: [],
+			acl: [],
+			permissions: {
+				PERMISSION_READ: true,
+				PERMISSION_EDIT: true,
+				PERMISSION_MANAGE: true,
+				PERMISSION_SHARE: true,
+			},
+			users: [],
+			deletedAt,
+		});
+
+		const httpRequestWithAuthentication = vi.fn(async () => [
+			board(1, 'Personal', 0),
+			board(99, 'Trash', 1710000000),
+			board(42, 'Work', 0),
+		]);
 		const context = {
 			getCredentials: async () => ({
 				baseUrl: BASE,
 				username: 'alice',
 				appPassword: 'secret',
 			}),
-			helpers: {
-				httpRequestWithAuthentication: async () => [
-					{ id: 1, title: 'Personal', color: '0082c9', deletedAt: 0 },
-					{ id: 99, title: 'Trash', color: 'ff0000', deletedAt: 1710000000 },
-					{ id: 42, title: 'Work', color: 'ff0000', deletedAt: 0 },
-				],
-			},
+			helpers: { httpRequestWithAuthentication },
 		};
 
 		const boards = await loadBoards(context as never);
@@ -315,6 +328,15 @@ describe('loadBoards mapping', () => {
 			{ name: 'Personal', value: '1' },
 			{ name: 'Work', value: '42' },
 		]);
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'nextcloudApi',
+			expect.objectContaining({
+				method: 'GET',
+				url: `${deckApiBase(BASE)}/boards`,
+				json: true,
+				headers: expect.objectContaining({ 'OCS-APIRequest': 'true' }),
+			}),
+		);
 	});
 });
 
@@ -322,18 +344,27 @@ describe('loadStacks mapping', () => {
 	it('maps stack ids to string picker values', async () => {
 		const { loadStacks } = await import('../GenericFunctions');
 
+		const stack = (id: number, title: string) => ({
+			id,
+			title,
+			boardId: 42,
+			cards: [],
+			order: 0,
+			deletedAt: 0,
+			lastModified: 0,
+		});
+
+		const httpRequestWithAuthentication = vi.fn(async () => [
+			stack(3, 'Backlog'),
+			stack(7, 'In Progress'),
+		]);
 		const context = {
 			getCredentials: async () => ({
 				baseUrl: BASE,
 				username: 'alice',
 				appPassword: 'secret',
 			}),
-			helpers: {
-				httpRequestWithAuthentication: async () => [
-					{ id: 3, title: 'Backlog', order: 0 },
-					{ id: 7, title: 'In Progress', order: 1 },
-				],
-			},
+			helpers: { httpRequestWithAuthentication },
 		};
 
 		const stacks = await loadStacks(context as never, '42');
@@ -341,57 +372,13 @@ describe('loadStacks mapping', () => {
 			{ name: 'Backlog', value: '3' },
 			{ name: 'In Progress', value: '7' },
 		]);
-	});
-});
-
-describe('Deck response parsers', () => {
-	it('preserves unknown API fields on cards, stacks, and boards', () => {
-		const card = parseDeckCard({
-			id: 10,
-			title: 'Task',
-			labels: [{ id: 1, title: 'Bug' }],
-			assignedUsers: [{ participant: { uid: 'alice' } }],
-		});
-		expect(card).toMatchObject({
-			id: 10,
-			title: 'Task',
-			labels: [{ id: 1, title: 'Bug' }],
-			assignedUsers: [{ participant: { uid: 'alice' } }],
-		});
-
-		const stack = parseDeckStack({
-			id: 2,
-			title: 'Todo',
-			order: 0,
-			acl: [{ participant: { uid: 'bob' }, permission: 1 }],
-			cards: [
-				{
-					id: 10,
-					title: 'Task',
-					labels: [{ id: 1, title: 'Bug' }],
-				},
-			],
-		});
-		expect(stack).toMatchObject({
-			id: 2,
-			acl: [{ participant: { uid: 'bob' }, permission: 1 }],
-		});
-		expect(stack.cards?.[0]).toMatchObject({
-			id: 10,
-			labels: [{ id: 1, title: 'Bug' }],
-		});
-
-		const board = parseDeckBoard({
-			id: 1,
-			title: 'Work',
-			color: '0082c9',
-			permissions: { PERMISSION_READ: true },
-		});
-		expect(board).toMatchObject({
-			id: 1,
-			title: 'Work',
-			color: '0082c9',
-			permissions: { PERMISSION_READ: true },
-		});
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'nextcloudApi',
+			expect.objectContaining({
+				method: 'GET',
+				url: `${deckApiBase(BASE)}/boards/42/stacks`,
+				json: true,
+			}),
+		);
 	});
 });

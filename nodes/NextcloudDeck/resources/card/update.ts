@@ -2,16 +2,17 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
 	buildCardUpdatePayload,
-	deckRequest,
-	findCardOnBoard,
+	createDeckClient,
 	formatDeckDueDate,
 	parseCardAdditionalFields,
-	parseDeckCard,
 	resolveCardId,
+	toNodeJson,
 	type CardUpdatePatch,
 } from '../../GenericFunctions';
-import { parseString } from '../../../shared/parse';
-import { cardToJson } from '../shared/entityJson';
+import { getCard, updateCard } from '../../repositories/DeckCard.repository';
+import { parseRequiredNumber, parseString } from '../../../shared/parse';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { resolveCardStackId } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
 
 export async function cardUpdate(
@@ -20,10 +21,12 @@ export async function cardUpdate(
 ): Promise<INodeExecutionData> {
 	const { itemIndex, boardId } = ctx;
 	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex));
-	const { card: current, stackId: sourceStackId } = await findCardOnBoard(
-		context,
-		boardId,
-		cardId,
+	const client = await createDeckClient(context);
+	const parsedBoardId = parseRequiredNumber(boardId, 'Board');
+	const parsedCardId = parseRequiredNumber(cardId, 'Card');
+	const stackId = await resolveCardStackId(client, parsedBoardId, cardId);
+	const current = unwrapResult(
+		await getCard(client, { boardId: parsedBoardId, stackId, cardId: parsedCardId }),
 	);
 	const title = parseString(context.getNodeParameter('title', itemIndex, ''), 'Title');
 	const description = parseString(
@@ -48,17 +51,16 @@ export async function cardUpdate(
 		patch.duedate = formatDeckDueDate(dueDate);
 	}
 
-	const payload = buildCardUpdatePayload(current, patch);
-	const card = parseDeckCard(
-		await deckRequest(
-			context,
-			'PUT',
-			`/boards/${boardId}/stacks/${sourceStackId}/cards/${cardId}`,
-			payload,
-		),
+	const card = unwrapResult(
+		await updateCard(client, {
+			boardId: parsedBoardId,
+			stackId,
+			cardId: parsedCardId,
+			...buildCardUpdatePayload(current, patch),
+		}),
 	);
 	return {
-		json: cardToJson(card),
+		json: toNodeJson(card),
 		pairedItem: { item: itemIndex },
 	};
 }

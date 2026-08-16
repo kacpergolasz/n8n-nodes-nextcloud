@@ -1,9 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { deckRequest, parseDeckStack } from '../../GenericFunctions';
+import { createDeckClient, toNodeJson } from '../../GenericFunctions';
+import { createStack } from '../../repositories/DeckStack.repository';
 import { parseRequiredNumber, parseRequiredString } from '../../../shared/parse';
-import { stackToJson } from '../shared/entityJson';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import type { StackOperationContext } from './types';
 
 export async function stackCreate(
@@ -20,14 +21,15 @@ export async function stackCreate(
 			{ itemIndex },
 		);
 	}
-	const stack = parseDeckStack(
-		await deckRequest(context, 'POST', `/boards/${boardId}/stacks`, {
+	const stack = unwrapResult(
+		await createStack(await createDeckClient(context), {
+			boardId: parseRequiredNumber(boardId, 'Board'),
 			title,
 			order,
 		}),
 	);
 	return {
-		json: stackToJson(stack),
+		json: toNodeJson(stack),
 		pairedItem: { item: itemIndex },
 	};
 }
