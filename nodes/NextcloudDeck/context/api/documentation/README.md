@@ -19,3 +19,7 @@ Sources for building a Nextcloud Deck API client. Retrieved 2026-08-16 from the 
 - **OCS base:** `https://{host}/ocs/v2.php/apps/deck/api/v1.0/` (Config, Comments, Sessions)
 - **Entities:** Board → Stack → Card → (Label, Attachment, Comment, Assignment); Board → ACL rules.
 - **Errors:** 400 invalid request, 403 permission denied / board creation disabled, 404 not found / invalid session token, 304 with `If-None-Match`/ETag caching.
+
+## Integration notes
+
+See [openapi.md — Implementation notes](openapi.md#implementation-notes-this-node) for three controller quirks this node relies on: full-object board PUT (`archived` defaults to `false`), reorder `stackId` taken from the URL (not the body), and card GET `owner` / extra keys. `API.md` stays a verbatim copy of upstream docs and is not edited for these.

@@ -1,8 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { deckRequest, filterActiveBoards, parseDeckBoards } from '../../GenericFunctions';
+import { createDeckClient, filterActiveBoards } from '../../GenericFunctions';
+import { getBoards } from '../../repositories/DeckBoard.repository';
 import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
-import { boardToJson } from '../shared/entityJson';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import type { BoardOperationContext } from './types';
 
 export async function boardGetAll(
@@ -15,10 +16,12 @@ export async function boardGetAll(
 		'Return All',
 	);
 	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 10), 'Limit');
-	const boards = filterActiveBoards(parseDeckBoards(await deckRequest(context, 'GET', '/boards')));
+	const boards = filterActiveBoards(
+		unwrapResult(await getBoards(await createDeckClient(context))),
+	);
 	const sliced = returnAll ? boards : boards.slice(0, limit);
 	return sliced.map((board) => ({
-		json: boardToJson(board),
+		json: board,
 		pairedItem: { item: itemIndex },
 	}));
 }

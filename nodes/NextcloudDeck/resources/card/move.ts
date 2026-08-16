@@ -1,8 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { moveCard, resolveCardId } from '../../GenericFunctions';
+import { createDeckClient, resolveCardId } from '../../GenericFunctions';
+import { reorderCard } from '../../repositories/DeckCard.repository';
 import { parseRequiredNumber } from '../../../shared/parse';
-import { cardToJson } from '../shared/entityJson';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import { resolveStackFromInput } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
 
@@ -14,9 +15,18 @@ export async function cardMove(
 	const cardId = resolveCardId(context.getNodeParameter('cardId', itemIndex));
 	const toStackId = resolveStackFromInput(context, itemIndex, 'toStack');
 	const order = parseRequiredNumber(context.getNodeParameter('order', itemIndex, 0), 'Order');
-	const card = await moveCard(context, boardId, cardId, toStackId, order);
+	const client = await createDeckClient(context);
+	const parsedBoardId = parseRequiredNumber(boardId, 'Board');
+	unwrapResult(
+		await reorderCard(client, {
+			boardId: parsedBoardId,
+			stackId: parseRequiredNumber(toStackId, 'Stack'),
+			cardId: parseRequiredNumber(cardId, 'Card'),
+			order,
+		}),
+	);
 	return {
-		json: cardToJson(card),
+		json: { id: cardId, stackId: toStackId, order, moved: true },
 		pairedItem: { item: itemIndex },
 	};
 }

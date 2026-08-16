@@ -46,6 +46,16 @@
 - **ETag:** returned for board/stack/card/attachment fetch endpoints; child changes propagate to parents. Also present in JSON response objects as `"ETag"`.
 - **Title length limits:** board/stack titles max 100 chars, card titles max 255 chars (violations return 400).
 
+## Implementation notes (this node)
+
+These are live controller behaviors that the official prose understates. `API.md` is kept verbatim; this section is the node’s working contract.
+
+1. **PUT `/boards/{boardId}` is a full-object write.** `BoardApiController::update(string $title, string $color, bool $archived = false)` requires `title` and `color`. Omitted `archived` defaults to `false`, so a title-only PUT can unarchive a board. Always GET, then send `title`, `color`, and `archived` together.
+
+2. **PUT `.../cards/{cardId}/reorder` binds `stackId` from the route, not the JSON body.** Nextcloud maps `{stackId}` in the URL onto `reorder($stackId, $order)`, so a body `stackId` is ignored ([nextcloud/deck#7933](https://github.com/nextcloud/deck/issues/7933)). Put the **destination** stack id in the path. Maintainers closed that issue as “change the stack id in the URL.”
+
+3. **Card GET JSON is wider than the documented Card example.** `owner` is a uid string **or** a resolved user object (`Card.php` `addResolvable('owner')`). Extra keys such as `lastEditor` and `commentsCount` appear on live cards ([nextcloud/deck#4764](https://github.com/nextcloud/deck/issues/4764)). PUT `owner` must still be a string uid.
+
 ## Paths / Endpoints
 
 All REST paths are relative to the REST base URL unless marked **OCS** (relative to OCS base URL). All parameters are required unless marked optional.
@@ -57,7 +67,7 @@ All REST paths are relative to the REST base URL unless marked **OCS** (relative
 | GET | `/boards` | Get a list of boards | query: `details` (Bool, optional — enhance with labels, stacks, users); header: `If-Modified-Since` (optional) | — | 200: array of [Board](#entity-board) |
 | POST | `/boards` | Create a new board | — | `title` (String, max 100), `color` (String, hex e.g. `ff0000`) | 200: [Board](#entity-board) / 403: board creation disabled |
 | GET | `/boards/{boardId}` | Get board details | path: `boardId` (Integer) | — | 200: [Board](#entity-board) |
-| PUT | `/boards/{boardId}` | Update board details | path: `boardId` (Integer) | `title` (String, max 100), `color` (String, hex), `archived` (Bool) | 200: [Board](#entity-board) |
+| PUT | `/boards/{boardId}` | Update board details | path: `boardId` (Integer) | `title` (String, max 100), `color` (String, hex), `archived` (Bool) — **all required; see [Implementation notes](#implementation-notes-this-node)** | 200: [Board](#entity-board) |
 | DELETE | `/boards/{boardId}` | Delete a board | path: `boardId` (Integer) | — | 200 |
 | POST | `/boards/{boardId}/undo_delete` | Restore a deleted board | path: `boardId` (Integer) | — | 200 |
 | POST | `/boards/{boardId}/acl` | Add a new ACL rule | path: `boardId` (Integer) | `type` (Integer: `0` User, `1` Group, `7` Circle), `participant` (String, uid), `permissionEdit` (Bool), `permissionShare` (Bool), `permissionManage` (Bool) | 200: array of [AclRule](#entity-aclrule) |
@@ -93,7 +103,7 @@ All REST paths are relative to the REST base URL unless marked **OCS** (relative
 | PUT | `/boards/{boardId}/stacks/{stackId}/cards/{cardId}/removeLabel` | Remove a label from a card | path: `boardId`, `stackId`, `cardId` (Integer) | `labelId` (Integer) | 200 |
 | PUT | `/boards/{boardId}/stacks/{stackId}/cards/{cardId}/assignUser` | Assign a user to a card | path: `boardId`, `stackId`, `cardId` (Integer) | `userId` (String) | 200: [CardAssignment](#entity-cardassignment) / 400: user already assigned or not part of board |
 | PUT | `/boards/{boardId}/stacks/{stackId}/cards/{cardId}/unassignUser` | Unassign a user from a card | path: `boardId`, `stackId`, `cardId` (Integer) | `userId` (String) | 200 |
-| PUT | `/boards/{boardId}/stacks/{stackId}/cards/{cardId}/reorder` | Change sorting order / move card | path: `boardId`, `stackId`, `cardId` (Integer) | `order` (Integer, target position), `stackId` (Integer, target stack) | 200 |
+| PUT | `/boards/{boardId}/stacks/{stackId}/cards/{cardId}/reorder` | Change sorting order / move card | path: `boardId`, `stackId` (**destination** stack), `cardId` (Integer) | `order` (Integer, target position). Body `stackId` is ignored; see [Implementation notes](#implementation-notes-this-node) | 200 |
 
 ### Labels
 
@@ -263,7 +273,7 @@ Entity JSON shapes as returned by the API (GET responses). Fields not listed do 
 | `description` | String/null | Markdown description |
 | `stackId` | Integer | Parent stack id |
 | `type` | String | Card type, `plain` |
-| `owner` | String | Uid of the owning user |
+| `owner` | String or [User](#entity-user--participant) | Uid string, or a resolved user object on GET. PUT requires a string uid. See [Implementation notes](#implementation-notes-this-node). |
 | `order` | Integer | Sort order |
 | `archived` | Bool | Archived state |
 | `done` | Timestamp/null | ISO-8601 date when marked done, null = undone |
@@ -277,6 +287,8 @@ Entity JSON shapes as returned by the API (GET responses). Fields not listed do 
 | `createdAt` | Integer | Unix timestamp |
 | `lastModified` | Integer | Unix timestamp |
 | `deletedAt` | Integer | Unix timestamp, `0` if not deleted |
+
+Live GET responses also include undocumented keys such as `lastEditor` and `commentsCount`. Clients must not require a closed field set.
 
 ### Entity: Label
 

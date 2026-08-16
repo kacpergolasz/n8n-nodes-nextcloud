@@ -90,7 +90,7 @@ export class NextcloudDeck implements INodeType {
 				);
 
 				if (resource === 'board') {
-					const opCtx: BoardOperationContext = { itemIndex: i, credentials };
+					const opCtx: BoardOperationContext = { itemIndex: i };
 					switch (operation) {
 						case 'create':
 							returnData.push(await boardCreate(this, opCtx));
@@ -110,7 +110,7 @@ export class NextcloudDeck implements INodeType {
 					}
 				} else if (resource === 'stack') {
 					const boardId = resolveBoardFromInput(this, i);
-					const opCtx: StackOperationContext = { itemIndex: i, credentials, boardId };
+					const opCtx: StackOperationContext = { itemIndex: i, boardId };
 					switch (operation) {
 						case 'create':
 							returnData.push(await stackCreate(this, opCtx));
@@ -121,7 +121,7 @@ export class NextcloudDeck implements INodeType {
 					}
 				} else if (resource === 'card') {
 					const boardId = resolveBoardFromInput(this, i);
-					const opCtx: CardOperationContext = { itemIndex: i, credentials, boardId };
+					const opCtx: CardOperationContext = { itemIndex: i, boardId };
 					switch (operation) {
 						case 'create':
 							returnData.push(await cardCreate(this, opCtx));

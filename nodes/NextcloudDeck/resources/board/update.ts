@@ -2,12 +2,14 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
 	buildBoardUpdatePayload,
-	deckRequest,
+	createDeckClient,
+	normalizeDeckColor,
 	parseBoardAdditionalFields,
-	parseDeckBoard,
+	type BoardUpdatePatch,
 } from '../../GenericFunctions';
-import { parseString } from '../../../shared/parse';
-import { boardToJson } from '../shared/entityJson';
+import { getBoard, updateBoard } from '../../repositories/DeckBoard.repository';
+import { parseRequiredNumber, parseString } from '../../../shared/parse';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import { resolveBoardFromInput } from '../shared/resolveInput';
 import type { BoardOperationContext } from './types';
 
@@ -16,33 +18,31 @@ export async function boardUpdate(
 	ctx: BoardOperationContext,
 ): Promise<INodeExecutionData> {
 	const { itemIndex } = ctx;
-	const boardId = resolveBoardFromInput(context, itemIndex);
-	const current = parseDeckBoard(await deckRequest(context, 'GET', `/boards/${boardId}`));
+	const boardId = parseRequiredNumber(resolveBoardFromInput(context, itemIndex), 'Board');
+	const client = await createDeckClient(context);
+	const current = unwrapResult(await getBoard(client, { boardId }));
 	const title = parseString(context.getNodeParameter('title', itemIndex, ''), 'Title');
 	const hexColor = parseString(context.getNodeParameter('hexColor', itemIndex, ''), 'Hex color');
 	const additionalFields = parseBoardAdditionalFields(
 		context.getNodeParameter('additionalFields', itemIndex, {}),
 	);
 
-	const patch: {
-		title?: string;
-		color?: string;
-		archived?: boolean;
-	} = {};
+	const patch: BoardUpdatePatch = {};
 	if (title.trim()) {
 		patch.title = title;
 	}
 	if (hexColor.trim()) {
-		patch.color = hexColor;
+		patch.color = normalizeDeckColor(hexColor);
 	}
 	if (typeof additionalFields.archived === 'boolean') {
 		patch.archived = additionalFields.archived;
 	}
 
-	const payload = buildBoardUpdatePayload(current, patch);
-	const board = parseDeckBoard(await deckRequest(context, 'PUT', `/boards/${boardId}`, payload));
+	const board = unwrapResult(
+		await updateBoard(client, { boardId, ...buildBoardUpdatePayload(current, patch) }),
+	);
 	return {
-		json: boardToJson(board),
+		json: board,
 		pairedItem: { item: itemIndex },
 	};
 }

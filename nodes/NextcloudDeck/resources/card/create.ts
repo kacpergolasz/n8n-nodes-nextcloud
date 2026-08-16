@@ -1,9 +1,10 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { deckRequest, formatDeckDueDate, parseDeckCard } from '../../GenericFunctions';
+import { createDeckClient, formatDeckDueDate, toNodeJson } from '../../GenericFunctions';
+import { createCard } from '../../repositories/DeckCard.repository';
 import { parseRequiredNumber, parseRequiredString, parseString } from '../../../shared/parse';
-import { cardToJson } from '../shared/entityJson';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import { resolveStackFromInput } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
 
@@ -28,25 +29,19 @@ export async function cardCreate(
 			{ itemIndex },
 		);
 	}
-	const body: IDataObject = {
-		title,
-		type: type || 'plain',
-		order,
-		duedate: formatDeckDueDate(dueDate),
-	};
-	if (description.trim()) {
-		body.description = description;
-	}
-	const card = parseDeckCard(
-		await deckRequest(
-			context,
-			'POST',
-			`/boards/${boardId}/stacks/${stackId}/cards`,
-			body,
-		),
+	const card = unwrapResult(
+		await createCard(await createDeckClient(context), {
+			boardId: parseRequiredNumber(boardId, 'Board'),
+			stackId: parseRequiredNumber(stackId, 'Stack'),
+			title,
+			type: type || 'plain',
+			order,
+			description: description.trim() ? description : undefined,
+			duedate: formatDeckDueDate(dueDate),
+		}),
 	);
-	return {
-		json: cardToJson(card),
+		return {
+		json: toNodeJson(card),
 		pairedItem: { item: itemIndex },
 	};
 }

@@ -1,9 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { deckRequest, normalizeDeckColor, parseDeckBoard } from '../../GenericFunctions';
+import { createDeckClient, normalizeDeckColor } from '../../GenericFunctions';
+import { createBoard } from '../../repositories/DeckBoard.repository';
 import { parseRequiredString, parseString } from '../../../shared/parse';
-import { boardToJson } from '../shared/entityJson';
+import { unwrapResult } from '../../shared/apiResponseHelpers';
 import type { BoardOperationContext } from './types';
 
 export async function boardCreate(
@@ -20,14 +21,14 @@ export async function boardCreate(
 			{ itemIndex },
 		);
 	}
-	const board = parseDeckBoard(
-		await deckRequest(context, 'POST', '/boards', {
+	const board = unwrapResult(
+		await createBoard(await createDeckClient(context), {
 			title,
 			color: normalizeDeckColor(hexColor) || '0082c9',
 		}),
 	);
 	return {
-		json: boardToJson(board),
+		json: board,
 		pairedItem: { item: itemIndex },
 	};
 }
