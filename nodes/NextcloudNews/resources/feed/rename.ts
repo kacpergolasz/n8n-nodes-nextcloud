@@ -1,8 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { newsRequest } from '../../GenericFunctions';
+import { createNewsClient } from '../../GenericFunctions';
+import { renameFeed } from '../../repositories/NewsFeed.repository';
 import { parseRequiredString } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveFeedFromInput } from '../shared/resolveInput';
 import type { FeedOperationContext } from './types';
 
@@ -19,9 +21,12 @@ export async function feedRename(
 		});
 	}
 
-	await newsRequest(context, 'POST', `/feeds/${feedId}/rename`, {
-		body: { feedTitle },
-	});
+	unwrapResult(
+		await renameFeed(await createNewsClient(context), {
+			feedId: Number(feedId),
+			feedTitle,
+		}),
+	);
 
 	return {
 		json: { id: Number(feedId), title: feedTitle, renamed: true },

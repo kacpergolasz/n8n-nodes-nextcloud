@@ -1,8 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { firstFolder, newsRequest } from '../../GenericFunctions';
+import { createNewsClient } from '../../GenericFunctions';
+import { renameFolder } from '../../repositories/NewsFolder.repository';
 import { parseRequiredString } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { folderToJson } from '../shared/entityJson';
 import { resolveFolderFromInput } from '../shared/resolveInput';
 import type { FolderOperationContext } from './types';
@@ -20,10 +22,13 @@ export async function folderRename(
 		});
 	}
 
-	const response = await newsRequest(context, 'PUT', `/folders/${folderId}`, {
-		body: { name },
-	});
-	const folder = firstFolder(response) ?? { id: Number(folderId), name };
+	const folder =
+		unwrapResult(
+			await renameFolder(await createNewsClient(context), {
+				folderId: Number(folderId),
+				name,
+			}),
+		) ?? { id: Number(folderId), name };
 
 	return {
 		json: folderToJson(folder),

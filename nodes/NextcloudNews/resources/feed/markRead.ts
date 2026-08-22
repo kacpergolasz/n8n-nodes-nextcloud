@@ -1,7 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { newsRequest } from '../../GenericFunctions';
+import { createNewsClient } from '../../GenericFunctions';
+import { markFeedRead } from '../../repositories/NewsFeed.repository';
 import { parseRequiredNumber } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveFeedFromInput } from '../shared/resolveInput';
 import type { FeedOperationContext } from './types';
 
@@ -13,9 +15,12 @@ export async function feedMarkRead(
 	const feedId = resolveFeedFromInput(context, itemIndex);
 	const newestItemId = parseRequiredNumber(context.getNodeParameter('newestItemId', itemIndex), 'Newest Item ID');
 
-	await newsRequest(context, 'POST', `/feeds/${feedId}/read`, {
-		body: { newestItemId },
-	});
+	unwrapResult(
+		await markFeedRead(await createNewsClient(context), {
+			feedId: Number(feedId),
+			newestItemId,
+		}),
+	);
 
 	return {
 		json: { id: Number(feedId), newestItemId, markedRead: true },

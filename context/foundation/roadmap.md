@@ -44,6 +44,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | done |
 | F-03 | pin-mock-from-types | (foundation) generate n8n pin-data fixtures from entity TypeScript types for UI mocking | F-02 | — | proposed |
 | F-04 | refactor-current-apis | (foundation) suite nodes use typed API clients + Zod-validated repositories (Deck reference pattern) instead of ad-hoc GenericFunctions HTTP | F-02, S-04 | — | proposed |
+| F-05 | adjust-news-api-n8n-standard | (foundation) adjust Nextcloud News API surface to n8n suite standards after client/repository migration | F-04 (News), S-06 | FR-008 | proposed |
 
 ## Streams
 
@@ -54,7 +55,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | A | Credential & Calendar proof | `F-01` → `S-01` → `S-02` | Quality-first validation path; OAuth follows once Calendar proves the shared credential. Suite Get Many / CalDAV depth lives in Stream D (`S-08`). |
 | B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` → `S-14` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. News API v2 (`S-14`) follows the v1.3 News node. |
 | C | Triggers | `S-07` / `S-13` | Polling after Calendar exists; webhooks after Talk (`S-05`) for FR-010 value. |
-| D | Quality / debt | `F-02` / `F-03` / `F-04` / `S-08` / `S-09` | Cross-cutting validation helpers, pin-data fixtures from entity types, API client + repository refactor (Deck reference), suite-wide Get Many (News Item envelope + reliable Calendar CalDAV), and safe partial Update; can run in parallel once patterns exist (`S-01` / `S-04` / `S-06`). |
+| D | Quality / debt | `F-02` / `F-03` / `F-04` / `F-05` / `S-08` / `S-09` | Cross-cutting validation helpers, pin-data fixtures from entity types, API client + repository refactor (Deck reference), News n8n-standard alignment, suite-wide Get Many (News Item envelope + reliable Calendar CalDAV), and safe partial Update; can run in parallel once patterns exist (`S-01` / `S-04` / `S-06`). |
 
 ## Baseline
 
@@ -120,6 +121,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** Per-app client shape (CalDAV vs OCS vs REST); whether shared `Maybe` / response helpers live under `nodes/shared/`; migration order (Calendar first vs Files/News in parallel); how much of existing `GenericFunctions` stays as transport vs moves into clients.
 - **Risk:** Leaving Calendar/Files/News on legacy GenericFunctions while Deck uses repositories splits error-handling and validation conventions; new suite work (S-08/S-09) would keep patching the old layer instead of the new one.
+- **Status:** proposed
+
+### F-05: Adjust News API to n8n standard
+
+- **Outcome:** (foundation) Nextcloud News node API/resource surface is adjusted to match n8n suite standards (operation shapes, Get Many contracts, error messaging, and related conventions) once the F-04 News client + repository migration is in place.
+- **Change ID:** adjust-news-api-n8n-standard
+- **PRD refs:** FR-008
+- **Unlocks:** News behaves like other suite nodes for authors; reduces one-off News UX/API quirks before S-08 suite Get Many expands further
+- **Prerequisites:** F-04 (News phase), S-06
+- **Parallel with:** F-03, S-02, S-05, S-08, S-09, S-11, S-12, S-13, S-14
+- **Blockers:** —
+- **Unknowns:** Which News operations diverge from suite conventions today (folder/feed Get Many vs Item envelope, binary favicon, mark-action naming); whether changes are resource-only or also require property-description / UX updates.
+- **Risk:** Leaving News on a post-refactor but pre-standard surface keeps author friction and makes suite-wide pagination/update work harder to apply evenly.
 - **Status:** proposed
 
 ## Slices
@@ -301,6 +315,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | F-02 | validation-refactoring | Replace `as Type` casts with validation helpers | no | After S-01; cross-cutting quality |
 | F-03 | pin-mock-from-types | Generate n8n pin-data fixtures from entity TypeScript types | yes | After F-02; DX for UI pin/mock — sample `[{ json }]` not schema-in-UI |
 | F-04 | refactor-current-apis | Refactor suite nodes to API client + repository layer (Deck reference) | yes | After F-02 + S-04; Calendar/Files/News migration — run `/10x-research refactor-current-apis` first |
+| F-05 | adjust-news-api-n8n-standard | Adjust News API to n8n suite standards | no | After F-04 News phase; follow-on to News client/repository migration |
 
 ## Investigations
 

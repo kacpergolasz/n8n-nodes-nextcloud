@@ -2,11 +2,13 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import {
+	createNewsClient,
 	feedUrlHash,
 	findFeedById,
-	newsRequest,
 } from '../../GenericFunctions';
-import { parseBinaryBuffer, parseRequiredString } from '../../../shared/parse';
+import { getFavicon } from '../../repositories/NewsFeed.repository';
+import { parseRequiredString } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveFeedFromInput } from '../shared/resolveInput';
 import type { FeedOperationContext } from './types';
 
@@ -62,11 +64,9 @@ export async function feedFavicon(
 	}
 
 	const hash = feedUrlHash(feed.url);
-	const response = await newsRequest(context, 'GET', `/favicon/${hash}`, {
-		json: false,
-		encoding: 'arraybuffer',
-	});
-	const buffer = parseBinaryBuffer(response);
+	const buffer = unwrapResult(
+		await getFavicon(await createNewsClient(context), { feedUrlHash: hash }),
+	);
 	const { mimeType, extension } = mimeFromFaviconBuffer(buffer);
 	const fileName = `favicon-${feedId}.${extension}`;
 	const binaryData = await context.helpers.prepareBinaryData(buffer, fileName, mimeType);

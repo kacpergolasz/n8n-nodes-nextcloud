@@ -11,15 +11,11 @@ import {
 	buildItemActionUrl,
 	buildItemsBulkActionUrl,
 	feedUrlHash,
-	firstFeed,
-	firstFolder,
 	newsApiBase,
 	parseItemIds,
 	resolveFeedId,
 	resolveFolderId,
 	resolveItemId,
-	unwrapFeeds,
-	unwrapFolders,
 	unwrapItems,
 } from '../GenericFunctions';
 
@@ -105,39 +101,18 @@ describe('parseItemIds', () => {
 	});
 });
 
-describe('unwrap helpers', () => {
-	it('unwraps folders, feeds, and items envelopes', () => {
-		expect(unwrapFolders({ folders: [{ id: 1, name: 'Tech' }] })).toEqual([
-			{ id: 1, name: 'Tech' },
-		]);
-		expect(unwrapFeeds({ feeds: [{ id: 2, url: 'https://a', title: 'A' }] })).toEqual([
-			{ id: 2, url: 'https://a', title: 'A' },
-		]);
+describe('unwrapItems (legacy trigger helper)', () => {
+	it('unwraps items envelopes', () => {
 		expect(unwrapItems({ items: [{ id: 9, title: 'Article' }] })).toEqual([
 			{ id: 9, title: 'Article' },
 		]);
-		expect(unwrapFolders([])).toEqual([]);
-		expect(unwrapFolders({ folders: [] })).toEqual([]);
-		expect(unwrapFeeds({ feeds: [] })).toEqual([]);
+		expect(unwrapItems([])).toEqual([]);
 		expect(unwrapItems({ items: [] })).toEqual([]);
 	});
 
 	it('rejects unrecognized envelopes', () => {
-		expect(() => unwrapFolders(null)).toThrow('expected array or { folders: [...] }');
-		expect(() => unwrapFeeds(null)).toThrow('expected array or { feeds: [...] }');
 		expect(() => unwrapItems(null)).toThrow('expected array or { items: [...] }');
-		expect(() => unwrapFolders({ notFolders: 1 })).toThrow('expected { folders: [...] }');
-		expect(() => unwrapFeeds({ feeds: 'nope' })).toThrow('expected { feeds: [...] }');
 		expect(() => unwrapItems({ items: {} })).toThrow('expected { items: [...] }');
-	});
-
-	it('picks first created entity', () => {
-		expect(firstFolder({ id: 1, name: 'Solo' })).toEqual({ id: 1, name: 'Solo' });
-		expect(firstFeed({ feeds: [{ id: 2, url: 'https://a', title: 'A' }] })).toEqual({
-			id: 2,
-			url: 'https://a',
-			title: 'A',
-		});
 	});
 });
 

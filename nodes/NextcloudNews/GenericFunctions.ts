@@ -1,14 +1,13 @@
 import { createHash } from 'node:crypto';
 
 import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
-import { z } from 'zod';
 
-import type {
-	NewsFeed,
-	NewsFolder,
-	NewsItem,
-	NewsPickerOption,
-} from './NewsInterface';
+import type { NewsClient } from './news.client';
+import { NewsClient as NewsClientImpl } from './news.client';
+import type { NewsFeed, NewsItem, NewsPickerOption } from './NewsInterface';
+import { getFeeds } from './repositories/NewsFeed.repository';
+import { getFolders } from './repositories/NewsFolder.repository';
+import { newsItemSchema } from './repositories/NewsItem.repository';
 import {
 	isPlainObject,
 	parseNextcloudCredentials,
@@ -16,6 +15,7 @@ import {
 	type NextcloudCredentialData,
 } from '../shared/parse';
 import type { NextcloudRequestContext } from '../shared/requestContext';
+import { unwrapResult } from '../shared/apiResult';
 
 export type NewsRequestEncoding =
 	| 'json'
@@ -106,6 +106,15 @@ export async function getCredentials(
 	};
 }
 
+/** Build a NewsClient that sends News REST calls through n8n's authenticated HTTP helper. */
+export async function createNewsClient(context: NextcloudRequestContext): Promise<NewsClient> {
+	return await NewsClientImpl.fromN8nContext(context);
+}
+
+/**
+ * Legacy HTTP helper retained for NextcloudNewsTrigger until Phase 4 rewires it
+ * to repositories. New News resources must use repositories + createNewsClient.
+ */
 export async function newsRequest(
 	context: NextcloudRequestContext,
 	method: IHttpRequestMethods,
@@ -131,129 +140,36 @@ export async function newsRequest(
 	});
 }
 
-const newsFolderSchema = z
-	.object({
-		id: z.coerce.number().int().positive(),
-		name: z.string(),
-	})
-	.passthrough();
-
-const newsFeedSchema = z
-	.object({
-		id: z.coerce.number().int().positive(),
-		url: z.string(),
-		title: z.string(),
-		faviconLink: z.union([z.string(), z.null()]).optional(),
-		added: z.number().optional(),
-		folderId: z.union([z.number(), z.null()]).optional(),
-		unreadCount: z.number().optional(),
-		link: z.union([z.string(), z.null()]).optional(),
-		pinned: z.boolean().optional(),
-	})
-	.passthrough();
-
-const newsItemSchema = z
-	.object({
-		id: z.coerce.number().int().positive(),
-		guid: z.string().optional(),
-		guidHash: z.string().optional(),
-		url: z.union([z.string(), z.null()]).optional(),
-		title: z.union([z.string(), z.null()]).optional(),
-		author: z.union([z.string(), z.null()]).optional(),
-		pubDate: z.number().optional(),
-		body: z.union([z.string(), z.null()]).optional(),
-		feedId: z.number().optional(),
-		unread: z.boolean().optional(),
-		starred: z.boolean().optional(),
-		lastModified: z.number().optional(),
-	})
-	.passthrough();
-
-function parseNewsFolder(data: unknown): NewsFolder {
-	try {
-		return newsFolderSchema.parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid News folder payload');
-	}
-}
-
-function parseNewsFeed(data: unknown): NewsFeed {
-	try {
-		return newsFeedSchema.parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid News feed payload');
-	}
-}
-
-function parseNewsItem(data: unknown): NewsItem {
-	try {
-		return newsItemSchema.parse(data);
-	} catch (error) {
-		throwParseError(error, 'Invalid News item payload');
-	}
-}
-
-export function unwrapFolders(response: unknown): NewsFolder[] {
-	if (Array.isArray(response)) {
-		return response.map(parseNewsFolder);
-	}
-	if (isPlainObject(response)) {
-		const folders = response.folders;
-		if (Array.isArray(folders)) {
-			return folders.map(parseNewsFolder);
-		}
-		throw new Error('Invalid News folders response: expected { folders: [...] }');
-	}
-	throw new Error('Invalid News folders response: expected array or { folders: [...] }');
-}
-
-export function unwrapFeeds(response: unknown): NewsFeed[] {
-	if (Array.isArray(response)) {
-		return response.map(parseNewsFeed);
-	}
-	if (isPlainObject(response)) {
-		const feeds = response.feeds;
-		if (Array.isArray(feeds)) {
-			return feeds.map(parseNewsFeed);
-		}
-		throw new Error('Invalid News feeds response: expected { feeds: [...] }');
-	}
-	throw new Error('Invalid News feeds response: expected array or { feeds: [...] }');
-}
-
+/**
+ * Legacy unwrap retained for NextcloudNewsTrigger until Phase 4.
+ * Prefer repository `getItems` for new code.
+ */
 export function unwrapItems(response: unknown): NewsItem[] {
+	const parseItem = (data: unknown): NewsItem => {
+		try {
+			return newsItemSchema.parse(data);
+		} catch (error) {
+			throwParseError(error, 'Invalid News item payload');
+		}
+	};
+
 	if (Array.isArray(response)) {
-		return response.map(parseNewsItem);
+		return response.map(parseItem);
 	}
 	if (isPlainObject(response)) {
 		const items = response.items;
 		if (Array.isArray(items)) {
-			return items.map(parseNewsItem);
+			return items.map(parseItem);
 		}
 		throw new Error('Invalid News items response: expected { items: [...] }');
 	}
 	throw new Error('Invalid News items response: expected array or { items: [...] }');
 }
 
-/** Prefer a single created entity; fall back to first list entry. */
-export function firstFolder(response: unknown): NewsFolder | undefined {
-	if (isPlainObject(response) && 'id' in response && 'name' in response) {
-		return parseNewsFolder(response);
-	}
-	return unwrapFolders(response)[0];
-}
-
-export function firstFeed(response: unknown): NewsFeed | undefined {
-	if (isPlainObject(response) && 'id' in response && 'url' in response) {
-		return parseNewsFeed(response);
-	}
-	return unwrapFeeds(response)[0];
-}
-
 export async function loadFolders(
 	context: NextcloudRequestContext,
 ): Promise<NewsPickerOption[]> {
-	const folders = unwrapFolders(await newsRequest(context, 'GET', '/folders'));
+	const folders = unwrapResult(await getFolders(await createNewsClient(context)));
 
 	return folders.map((folder) => ({
 		name: folder.name,
@@ -265,7 +181,7 @@ export async function loadFeeds(
 	context: NextcloudRequestContext,
 	folderId?: string,
 ): Promise<NewsPickerOption[]> {
-	let feeds = unwrapFeeds(await newsRequest(context, 'GET', '/feeds'));
+	let feeds = unwrapResult(await getFeeds(await createNewsClient(context)));
 
 	if (folderId !== undefined && folderId !== '') {
 		feeds = feeds.filter((feed) => String(feed.folderId ?? '') === folderId);
@@ -281,7 +197,7 @@ export async function findFeedById(
 	context: NextcloudRequestContext,
 	feedId: string,
 ): Promise<NewsFeed | undefined> {
-	const feeds = unwrapFeeds(await newsRequest(context, 'GET', '/feeds'));
+	const feeds = unwrapResult(await getFeeds(await createNewsClient(context)));
 	return feeds.find((feed) => String(feed.id) === feedId);
 }
 
