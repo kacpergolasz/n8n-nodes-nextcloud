@@ -448,13 +448,13 @@ No intentional behavior change — same request counts per operation. Repository
 
 #### Automated
 
-- [x] 1.1 `npm run lint:safety`
-- [x] 1.2 `npm run test`
-- [x] 1.3 `npm run build`
+- [x] 1.1 `npm run lint:safety` — 640b693
+- [x] 1.2 `npm run test` — 640b693
+- [x] 1.3 `npm run build` — 640b693
 
 #### Manual
 
-- [x] 1.4 News folder/feed/item operations in local n8n
+- [x] 1.4 News folder/feed/item operations in local n8n — 640b693
 
 ### Phase 2: NextcloudFiles
 
