@@ -460,13 +460,13 @@ No intentional behavior change — same request counts per operation. Repository
 
 #### Automated
 
-- [ ] 2.1 `npm run lint:safety`
-- [ ] 2.2 `npm run test`
-- [ ] 2.3 `npm run build`
+- [x] 2.1 `npm run lint:safety`
+- [x] 2.2 `npm run test`
+- [x] 2.3 `npm run build`
 
 #### Manual
 
-- [ ] 2.4 Files file/folder/share operations in local n8n
+- [x] 2.4 Files file/folder/share operations in local n8n
 
 ### Phase 3: NextcloudCalendar
 

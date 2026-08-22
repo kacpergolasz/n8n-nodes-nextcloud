@@ -1,4 +1,9 @@
-import { formatFilesErrorMessage, getHttpStatusCode } from '../shared/httpStatus';
+import {
+	formatFilesErrorMessage,
+	getHttpStatusCode,
+	httpCodeForNodeApiError,
+	isGenericHttpStatusMessage,
+} from '../shared/httpStatus';
 
 describe('getHttpStatusCode', () => {
 	it('reads status from common error shapes', () => {
@@ -9,6 +14,30 @@ describe('getHttpStatusCode', () => {
 		expect(getHttpStatusCode({ cause: { statusCode: 404 } })).toBe(404);
 		expect(getHttpStatusCode(new Error('boom'))).toBeUndefined();
 		expect(getHttpStatusCode(null)).toBeUndefined();
+	});
+});
+
+describe('isGenericHttpStatusMessage', () => {
+	it('detects axios and client status-only noise', () => {
+		expect(isGenericHttpStatusMessage('Request failed with status code 412', 412)).toBe(true);
+		expect(
+			isGenericHttpStatusMessage(
+				'Files API request failed: 412 — Request failed with status code 412',
+				412,
+			),
+		).toBe(true);
+		expect(isGenericHttpStatusMessage('Precondition Failed', 412)).toBe(true);
+		expect(isGenericHttpStatusMessage('Destination locked by another client', 412)).toBe(false);
+	});
+});
+
+describe('httpCodeForNodeApiError', () => {
+	it('forwards only status codes with dedicated n8n defaults', () => {
+		expect(httpCodeForNodeApiError(404)).toBe('404');
+		expect(httpCodeForNodeApiError(401)).toBe('401');
+		expect(httpCodeForNodeApiError(412)).toBeUndefined();
+		expect(httpCodeForNodeApiError(423)).toBeUndefined();
+		expect(httpCodeForNodeApiError(undefined)).toBeUndefined();
 	});
 });
 
@@ -32,6 +61,20 @@ describe('formatFilesErrorMessage', () => {
 			'Resource not found (404)',
 		);
 		expect(formatFilesErrorMessage(404, '')).toBe('Resource not found (404)');
+	});
+
+	it('always maps WebDAV 412 to an overwrite / destination hint', () => {
+		expect(formatFilesErrorMessage(412, 'Request failed with status code 412')).toBe(
+			'Destination already exists (412). Enable Overwrite, or choose a different destination path.',
+		);
+		expect(
+			formatFilesErrorMessage(
+				412,
+				'Files API request failed: 412 — Destination already exists. Enable Overwrite, or choose a different destination path.',
+			),
+		).toBe(
+			'Destination already exists (412). Enable Overwrite, or choose a different destination path.',
+		);
 	});
 
 	it('passes through non-404 scrubbed messages', () => {

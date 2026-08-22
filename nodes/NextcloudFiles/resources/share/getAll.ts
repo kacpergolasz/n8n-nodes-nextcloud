@@ -1,11 +1,13 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { normalizeFilesPath, ocsRequest, parseShare } from '../../GenericFunctions';
+import { createFilesClient, normalizeFilesPath } from '../../GenericFunctions';
+import { listShares } from '../../repositories/FilesShare.repository';
 import {
 	parseRequiredBoolean,
 	parseRequiredNumber,
 	parseString,
 } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import type { ShareOperationContext } from './types';
 
 export async function shareGetAll(
@@ -19,14 +21,11 @@ export async function shareGetAll(
 		'Return all',
 	);
 	const limit = parseRequiredNumber(context.getNodeParameter('limit', itemIndex, 100), 'Limit');
-	const qs: IDataObject = {};
-	if (filterPath.trim()) {
-		qs.path = normalizeFilesPath(filterPath);
-	}
-
-	const data = await ocsRequest(context, 'GET', 'shares', undefined, qs);
-	const rawShares = Array.isArray(data) ? data : data ? [data] : [];
-	const shares = rawShares.map((entry) => parseShare(entry));
+	const shares = unwrapResult(
+		await listShares(await createFilesClient(context), {
+			path: filterPath.trim() ? normalizeFilesPath(filterPath) : undefined,
+		}),
+	);
 	const sliced = returnAll ? shares : shares.slice(0, limit);
 
 	if (sliced.length === 0) {

@@ -1,13 +1,14 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
-	buildFilesUrl,
 	contentTypeFromFileName,
+	createFilesClient,
 	fileNameFromPath,
-	nextcloudRequest,
 	resolveUploadPath,
 } from '../../GenericFunctions';
+import { uploadFile } from '../../repositories/FilesFile.repository';
 import { parseRequiredString, parseString } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolvePathFromInput } from '../shared/resolveInput';
 import type { FileOperationContext } from './types';
 
@@ -15,7 +16,7 @@ export async function fileUpload(
 	context: IExecuteFunctions,
 	ctx: FileOperationContext,
 ): Promise<INodeExecutionData> {
-	const { itemIndex, credentials } = ctx;
+	const { itemIndex } = ctx;
 	const targetPath = resolvePathFromInput(context, itemIndex);
 	const binaryPropertyName = parseRequiredString(
 		context.getNodeParameter('binaryPropertyName', itemIndex),
@@ -29,11 +30,14 @@ export async function fileUpload(
 	const uploadPath = resolveUploadPath(targetPath, resolvedFileName);
 	const buffer = await context.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 	const mimeType = binaryMeta?.mimeType ?? contentTypeFromFileName(resolvedFileName);
-	const fileUrl = buildFilesUrl(credentials.baseUrl, credentials.username, uploadPath);
 
-	await nextcloudRequest(context, 'PUT', fileUrl, buffer, {
-		'Content-Type': mimeType,
-	});
+	unwrapResult(
+		await uploadFile(await createFilesClient(context), {
+			uploadPath,
+			body: buffer,
+			contentType: mimeType,
+		}),
+	);
 
 	return {
 		json: {

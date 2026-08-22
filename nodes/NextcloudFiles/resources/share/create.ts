@@ -3,10 +3,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildSharePermissionsBitmask,
-	ocsRequest,
-	parseShare,
+	createFilesClient,
 	validateSharePassword,
 } from '../../GenericFunctions';
+import { createShare } from '../../repositories/FilesShare.repository';
 import {
 	getErrorMessage,
 	parseRequiredBoolean,
@@ -14,6 +14,7 @@ import {
 	parseString,
 	parseStringArray,
 } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolvePathFromInput } from '../shared/resolveInput';
 import type { ShareOperationContext } from './types';
 
@@ -64,8 +65,7 @@ export async function shareCreate(
 	if (publicUpload) body.publicUpload = 'true';
 	if (note.trim()) body.note = note.trim();
 
-	const data = await ocsRequest(context, 'POST', 'shares', body);
-	const share = parseShare(data);
+	const share = unwrapResult(await createShare(await createFilesClient(context), { body }));
 	return {
 		json: share,
 		pairedItem: { item: itemIndex },

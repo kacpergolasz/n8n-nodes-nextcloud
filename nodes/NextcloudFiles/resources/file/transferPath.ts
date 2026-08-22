@@ -1,13 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	buildDestinationHeader,
-	buildFilesUrl,
-	buildOverwriteHeader,
-	nextcloudRequest,
-	normalizeFilesPath,
-} from '../../GenericFunctions';
+import { createFilesClient, normalizeFilesPath } from '../../GenericFunctions';
+import { copyFile, moveFile } from '../../repositories/FilesFile.repository';
 import { parseRequiredBoolean, parseRequiredString } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolvePathFromInput } from '../shared/resolveInput';
 import type { FileOperationContext } from './types';
 
@@ -16,7 +12,7 @@ export async function fileTransferPath(
 	ctx: FileOperationContext,
 	method: 'MOVE' | 'COPY',
 ): Promise<INodeExecutionData> {
-	const { itemIndex, credentials } = ctx;
+	const { itemIndex } = ctx;
 	const sourcePath = resolvePathFromInput(context, itemIndex);
 	const destinationPath = normalizeFilesPath(
 		parseRequiredString(context.getNodeParameter('destinationPath', itemIndex), 'Destination path'),
@@ -25,15 +21,15 @@ export async function fileTransferPath(
 		context.getNodeParameter('overwrite', itemIndex, false),
 		'Overwrite',
 	);
-	const sourceUrl = buildFilesUrl(credentials.baseUrl, credentials.username, sourcePath);
-	await nextcloudRequest(context, method, sourceUrl, undefined, {
-		Destination: buildDestinationHeader(
-			credentials.baseUrl,
-			credentials.username,
+	const client = await createFilesClient(context);
+	const transfer = method === 'MOVE' ? moveFile : copyFile;
+	unwrapResult(
+		await transfer(client, {
+			sourcePath,
 			destinationPath,
-		),
-		Overwrite: buildOverwriteHeader(overwrite),
-	});
+			overwrite,
+		}),
+	);
 	return {
 		json: {
 			path: sourcePath,

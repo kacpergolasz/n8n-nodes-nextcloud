@@ -28,7 +28,11 @@ import { shareDelete } from './resources/share/delete';
 import { shareGetAll } from './resources/share/getAll';
 import { shareUpdate } from './resources/share/update';
 import type { ShareOperationContext } from './resources/share/types';
-import { formatFilesErrorMessage, getHttpStatusCode } from './shared/httpStatus';
+import {
+	formatFilesErrorMessage,
+	getHttpStatusCode,
+	httpCodeForNodeApiError,
+} from './shared/httpStatus';
 import { scrubErrorMessage } from './shared/scrubSecrets';
 import { nodeApiErrorPayload, parseRequiredString } from '../shared/parse';
 
@@ -158,6 +162,7 @@ export class NextcloudFiles implements INodeType {
 					username: credentials.username,
 				});
 				const message = formatFilesErrorMessage(statusCode, scrubbedMessage);
+				const httpCode = httpCodeForNodeApiError(statusCode);
 
 				if (this.continueOnFail()) {
 					returnData.push({
@@ -173,14 +178,17 @@ export class NextcloudFiles implements INodeType {
 					this.getNode(),
 					nodeApiErrorPayload(
 						message,
-						statusCode !== undefined ? { httpCode: statusCode } : undefined,
+						httpCode !== undefined ? { httpCode } : undefined,
 					),
 					{
 						// Pass message explicitly — otherwise NodeApiError replaces it with the
 						// generic status-code text (e.g. 404 → "The resource you are requesting…").
+						// Do NOT pass httpCode for unmapped codes like 412 — n8n remaps those to
+						// the generic 4XX string "Your request is invalid…".
 						message,
+						description: message,
 						itemIndex: i,
-						...(statusCode !== undefined ? { httpCode: String(statusCode) } : {}),
+						...(httpCode !== undefined ? { httpCode } : {}),
 					},
 				);
 			}

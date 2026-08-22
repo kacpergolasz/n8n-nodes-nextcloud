@@ -1,8 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { ocsRequest } from '../../GenericFunctions';
+import { createFilesClient } from '../../GenericFunctions';
+import { deleteShare } from '../../repositories/FilesShare.repository';
 import { getErrorMessage, parsePositiveInt } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import type { ShareOperationContext } from './types';
 
 export async function shareDelete(
@@ -19,7 +21,7 @@ export async function shareDelete(
 		});
 	}
 
-	await ocsRequest(context, 'DELETE', `shares/${shareId}`);
+	unwrapResult(await deleteShare(await createFilesClient(context), { shareId }));
 	return {
 		json: { shareId, deleted: true },
 		pairedItem: { item: itemIndex },
