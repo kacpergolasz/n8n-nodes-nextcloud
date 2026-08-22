@@ -9,15 +9,20 @@ import {
 	matchesPathListFilter,
 	normalizeFilesPath,
 	paginatePathListOptions,
-	parseDirectoryListingFromMultistatus,
 	parentPath,
 	relativePathFromFilesHref,
 	resolvePathListSearchScope,
 	resolveUploadPath,
 	setCachedPathListOptions,
 	sortDirectoryEntries,
+	permissionsToBitmask,
+	buildSharePermissionsBitmask,
+	buildShareUpdateBody,
+	sanitizeSharePermissionLabels,
+	OCS_SHARE_TYPE_PUBLIC,
 } from '../GenericFunctions';
 import type { DirectoryEntry } from '../FilesInterface';
+import { parseDirectoryListingFromMultistatus } from '../repositories/FilesFolder.repository';
 
 const DIRECTORY_MULTISTATUS_XML = `<?xml version="1.0" encoding="utf-8" ?>
 <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
@@ -258,5 +263,100 @@ describe('Nextcloud Files GenericFunctions', () => {
 			'/a.txt',
 			'/z.txt',
 		]);
+	});
+});
+
+describe('Share permission helpers', () => {
+	it('permissionsToBitmask ORs permission labels into the OCS bitmask', () => {
+		expect(permissionsToBitmask(['read', 'share'])).toBe(17);
+		expect(permissionsToBitmask(['read', 'update', 'create', 'delete', 'share'])).toBe(31);
+		expect(permissionsToBitmask(['delete'])).toBe(8);
+	});
+
+	it('buildSharePermissionsBitmask sanitizes public link defaults to read/create only', () => {
+		expect(
+			buildSharePermissionsBitmask(
+				['read', 'update', 'create', 'delete', 'share'],
+				OCS_SHARE_TYPE_PUBLIC,
+			),
+		).toBe(5);
+	});
+
+	it('sanitizeSharePermissionLabels limits public link shares to read/create', () => {
+		expect(
+			sanitizeSharePermissionLabels(['read', 'update', 'share'], OCS_SHARE_TYPE_PUBLIC),
+		).toEqual(['read']);
+		expect(
+			sanitizeSharePermissionLabels(['read', 'create'], OCS_SHARE_TYPE_PUBLIC),
+		).toEqual(['read', 'create']);
+		expect(sanitizeSharePermissionLabels(['update', 'share'], OCS_SHARE_TYPE_PUBLIC)).toEqual(
+			[],
+		);
+	});
+
+	it('buildShareUpdateBody rejects invalid public-link permission sets', () => {
+		expect(() =>
+			buildShareUpdateBody({
+				fieldsToUpdate: ['permissions'],
+				permissions: ['update', 'share'],
+				shareType: OCS_SHARE_TYPE_PUBLIC,
+			}),
+		).toThrow('No valid permissions remain for this share type');
+	});
+
+	it('buildShareUpdateBody defaults public-link permissions to read when none selected', () => {
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['permissions'],
+				permissions: [],
+				shareType: OCS_SHARE_TYPE_PUBLIC,
+			}),
+		).toEqual({
+			permissions: 1,
+		});
+	});
+
+	it('buildShareUpdateBody only sends selected fields', () => {
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['permissions', 'expireDate'],
+				permissions: ['read'],
+				expireDate: '2026-12-31',
+			}),
+		).toEqual({
+			permissions: 1,
+			expireDate: '2026-12-31',
+		});
+
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['publicUpload'],
+				publicUpload: true,
+			}),
+		).toEqual({
+			publicUpload: 'true',
+		});
+
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['publicUpload'],
+				publicUpload: false,
+			}),
+		).toEqual({
+			publicUpload: 'false',
+		});
+
+		expect(
+			buildShareUpdateBody({
+				fieldsToUpdate: ['password'],
+				password: '',
+			}),
+		).toEqual({
+			password: '',
+		});
+
+		expect(() => buildShareUpdateBody({ fieldsToUpdate: [] })).toThrow(
+			'Select at least one field to update',
+		);
 	});
 });

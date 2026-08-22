@@ -421,6 +421,23 @@ No intentional behavior change — same request counts per operation. Repository
 - **Breaking changes**: none expected for workflow JSON or output shapes — internal refactor only.
 - **Rollback**: revert per-phase commits if manual verification fails.
 
+## Addenda
+
+### Phase 2 — Files path helpers + 412 error mapping (2026-08-22)
+
+Impl-review F6. In-scope for Phase 2 even though not listed as named deliverables:
+
+- Extract WebDAV path/URL helpers into `nodes/NextcloudFiles/shared/filesPaths.ts` (re-exported from GenericFunctions for glue callers).
+- Map overwrite conflicts so n8n does not replace 412 with a generic 4XX string: `shared/httpStatus.ts` (`httpCodeForNodeApiError`) wired from `NextcloudFiles.node.ts`.
+
+### Zod object schemas for suite repositories (2026-08-22)
+
+Impl-review F7. Convention for News/Files/Calendar (and new suite repos):
+
+- Prefer Zod default object behavior (unknown keys stripped).
+- Do **not** use `.passthrough()`.
+- Use `.strict()` only when absolutely necessary (e.g. a contract that must reject unknown fields). Deck’s existing `.strict()` schemas are grandfathered; do not treat them as the default for new repositories.
+
 ## References
 
 - Roadmap: `context/foundation/roadmap.md` (F-04)

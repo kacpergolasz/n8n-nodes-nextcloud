@@ -1,8 +1,11 @@
+
 import type { FilesClient } from '../files.client';
 import {
+	buildOcsFormBody,
 	createShare,
 	listShares,
 	parseShare,
+	parseSharePasswordValidationResult,
 	unwrapOcsResponse,
 } from '../repositories/FilesShare.repository';
 
@@ -22,6 +25,25 @@ const CREATE_SHARE_DATA = {
 	item_type: 'file',
 	mimetype: 'application/pdf',
 };
+
+const LIST_SHARE_DATA = [
+	{
+		id: 10,
+		share_type: 0,
+		share_with: 'bob',
+		path: '/Documents/shared-folder',
+		permissions: 31,
+	},
+	{
+		id: 11,
+		share_type: 3,
+		share_with: '',
+		path: '/Public/readme.txt',
+		permissions: 1,
+		url: 'https://cloud.example.com/s/XyZ123',
+		token: 'XyZ123',
+	},
+];
 
 describe('createShare', () => {
 	it('posts form-urlencoded share body and parses the envelope', async () => {
@@ -115,21 +137,165 @@ describe('listShares', () => {
 	});
 });
 
-describe('parseShare / unwrapOcsResponse', () => {
-	it('parseShare normalizes create payloads', () => {
-		expect(parseShare(CREATE_SHARE_DATA)).toMatchObject({
+describe('OCS share helpers', () => {
+	it('parseShare normalizes a create-response object', () => {
+		expect(parseShare(CREATE_SHARE_DATA)).toEqual({
 			id: 42,
 			shareType: 3,
+			shareWith: undefined,
 			path: '/Documents/report.pdf',
+			permissions: 1,
+			url: 'https://cloud.example.com/s/AbCdEfGh',
+			token: 'AbCdEfGh',
+			expiration: '2026-12-31',
+			note: 'Quarterly report',
 			publicUpload: false,
+			uidOwner: 'alice',
+			displaynameOwner: 'Alice Example',
+			itemType: 'file',
+			mimetype: 'application/pdf',
 		});
 	});
 
-	it('unwrapOcsResponse accepts 100 and 200', () => {
+	it('parseShare normalizes each share in a list-response array', () => {
+		const shares = LIST_SHARE_DATA.map((entry) => parseShare(entry));
+
+		expect(shares).toEqual([
+			{
+				id: 10,
+				shareType: 0,
+				shareWith: 'bob',
+				path: '/Documents/shared-folder',
+				permissions: 31,
+				url: undefined,
+				token: undefined,
+				expiration: undefined,
+				note: undefined,
+				publicUpload: undefined,
+				uidOwner: undefined,
+				displaynameOwner: undefined,
+				itemType: undefined,
+				mimetype: undefined,
+			},
+			{
+				id: 11,
+				shareType: 3,
+				shareWith: undefined,
+				path: '/Public/readme.txt',
+				permissions: 1,
+				url: 'https://cloud.example.com/s/XyZ123',
+				token: 'XyZ123',
+				expiration: undefined,
+				note: undefined,
+				publicUpload: undefined,
+				uidOwner: undefined,
+				displaynameOwner: undefined,
+				itemType: undefined,
+				mimetype: undefined,
+			},
+		]);
+	});
+
+	it('unwrapOcsResponse accepts OCS success codes 100 and 200', () => {
 		expect(
 			unwrapOcsResponse({
 				ocs: { meta: { status: 'ok', statuscode: 100 }, data: { id: 1 } },
 			}),
 		).toEqual({ id: 1 });
+		expect(
+			unwrapOcsResponse({
+				ocs: { meta: { status: 'ok', statuscode: 200 }, data: [{ id: 2 }] },
+			}),
+		).toEqual([{ id: 2 }]);
+	});
+
+	it('parseShare normalizes a GET-by-id array response', () => {
+		expect(parseShare([CREATE_SHARE_DATA])).toEqual(parseShare(CREATE_SHARE_DATA));
+	});
+
+	it('parseShare falls back to file_target when path is missing', () => {
+		expect(
+			parseShare({
+				id: 7,
+				share_type: 3,
+				file_target: '/Documents/report.pdf',
+				permissions: 1,
+			}),
+		).toMatchObject({
+			id: 7,
+			shareType: 3,
+			path: '/Documents/report.pdf',
+		});
+	});
+
+	it('buildOcsFormBody retains empty password and expireDate for share clears', () => {
+		expect(buildOcsFormBody({ password: '', expireDate: '' })).toBe('password=&expireDate=');
+		expect(buildOcsFormBody({ permissions: 1, note: undefined })).toBe('permissions=1');
+	});
+
+	it('parseSharePasswordValidationResult returns the server reason when validation fails', () => {
+		expect(
+			parseSharePasswordValidationResult({
+				ocs: {
+					meta: { status: 'ok', statuscode: 200 },
+					data: {
+						passed: false,
+						reason: 'Password must be at least 10 characters long.',
+					},
+				},
+			}),
+		).toBe('Password must be at least 10 characters long.');
+	});
+
+	it('parseSharePasswordValidationResult accepts a passing validation response', () => {
+		expect(
+			parseSharePasswordValidationResult({
+				ocs: {
+					meta: { status: 'ok', statuscode: 200 },
+					data: { passed: true },
+				},
+			}),
+		).toBeUndefined();
+	});
+
+	it('unwrapOcsResponse throws on OCS failure codes below 400', () => {
+		expect(() =>
+			unwrapOcsResponse({
+				ocs: { meta: { status: 'failure', statuscode: 997, message: 'Unauthorized' }, data: [] },
+			}),
+		).toThrow('Unauthorized');
+
+		const error = (() => {
+			try {
+				unwrapOcsResponse({
+					ocs: { meta: { status: 'failure', statuscode: 404, message: 'Not found' }, data: [] },
+				});
+			} catch (caught) {
+				return caught as Error & { statusCode?: number };
+			}
+			return undefined;
+		})();
+
+		expect(error?.message).toBe('Not found');
+		expect(error?.statusCode).toBe(404);
+	});
+
+	it('unwrapOcsResponse surfaces localized expireDate validation messages', () => {
+		const error = (() => {
+			try {
+				unwrapOcsResponse({
+					ocs: {
+						meta: { status: 'failure', statuscode: 404, message: 'Data ważności już minęła' },
+						data: [],
+					},
+				});
+			} catch (caught) {
+				return caught as Error & { statusCode?: number };
+			}
+			return undefined;
+		})();
+
+		expect(error?.message).toBe('Data ważności już minęła');
+		expect(error?.statusCode).toBe(404);
 	});
 });

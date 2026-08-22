@@ -3,19 +3,8 @@ import type { IDataObject } from 'n8n-workflow';
 import type { FilesClient } from './files.client';
 import { FilesClient as FilesClientImpl } from './files.client';
 import type { DirectoryEntry } from './FilesInterface';
-import {
-	listFolder,
-	parseDirectoryListingFromMultistatus,
-} from './repositories/FilesFolder.repository';
-import {
-	buildOcsFormBody,
-	normalizeOcsSharePayload,
-	OcsRequestError,
-	parseShare,
-	parseSharePasswordValidationResult,
-	unwrapOcsResponse,
-	validateSharePasswordWithClient,
-} from './repositories/FilesShare.repository';
+import { listFolder } from './repositories/FilesFolder.repository';
+import { validateSharePasswordWithClient } from './repositories/FilesShare.repository';
 import {
 	buildDestinationHeader,
 	buildFilesUrl,
@@ -55,16 +44,6 @@ export {
 	relativePathFromFilesHref,
 	resolveUploadPath,
 	sortDirectoryEntries,
-};
-
-export {
-	buildOcsFormBody,
-	normalizeOcsSharePayload,
-	OcsRequestError,
-	parseDirectoryListingFromMultistatus,
-	parseShare,
-	parseSharePasswordValidationResult,
-	unwrapOcsResponse,
 };
 
 function normalizeBaseUrl(baseUrl: string): string {
