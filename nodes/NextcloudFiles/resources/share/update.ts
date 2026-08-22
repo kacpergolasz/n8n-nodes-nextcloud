@@ -3,10 +3,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildShareUpdateBody,
-	ocsRequest,
-	parseShare,
+	createFilesClient,
 	validateSharePassword,
 } from '../../GenericFunctions';
+import { getShare, updateShare } from '../../repositories/FilesShare.repository';
 import {
 	getErrorMessage,
 	isPlainObject,
@@ -15,6 +15,7 @@ import {
 	parseString,
 	parseStringArray,
 } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import type { ShareOperationContext } from './types';
 
 const SHARE_UPDATE_FIELD_KEYS = new Set([
@@ -82,8 +83,8 @@ export async function shareUpdate(
 		});
 	}
 
-	const existingData = await ocsRequest(context, 'GET', `shares/${shareId}`);
-	const existingShare = parseShare(existingData);
+	const client = await createFilesClient(context);
+	const existingShare = unwrapResult(await getShare(client, { shareId }));
 
 	let update: ReturnType<typeof parseShareUpdateFields>;
 	try {
@@ -123,8 +124,7 @@ export async function shareUpdate(
 		}
 	}
 
-	const data = await ocsRequest(context, 'PUT', `shares/${shareId}`, body);
-	const share = parseShare(data);
+	const share = unwrapResult(await updateShare(client, { shareId, body }));
 	return {
 		json: share,
 		pairedItem: { item: itemIndex },

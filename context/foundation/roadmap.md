@@ -35,6 +35,11 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-12 | nextcloud-contacts | automate Nextcloud Contacts (port from core n8n Nextcloud node) | S-01 | FR-007 | proposed |
 | S-13 | suite-webhook-triggers | use webhook triggers for suite changes (especially Talk) | S-01, S-05 | FR-010 | proposed |
 | S-14 | news-api-v2 | migrate Nextcloud News node to News API v2 when upstream is production-ready | S-06 | FR-008 | proposed |
+| F-03 | pin-mock-from-types | (foundation) generate n8n pin-data fixtures from entity TypeScript types for UI mocking | F-02 | — | proposed |
+| F-04 | refactor-current-apis | (foundation) suite nodes use typed API clients + Zod-validated repositories (Deck reference pattern) instead of ad-hoc GenericFunctions HTTP | F-02, S-04 | — | proposed |
+| F-05 | adjust-news-api-n8n-standard | (foundation) adjust Nextcloud News API surface to n8n suite standards after client/repository migration | F-04 (News), S-06 | FR-008 | proposed |
+
+### Done
 | F-01 | local-community-node-verify | (foundation) package builds and runs via local n8n community-node link for verification | — | FR-003 | done |
 | S-01 | shared-basic-auth-calendar | create shared Basic Auth credential, run Calendar events, pick resources from lists or manually | F-01 | US-01, FR-001, FR-011 | done |
 | F-02 | validation-refactoring | (foundation) validated parameter/response parsing replaces `as Type` casts | S-01 | — | done |
@@ -42,9 +47,6 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-04 | nextcloud-deck | automate Nextcloud Deck (boards/cards) | S-01 | FR-005 | done |
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | done |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | done |
-| F-03 | pin-mock-from-types | (foundation) generate n8n pin-data fixtures from entity TypeScript types for UI mocking | F-02 | — | proposed |
-| F-04 | refactor-current-apis | (foundation) suite nodes use typed API clients + Zod-validated repositories (Deck reference pattern) instead of ad-hoc GenericFunctions HTTP | F-02, S-04 | — | proposed |
-| F-05 | adjust-news-api-n8n-standard | (foundation) adjust Nextcloud News API surface to n8n suite standards after client/repository migration | F-04 (News), S-06 | FR-008 | proposed |
 
 ## Streams
 

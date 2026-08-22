@@ -72,11 +72,7 @@ export async function renameFolder(
 	if (parsed.success) {
 		return { success: true, response: parsed.response[0] ?? null };
 	}
-	const single = parseWith(result, newsFolderSchema);
-	if (single.success) {
-		return single;
-	}
-	return { success: true, response: null };
+	return parseWith(result, newsFolderSchema);
 }
 
 export type DeleteFolderOptions = {

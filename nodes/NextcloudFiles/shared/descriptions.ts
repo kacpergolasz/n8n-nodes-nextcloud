@@ -41,7 +41,8 @@ export const overwriteField: INodeProperties = {
 	name: 'overwrite',
 	type: 'boolean',
 	default: false,
-	description: 'Whether to overwrite an existing resource at the destination',
+	description:
+		'Whether to overwrite an existing file or folder at the destination. When off, COPY/MOVE fails with 412 if the destination already exists.',
 };
 
 export const sharePermissionsField: INodeProperties = {

@@ -1,12 +1,13 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
-	buildFilesUrl,
 	contentTypeFromFileName,
+	createFilesClient,
 	fileNameFromPath,
-	nextcloudRequest,
 } from '../../GenericFunctions';
+import { downloadFile } from '../../repositories/FilesFile.repository';
 import { parseBinaryBuffer, parseRequiredString } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolvePathFromInput } from '../shared/resolveInput';
 import type { FileOperationContext } from './types';
 
@@ -14,20 +15,14 @@ export async function fileDownload(
 	context: IExecuteFunctions,
 	ctx: FileOperationContext,
 ): Promise<INodeExecutionData> {
-	const { itemIndex, credentials } = ctx;
+	const { itemIndex } = ctx;
 	const sourcePath = resolvePathFromInput(context, itemIndex);
 	const binaryPropertyName = parseRequiredString(
 		context.getNodeParameter('binaryPropertyName', itemIndex),
 		'Binary property',
 	);
-	const fileUrl = buildFilesUrl(credentials.baseUrl, credentials.username, sourcePath);
-	const response = await nextcloudRequest(
-		context,
-		'GET',
-		fileUrl,
-		undefined,
-		{},
-		{ encoding: 'arraybuffer' },
+	const response = unwrapResult(
+		await downloadFile(await createFilesClient(context), { sourcePath }),
 	);
 	const buffer = parseBinaryBuffer(response);
 	const fileName = fileNameFromPath(sourcePath);

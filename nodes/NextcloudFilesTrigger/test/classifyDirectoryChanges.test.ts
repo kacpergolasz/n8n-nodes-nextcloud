@@ -1,4 +1,4 @@
-import { parseDirectoryListingFromMultistatus } from '../../NextcloudFiles/GenericFunctions';
+import { parseDirectoryListingFromMultistatus } from '../../NextcloudFiles/repositories/FilesFolder.repository';
 import type { DirectoryEntry } from '../../NextcloudFiles/FilesInterface';
 import {
 	classifyDirectoryChanges,

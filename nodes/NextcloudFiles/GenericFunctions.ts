@@ -1,163 +1,53 @@
 import type { IDataObject } from 'n8n-workflow';
-import { z } from 'zod';
 
-import { assertHttpMethodIsValid } from '../shared/assertHttpMethodIsValid';
-import type { NextcloudHttpMethod } from '../shared/assertHttpMethodIsValid';
+import type { FilesClient } from './files.client';
+import { FilesClient as FilesClientImpl } from './files.client';
+import type { DirectoryEntry } from './FilesInterface';
+import { listFolder } from './repositories/FilesFolder.repository';
+import { validateSharePasswordWithClient } from './repositories/FilesShare.repository';
 import {
-	isPlainObject,
+	buildDestinationHeader,
+	buildFilesUrl,
+	buildOverwriteHeader,
+	contentTypeFromFileName,
+	directoryEntryToListOption,
+	fileNameFromPath,
+	joinPath,
+	matchesPathListFilter,
+	normalizeFilesPath,
+	parentPath,
+	relativePathFromFilesHref,
+	resolveUploadPath,
+	sortDirectoryEntries,
+} from './shared/filesPaths';
+import {
 	parseNextcloudCredentials,
 	type NextcloudCredentialData,
 } from '../shared/parse';
 import type { NextcloudRequestContext } from '../shared/requestContext';
-import type { DirectoryEntry, ParsedShare } from './FilesInterface';
-import { getHttpStatusCode } from './shared/httpStatus';
-
-export type { NextcloudHttpMethod };
+import { unwrapResult } from '../shared/apiResult';
 
 export type { NextcloudCredentialData };
+export type { NextcloudHttpMethod } from '../shared/assertHttpMethodIsValid';
 
-const FILES_ROOT_MARKER = '/remote.php/dav/files/';
+export {
+	buildDestinationHeader,
+	buildFilesUrl,
+	buildOverwriteHeader,
+	contentTypeFromFileName,
+	directoryEntryToListOption,
+	fileNameFromPath,
+	joinPath,
+	matchesPathListFilter,
+	normalizeFilesPath,
+	parentPath,
+	relativePathFromFilesHref,
+	resolveUploadPath,
+	sortDirectoryEntries,
+};
 
 function normalizeBaseUrl(baseUrl: string): string {
 	return baseUrl.replace(/\/+$/, '');
-}
-
-function parseTagValue(xml: string, tagName: string): string | undefined {
-	const match = xml.match(new RegExp(`<[^>]*:?${tagName}[^>]*>([\\s\\S]*?)<\\/[^>]*:?${tagName}>`, 'i'));
-	return match?.[1]?.trim();
-}
-
-function decodeDavHref(href: string): string {
-	try {
-		return decodeURIComponent(href);
-	} catch {
-		return href;
-	}
-}
-
-/** Normalize a user-facing files path to a leading-slash form without trailing slash (root is `/`). */
-export function normalizeFilesPath(path: string): string {
-	const trimmed = path.trim();
-	if (!trimmed || trimmed === '/') return '/';
-	const withLeading = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-	const normalized = withLeading.replace(/\/+$/, '') || '/';
-	if (normalized === '/') return '/';
-
-	for (const segment of normalized.split('/').filter(Boolean)) {
-		if (segment === '.' || segment === '..') {
-			throw new Error(`Invalid path: "${path}" contains "." or ".." segments`);
-		}
-	}
-
-	return normalized;
-}
-
-/**
- * Build the WebDAV files URL for a path relative to the user's files root.
- * Each path segment is individually encoded; slashes are preserved.
- */
-export function buildFilesUrl(baseUrl: string, username: string, path: string): string {
-	const base = normalizeBaseUrl(baseUrl);
-	const user = encodeURIComponent(username);
-	const normalizedPath = normalizeFilesPath(path);
-	if (normalizedPath === '/') {
-		return `${base}${FILES_ROOT_MARKER}${user}`;
-	}
-	const relative = normalizedPath.replace(/^\/+/, '');
-	const encodedPath = relative.split('/').map((segment) => encodeURIComponent(segment)).join('/');
-	return `${base}${FILES_ROOT_MARKER}${user}/${encodedPath}`;
-}
-
-/** Absolute Destination header value for MOVE/COPY (full WebDAV URL, per-segment encoded). */
-export function buildDestinationHeader(
-	baseUrl: string,
-	username: string,
-	destinationPath: string,
-): string {
-	return buildFilesUrl(baseUrl, username, destinationPath);
-}
-
-/** Overwrite header value for MOVE/COPY (`T` = allow overwrite, `F` = fail if exists). */
-export function buildOverwriteHeader(overwrite: boolean): string {
-	return overwrite ? 'T' : 'F';
-}
-
-/** Extract the user-relative path from a DAV href under `/remote.php/dav/files/{username}/`. */
-export function relativePathFromFilesHref(href: string, username: string): string | undefined {
-	const decoded = decodeDavHref(href).trim();
-	const lower = decoded.toLowerCase();
-	const marker = `${FILES_ROOT_MARKER}${username}/`.toLowerCase();
-	const markerIndex = lower.indexOf(marker);
-	if (markerIndex === -1) {
-		const genericMarker = lower.indexOf(FILES_ROOT_MARKER.toLowerCase());
-		if (genericMarker === -1) return undefined;
-		const tail = decoded.slice(genericMarker + FILES_ROOT_MARKER.length);
-		const segments = tail.split('/').filter(Boolean);
-		if (segments.length < 2) return '/';
-		const relative = segments
-			.slice(1)
-			.map((segment) => decodeURIComponent(segment))
-			.join('/');
-		return relative ? `/${relative}` : '/';
-	}
-	const relative = decoded
-		.slice(markerIndex + marker.length)
-		.replace(/\/+$/, '')
-		.split('/')
-		.map((segment) => decodeURIComponent(segment))
-		.join('/');
-	return relative ? `/${relative}` : '/';
-}
-
-function basenameFromPath(path: string): string {
-	const normalized = normalizeFilesPath(path);
-	if (normalized === '/') return '/';
-	const segments = normalized.split('/').filter(Boolean);
-	return segments[segments.length - 1] ?? '/';
-}
-
-function isCollectionBlock(block: string): boolean {
-	return /<[^>]*:?collection\b/i.test(block);
-}
-
-/**
- * Parse a WebDAV PROPFIND multistatus into directory entries.
- * `parentPath` is the normalized path of the listed directory (used to skip the self response).
- */
-export function parseDirectoryListingFromMultistatus(
-	xml: string,
-	username: string,
-	parentPath = '/',
-): DirectoryEntry[] {
-	const responseBlocks = xml.split(/<[^>]*:?response>/i).slice(1);
-	const normalizedParent = normalizeFilesPath(parentPath);
-	const entries: DirectoryEntry[] = [];
-
-	for (const block of responseBlocks) {
-		const href = parseTagValue(block, 'href');
-		if (!href) continue;
-
-		const path = relativePathFromFilesHref(href, username);
-		if (path === undefined) continue;
-		if (normalizeFilesPath(path) === normalizedParent) continue;
-
-		const isFolder = isCollectionBlock(block);
-		const sizeRaw = parseTagValue(block, 'getcontentlength');
-		const parsedSize = sizeRaw !== undefined ? Number(sizeRaw) : undefined;
-
-		entries.push({
-			href,
-			basename: basenameFromPath(path),
-			path,
-			isFolder,
-			size: parsedSize !== undefined && Number.isFinite(parsedSize) ? parsedSize : undefined,
-			lastModified: parseTagValue(block, 'getlastmodified'),
-			contentType: parseTagValue(block, 'getcontenttype'),
-			etag: parseTagValue(block, 'getetag'),
-		});
-	}
-
-	return entries;
 }
 
 export async function getCredentials(
@@ -172,54 +62,23 @@ export async function getCredentials(
 	};
 }
 
-export async function nextcloudRequest(
-	context: NextcloudRequestContext,
-	method: NextcloudHttpMethod,
-	url: string,
-	body?: string | Buffer | IDataObject,
-	headers?: IDataObject,
-	options?: IDataObject,
-) {
-	assertHttpMethodIsValid(method);
-
-	return await context.helpers.httpRequestWithAuthentication.call(context, 'nextcloudApi', {
-		method: method,
-		url,
-		body,
-		headers: {
-			...(headers ?? {}),
-		},
-		returnFullResponse: false,
-		...(options ?? {}),
-	});
+/** Build a FilesClient that sends WebDAV/OCS calls through n8n's authenticated HTTP helper. */
+export async function createFilesClient(context: NextcloudRequestContext): Promise<FilesClient> {
+	return await FilesClientImpl.fromN8nContext(context);
 }
 
-const DIRECTORY_PROPFIND_BODY = `<?xml version="1.0" encoding="utf-8" ?>
-<d:propfind xmlns:d="DAV:">
-	<d:prop>
-		<d:getetag />
-		<d:getcontenttype />
-		<d:getcontentlength />
-		<d:getlastmodified />
-		<d:resourcetype />
-	</d:prop>
-</d:propfind>`;
-
+/**
+ * List a directory via WebDAV PROPFIND.
+ * Used by Files resources, listSearch, and NextcloudFilesTrigger until Phase 4.
+ */
 export async function loadDirectoryListing(
 	context: NextcloudRequestContext,
-	credentials: NextcloudCredentialData,
+	_credentials: NextcloudCredentialData,
 	directoryPath: string,
 ): Promise<DirectoryEntry[]> {
-	const normalizedDirectory = normalizeFilesPath(directoryPath);
-	const directoryUrl = buildFilesUrl(credentials.baseUrl, credentials.username, normalizedDirectory);
-	const response = await nextcloudRequest(context, 'PROPFIND', directoryUrl, DIRECTORY_PROPFIND_BODY, {
-		Depth: '1',
-		'Content-Type': 'application/xml; charset=utf-8',
-		Accept: 'application/xml',
-	});
-
-	const xml = typeof response === 'string' ? response : JSON.stringify(response);
-	return parseDirectoryListingFromMultistatus(xml, credentials.username, normalizedDirectory);
+	return unwrapResult(
+		await listFolder(await createFilesClient(context), { directoryPath }),
+	);
 }
 
 export const LIST_SEARCH_PAGE_SIZE = 50;
@@ -247,33 +106,6 @@ export function resolvePathListSearchScope(
 	}
 
 	return { includeFiles: true, includeFolders: true };
-}
-
-export function matchesPathListFilter(path: string, basename: string, filter?: string): boolean {
-	const trimmed = filter?.trim();
-	if (!trimmed) return true;
-
-	const lower = trimmed.toLowerCase();
-	return path.toLowerCase().includes(lower) || basename.toLowerCase().includes(lower);
-}
-
-export function directoryEntryToListOption(entry: DirectoryEntry): { name: string; value: string } {
-	const prefix = entry.isFolder ? '📁 ' : '📄 ';
-	const displayPath = entry.path === '/' ? '/' : entry.path.replace(/^\//, '');
-	return {
-		name: `${prefix}${displayPath}`,
-		value: entry.path,
-	};
-}
-
-export function sortDirectoryEntries(entries: DirectoryEntry[]): DirectoryEntry[] {
-	return [...entries].sort((left, right) => {
-		if (left.isFolder !== right.isFolder) {
-			return left.isFolder ? -1 : 1;
-		}
-
-		return left.path.localeCompare(right.path);
-	});
 }
 
 export function paginatePathListOptions<T extends { name: string; value: string }>(
@@ -376,65 +208,6 @@ export async function collectPathEntriesRecursive(
 	return sortDirectoryEntries(results);
 }
 
-export function fileNameFromPath(path: string): string {
-	return basenameFromPath(path);
-}
-
-export function parentPath(path: string): string {
-	const normalized = normalizeFilesPath(path);
-	if (normalized === '/') return '/';
-
-	const segments = normalized.split('/').filter(Boolean);
-	segments.pop();
-	return segments.length === 0 ? '/' : `/${segments.join('/')}`;
-}
-
-function pathBasenameLooksLikeFile(path: string): boolean {
-	const basename = basenameFromPath(path);
-	return /^[^./][^/]*\.[^/]+$/.test(basename);
-}
-
-export function joinPath(parent: string, child: string): string {
-	const normalizedParent = normalizeFilesPath(parent);
-	const trimmedChild = child.trim().replace(/^\/+/, '');
-	if (normalizedParent === '/') return `/${trimmedChild}`;
-	return `${normalizedParent}/${trimmedChild}`;
-}
-
-export function resolveUploadPath(
-	targetPath: string,
-	fileName?: string,
-): string {
-	const normalized = normalizeFilesPath(targetPath);
-	const trimmedFileName = fileName?.trim();
-	if (!trimmedFileName) return normalized;
-	if (normalized === '/') return `/${trimmedFileName}`;
-
-	const basename = basenameFromPath(normalized);
-	if (basename === trimmedFileName || normalized.endsWith(`/${trimmedFileName}`)) {
-		return normalized;
-	}
-
-	if (pathBasenameLooksLikeFile(normalized)) {
-		return joinPath(parentPath(normalized), trimmedFileName);
-	}
-
-	return joinPath(normalized, trimmedFileName);
-}
-
-export function contentTypeFromFileName(fileName: string): string {
-	const lower = fileName.toLowerCase();
-	if (lower.endsWith('.txt')) return 'text/plain';
-	if (lower.endsWith('.json')) return 'application/json';
-	if (lower.endsWith('.pdf')) return 'application/pdf';
-	if (lower.endsWith('.png')) return 'image/png';
-	if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-	if (lower.endsWith('.gif')) return 'image/gif';
-	if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'text/html';
-	if (lower.endsWith('.csv')) return 'text/csv';
-	return 'application/octet-stream';
-}
-
 const PERMISSION_BITMASK: Record<string, number> = {
 	read: 1,
 	update: 2,
@@ -535,62 +308,6 @@ export function buildShareUpdateBody(options: {
 	return body;
 }
 
-const ocsMetaSchema = z.object({
-	status: z.string(),
-	statuscode: z.number(),
-	message: z.union([z.string(), z.null()]).optional(),
-});
-
-const ocsEnvelopeSchema = z.object({
-	ocs: z.object({
-		meta: ocsMetaSchema,
-		data: z.unknown(),
-	}),
-});
-
-const ocsPasswordValidationDataSchema = z
-	.object({
-		passed: z.boolean().optional(),
-		reason: z.string().optional(),
-	})
-	.passthrough();
-
-export class OcsRequestError extends Error {
-	statusCode: number;
-
-	constructor(message: string, statusCode: number) {
-		super(message);
-		this.name = 'OcsRequestError';
-		this.statusCode = statusCode;
-	}
-}
-
-/** Parse the password_policy validate response; returns an error message when validation fails. */
-export function parseSharePasswordValidationResult(response: unknown): string | undefined {
-	const parsed = ocsEnvelopeSchema.safeParse(response);
-	if (!parsed.success) {
-		return undefined;
-	}
-
-	const { meta, data } = parsed.data.ocs;
-	const statusCode = meta.statuscode;
-	const message = meta.message;
-
-	if (statusCode !== 100 && statusCode !== 200) {
-		return message?.trim() || `Password policy request failed with status ${statusCode}`;
-	}
-
-	const validation = ocsPasswordValidationDataSchema.safeParse(data);
-	if (validation.success && validation.data.passed === false) {
-		return (
-			validation.data.reason?.trim() ||
-			'Password does not meet the server password policy for public link shares'
-		);
-	}
-
-	return undefined;
-}
-
 /**
  * Validate a share password against the Nextcloud password_policy app (sharing context).
  * Returns an error message when validation fails or the policy endpoint is unreachable
@@ -601,38 +318,7 @@ export async function validateSharePassword(
 	context: NextcloudRequestContext,
 	password: string,
 ): Promise<string | undefined> {
-	const trimmed = password.trim();
-	if (!trimmed) return undefined;
-
-	const credentials = await getCredentials(context);
-	const url = `${credentials.baseUrl}/ocs/v2.php/apps/password_policy/api/v1/validate?format=json`;
-
-	try {
-		const response = await nextcloudRequest(
-			context,
-			'POST',
-			url,
-			{ password: trimmed, context: 'sharing' },
-			{
-				'OCS-APIRequest': 'true',
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-			},
-			{ json: true },
-		);
-		return parseSharePasswordValidationResult(response);
-	} catch (error) {
-		const status = getHttpStatusCode(error);
-		// password_policy app missing / not routable → keep historical fail-open
-		if (status === 404 || status === 405 || status === 501) {
-			return undefined;
-		}
-		const detail = status !== undefined ? ` (HTTP ${status})` : '';
-		return (
-			`Could not validate share password against the server password policy${detail}. ` +
-			'Retry later, or confirm the password_policy app is reachable.'
-		);
-	}
+	return await validateSharePasswordWithClient(await createFilesClient(context), password);
 }
 
 /** OR permission labels into the Nextcloud OCS permissions bitmask. */
@@ -641,154 +327,4 @@ export function permissionsToBitmask(permissions: string[]): number {
 		(mask, permission) => mask | (PERMISSION_BITMASK[permission.toLowerCase()] ?? 0),
 		0,
 	);
-}
-
-function asString(value: unknown): string | undefined {
-	if (value === undefined || value === null) return undefined;
-	const text = String(value).trim();
-	return text || undefined;
-}
-
-function asNumber(value: unknown): number | undefined {
-	if (value === undefined || value === null || value === '') return undefined;
-	const parsed = Number(value);
-	return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function asBoolean(value: unknown): boolean | undefined {
-	if (value === undefined || value === null || value === '') return undefined;
-	if (typeof value === 'boolean') return value;
-	const normalized = String(value).toLowerCase();
-	if (normalized === 'true' || normalized === '1') return true;
-	if (normalized === 'false' || normalized === '0') return false;
-	return undefined;
-}
-
-/** Normalize OCS share payloads that may be a single object or a one-element array (GET by ID). */
-export function normalizeOcsSharePayload(data: unknown): Record<string, unknown> {
-	if (Array.isArray(data)) {
-		if (data.length === 0) {
-			throw new Error('Invalid OCS share payload');
-		}
-		const first = data[0];
-		if (isPlainObject(first)) {
-			return first;
-		}
-		throw new Error('Invalid OCS share payload');
-	}
-
-	if (isPlainObject(data)) {
-		return data;
-	}
-
-	throw new Error('Invalid OCS share payload');
-}
-
-/** Normalize a single OCS share payload into a stable workflow shape. */
-export function parseShare(data: unknown): ParsedShare {
-	const share = normalizeOcsSharePayload(data);
-	const id = asNumber(share.id);
-	const shareType = asNumber(share.share_type ?? share.shareType);
-	const path = asString(share.path) ?? asString(share.file_target);
-
-	if (id === undefined || shareType === undefined || !path) {
-		throw new Error('Invalid OCS share payload');
-	}
-
-	const permissions = asNumber(share.permissions) ?? 0;
-
-	return {
-		id,
-		shareType,
-		path,
-		permissions,
-		shareWith: asString(share.share_with ?? share.shareWith),
-		url: asString(share.url),
-		token: asString(share.token),
-		expiration: asString(share.expiration ?? share.expire_date ?? share.expireDate),
-		note: asString(share.note),
-		publicUpload: asBoolean(share.public_upload ?? share.publicUpload),
-		uidOwner: asString(share.uid_owner ?? share.uidOwner),
-		displaynameOwner: asString(share.displayname_owner ?? share.displaynameOwner),
-		itemType: asString(share.item_type ?? share.itemType),
-		mimetype: asString(share.mimetype),
-	};
-}
-
-function buildOcsQueryString(qs?: IDataObject): string {
-	const params = new URLSearchParams({ format: 'json' });
-	if (qs) {
-		for (const [key, value] of Object.entries(qs)) {
-			if (value !== undefined && value !== null && value !== '') {
-				params.set(key, String(value));
-			}
-		}
-	}
-	return params.toString();
-}
-
-export function buildOcsFormBody(body?: IDataObject): string | undefined {
-	if (!body) return undefined;
-	const params = new URLSearchParams();
-	for (const [key, value] of Object.entries(body)) {
-		if (value === undefined || value === null) continue;
-		params.set(key, String(value));
-	}
-	return params.toString();
-}
-
-export function unwrapOcsResponse(response: unknown): unknown {
-	const parsed = ocsEnvelopeSchema.safeParse(response);
-	if (!parsed.success) {
-		throw new Error('Invalid OCS response envelope');
-	}
-
-	const { meta, data } = parsed.data.ocs;
-	const statusCode = meta.statuscode;
-	const message = meta.message;
-
-	if (statusCode !== 100 && statusCode !== 200) {
-		throw new OcsRequestError(
-			message?.trim() || `OCS request failed with status ${statusCode}`,
-			statusCode,
-		);
-	}
-
-	return data;
-}
-
-/**
- * Authenticated OCS request against the files_sharing API.
- * Forces JSON output and unwraps the `ocs.data` envelope.
- *
- * OCS/v2 maps business failures (e.g. past expireDate) onto HTTP 4xx with a JSON
- * envelope. Ignore HTTP status so we can surface `ocs.meta.message` instead of
- * n8n's generic NodeApiError 404 text.
- */
-export async function ocsRequest(
-	context: NextcloudRequestContext,
-	method: NextcloudHttpMethod,
-	apiPath: string,
-	body?: IDataObject,
-	qs?: IDataObject,
-): Promise<unknown> {
-	const credentials = await getCredentials(context);
-	const queryString = buildOcsQueryString(qs);
-	const url = `${credentials.baseUrl}/ocs/v2.php/apps/files_sharing/api/v1/${apiPath}?${queryString}`;
-	const formBody = buildOcsFormBody(body);
-	const headers: IDataObject = {
-		'OCS-APIRequest': 'true',
-		Accept: 'application/json',
-	};
-
-	if (formBody !== undefined) {
-		headers['Content-Type'] = 'application/x-www-form-urlencoded';
-	}
-
-	const response = await nextcloudRequest(context, method, url, formBody, headers, {
-		json: true,
-		ignoreHttpStatusErrors: true,
-	});
-
-	return unwrapOcsResponse(response);
 }

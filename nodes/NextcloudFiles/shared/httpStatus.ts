@@ -29,12 +29,43 @@ export function getHttpStatusCode(error: unknown): number | undefined {
 	return undefined;
 }
 
+/** True when the message only restates the HTTP status (axios / client noise). */
+export function isGenericHttpStatusMessage(
+	message: string,
+	statusCode?: number,
+): boolean {
+	const trimmed = message.trim();
+	if (!trimmed) return true;
+
+	if (/^request failed with status code \d{3}\.?$/i.test(trimmed)) return true;
+	if (/^precondition failed\.?$/i.test(trimmed)) return true;
+
+	if (statusCode !== undefined) {
+		const escaped = String(statusCode);
+		if (
+			new RegExp(
+				`^Files API request failed: ${escaped}(?:\\s*[—-]\\s*Request failed with status code ${escaped})?\\.?$`,
+				'i',
+			).test(trimmed)
+		) {
+			return true;
+		}
+		if (new RegExp(`^Files API request failed: ${escaped}\\.?$`, 'i').test(trimmed)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 /**
  * Format user-facing Files errors.
  *
  * Nextcloud's OCS Share API reuses HTTP/OCS 404 for validation failures
  * (e.g. "Expiration date is in the past"). Prefer the scrubbed server message
  * when it is more specific than a bare not-found / transport 404 string.
+ *
+ * WebDAV COPY/MOVE returns 412 when the destination exists and Overwrite is F.
  */
 export function formatFilesErrorMessage(
 	statusCode: number | undefined,
@@ -56,5 +87,31 @@ export function formatFilesErrorMessage(
 		return trimmed;
 	}
 
+	if (statusCode === 412) {
+		// Always use the overwrite hint — client messages still include "412" and n8n's
+		// NodeApiError remaps unknown 4xx httpCodes to a useless generic string.
+		return (
+			'Destination already exists (412). Enable Overwrite, or choose a different destination path.'
+		);
+	}
+
 	return trimmed || 'Unknown error';
+}
+
+/**
+ * n8n `NodeApiError` replaces the message with a generic 4XX/5XX string whenever
+ * `httpCode` is set and `message` is missing — and some UI paths still prefer the
+ * status-code default for codes outside the specific map (e.g. 412 → 4XX generic).
+ * Only forward httpCodes that have a dedicated entry in n8n's STATUS_CODE_MESSAGES.
+ */
+const N8N_SPECIFIC_HTTP_CODES = new Set([
+	400, 401, 402, 403, 404, 405, 429, 500, 502, 503, 504,
+]);
+
+export function httpCodeForNodeApiError(
+	statusCode: number | undefined,
+): string | undefined {
+	if (statusCode === undefined) return undefined;
+	if (!N8N_SPECIFIC_HTTP_CODES.has(statusCode)) return undefined;
+	return String(statusCode);
 }
