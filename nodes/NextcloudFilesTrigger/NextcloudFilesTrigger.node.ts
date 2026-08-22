@@ -75,7 +75,6 @@ export class NextcloudFilesTrigger implements INodeType {
 				description: 'Which create and update events should trigger the workflow',
 			},
 		],
-		usableAsTool: true,
 	};
 
 	methods = {
