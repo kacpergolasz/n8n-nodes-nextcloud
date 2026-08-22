@@ -3,7 +3,7 @@ project: "Nextcloud community node (complete integration)"
 version: 1
 status: draft
 created: 2026-07-18
-updated: 2026-08-13
+updated: 2026-08-22
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -43,6 +43,7 @@ n8n lacks a complete Nextcloud suite: core only offers a thin file surface, and 
 | S-06 | nextcloud-news | automate Nextcloud News | S-01 | FR-008 | done |
 | S-07 | suite-polling-triggers | use polling triggers for suite changes | S-01 | FR-009 | done |
 | F-03 | pin-mock-from-types | (foundation) generate n8n pin-data fixtures from entity TypeScript types for UI mocking | F-02 | — | proposed |
+| F-04 | refactor-current-apis | (foundation) suite nodes use typed API clients + Zod-validated repositories (Deck reference pattern) instead of ad-hoc GenericFunctions HTTP | F-02, S-04 | — | proposed |
 
 ## Streams
 
@@ -53,7 +54,7 @@ Navigation aid — groups items that share a Prerequisites chain. Canonical orde
 | A | Credential & Calendar proof | `F-01` → `S-01` → `S-02` | Quality-first validation path; OAuth follows once Calendar proves the shared credential. Suite Get Many / CalDAV depth lives in Stream D (`S-08`). |
 | B | Suite apps | `S-03` / `S-04` / `S-05` / `S-06` → `S-14` / `S-11` / `S-12` | Parallel after `S-01`; joins Stream A at the shared credential. News API v2 (`S-14`) follows the v1.3 News node. |
 | C | Triggers | `S-07` / `S-13` | Polling after Calendar exists; webhooks after Talk (`S-05`) for FR-010 value. |
-| D | Quality / debt | `F-02` / `F-03` / `S-08` / `S-09` | Cross-cutting validation helpers, pin-data fixtures from entity types, suite-wide Get Many (News Item envelope + reliable Calendar CalDAV), and safe partial Update; can run in parallel once patterns exist (`S-01` / `S-04` / `S-06`). |
+| D | Quality / debt | `F-02` / `F-03` / `F-04` / `S-08` / `S-09` | Cross-cutting validation helpers, pin-data fixtures from entity types, API client + repository refactor (Deck reference), suite-wide Get Many (News Item envelope + reliable Calendar CalDAV), and safe partial Update; can run in parallel once patterns exist (`S-01` / `S-04` / `S-06`). |
 
 ## Baseline
 
@@ -106,6 +107,19 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:** Generate sample JSON directly vs JSON Schema intermediate (`ts-json-schema-generator` / Zod → faker); whether fixtures live as committed `fixtures/*.json` next to `*Interface.ts` or are printed on demand; whether workflow `pinData` import is in scope vs paste-only.
 - **Risk:** n8n UI pin/mock does not consume TypeScript types or JSON Schema — only concrete item JSON. Without a generate→fixture path, mocks drift from entity contracts and Schema Preview / MCP `prepare_test_pin_data` will not cover community-node types.
+- **Status:** proposed
+
+### F-04: Suite API client + repository refactor
+
+- **Outcome:** (foundation) each suite node that still uses ad-hoc `GenericFunctions` HTTP (Calendar CalDAV, Files WebDAV/OCS, News REST, …) is migrated to the **Nextcloud Deck reference pattern**: per-node API client, Zod-validated entity repositories returning `Maybe<T>`, and thin resource handlers that unwrap at the boundary — not throwing through the repository layer.
+- **Change ID:** refactor-current-apis
+- **PRD refs:** —
+- **Unlocks:** consistent, testable API boundaries across the suite; doc-driven client/repository generation via package skills; cleaner foundation for S-08 (pagination) and S-09 (partial update) without duplicating HTTP/parse logic in resources
+- **Prerequisites:** F-02, S-04 (Deck ships the reference client + repository layout)
+- **Parallel with:** F-03, S-02, S-05, S-08, S-09, S-11, S-12, S-13, S-14
+- **Blockers:** —
+- **Unknowns:** Per-app client shape (CalDAV vs OCS vs REST); whether shared `Maybe` / response helpers live under `nodes/shared/`; migration order (Calendar first vs Files/News in parallel); how much of existing `GenericFunctions` stays as transport vs moves into clients.
+- **Risk:** Leaving Calendar/Files/News on legacy GenericFunctions while Deck uses repositories splits error-handling and validation conventions; new suite work (S-08/S-09) would keep patching the old layer instead of the new one.
 - **Status:** proposed
 
 ## Slices
@@ -286,6 +300,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 | S-13 | suite-webhook-triggers | Webhook triggers for Nextcloud suite (Talk-first) | no | After S-01 + S-05; FR-010 |
 | F-02 | validation-refactoring | Replace `as Type` casts with validation helpers | no | After S-01; cross-cutting quality |
 | F-03 | pin-mock-from-types | Generate n8n pin-data fixtures from entity TypeScript types | yes | After F-02; DX for UI pin/mock — sample `[{ json }]` not schema-in-UI |
+| F-04 | refactor-current-apis | Refactor suite nodes to API client + repository layer (Deck reference) | yes | After F-02 + S-04; Calendar/Files/News migration — run `/10x-research refactor-current-apis` first |
 
 ## Investigations
 
