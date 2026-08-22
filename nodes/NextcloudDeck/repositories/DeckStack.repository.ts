@@ -10,14 +10,15 @@ import { z } from 'zod';
 
 import type { DeckClient } from '../deck.client';
 import { deckCardSchema } from './DeckCard.repository';
-import { parseEmpty, parseWith, type Maybe } from '../shared/apiResponseHelpers';
+import { parseEmpty, parseWith, type Maybe } from '../../shared/apiResult';
 
 const deckStackSchema = z
 	.object({
 		id: z.coerce.number(),
 		title: z.string(),
 		boardId: z.coerce.number(),
-		cards: z.array(deckCardSchema),
+		/** Create responses often omit `cards` until the stack is fetched with details. */
+		cards: z.array(deckCardSchema).default([]),
 		order: z.number(),
 		deletedAt: z.number(),
 		lastModified: z.number(),
@@ -28,6 +29,7 @@ const deckStackSchema = z
 const deckStacksSchema = z.array(deckStackSchema);
 
 export type DeckStack = z.infer<typeof deckStackSchema>;
+export { deckStackSchema };
 
 function definedOnly<T extends Record<string, unknown>>(object: T): Record<string, unknown> {
 	return Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));

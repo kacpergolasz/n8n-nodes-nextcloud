@@ -436,13 +436,13 @@ No intentional behavior change — same request counts per operation. Repository
 
 #### Automated
 
-- [ ] 0.1 `npm run lint:safety`
-- [ ] 0.2 `npm run test`
-- [ ] 0.3 `npm run build`
+- [x] 0.1 `npm run lint:safety`
+- [x] 0.2 `npm run test`
+- [x] 0.3 `npm run build`
 
 #### Manual
 
-- [ ] 0.4 Deck smoke test in local n8n (board getAll, card create)
+- [x] 0.4 Deck smoke test in local n8n (board getAll, card create)
 
 ### Phase 1: NextcloudNews
 

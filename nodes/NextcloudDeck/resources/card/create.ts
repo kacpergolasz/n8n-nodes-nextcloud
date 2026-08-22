@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { createDeckClient, formatDeckDueDate, toNodeJson } from '../../GenericFunctions';
 import { createCard } from '../../repositories/DeckCard.repository';
 import { parseRequiredNumber, parseRequiredString, parseString } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveStackFromInput } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
 

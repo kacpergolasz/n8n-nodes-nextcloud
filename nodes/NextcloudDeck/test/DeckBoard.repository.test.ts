@@ -62,6 +62,37 @@ describe('deckBoardSchema', () => {
 			settings: { 'notify-due': 'assigned', calendar: true },
 		});
 	});
+
+	it('accepts null lastModified on default labels from board create', () => {
+		expect(
+			deckBoardSchema.parse({
+				...liveCreateBoard,
+				labels: [
+					{
+						id: 1,
+						title: 'Done',
+						color: '31CC7C',
+						boardId: 12,
+						cardId: null,
+						lastModified: null,
+					},
+					{
+						id: 2,
+						title: 'Todo',
+						color: '0082c9',
+						boardId: 12,
+						cardId: null,
+						lastModified: null,
+					},
+				],
+			}),
+		).toMatchObject({
+			labels: [
+				{ id: 1, lastModified: null },
+				{ id: 2, lastModified: null },
+			],
+		});
+	});
 });
 
 describe('createBoard', () => {
