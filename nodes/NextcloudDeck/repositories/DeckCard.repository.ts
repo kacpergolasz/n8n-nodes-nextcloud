@@ -10,7 +10,7 @@
 import { z } from 'zod';
 
 import type { DeckClient } from '../deck.client';
-import { parseEmpty, parseWith, type Maybe } from '../shared/apiResponseHelpers';
+import { parseEmpty, parseWith, type Maybe } from '../../shared/apiResult';
 
 const deckUserSchema = z
 	.object({

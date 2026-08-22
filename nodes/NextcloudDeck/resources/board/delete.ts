@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { createDeckClient } from '../../GenericFunctions';
 import { deleteBoard } from '../../repositories/DeckBoard.repository';
 import { parseRequiredNumber } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveBoardFromInput } from '../shared/resolveInput';
 import type { BoardOperationContext } from './types';
 

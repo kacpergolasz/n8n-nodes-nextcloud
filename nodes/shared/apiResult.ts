@@ -1,12 +1,10 @@
 /**
- * Shared helpers for the Deck API repositories.
+ * Suite-wide helpers for API repository results.
  *
  * `Maybe<T>` is the declarative result of every API operation: a call either
  * succeeds with the parsed, schema-validated response or fails with an Error —
  * it never throws. `parseWith` validates a successful client response against
  * a zod schema; `parseEmpty` accepts responses without a documented body.
- *
- * Reference: nodes/NextcloudDeck/context/api/documentation/openapi.md
  */
 import { z } from 'zod';
 
@@ -20,7 +18,7 @@ export type Maybe<T> =
 			error: Error;
 	  };
 
-const deckEmptySchema = z.union([z.undefined(), z.record(z.unknown())]);
+const emptyResponseSchema = z.union([z.undefined(), z.record(z.unknown())]);
 
 export function parseWith<T>(result: Maybe<unknown>, schema: z.ZodType<T>): Maybe<T> {
 	if (!result.success) {
@@ -38,7 +36,7 @@ export function parseEmpty(result: Maybe<unknown>): Maybe<null> {
 		return result;
 	}
 	try {
-		deckEmptySchema.parse(result.response);
+		emptyResponseSchema.parse(result.response);
 		return { success: true, response: null };
 	} catch (error) {
 		return { success: false, error: error instanceof Error ? error : new Error(String(error)) };

@@ -3,7 +3,7 @@ import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import type { DeckClient } from '../../deck.client';
 import { resolveBoardId, resolveStackId } from '../../GenericFunctions';
 import { getStacks } from '../../repositories/DeckStack.repository';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 
 /**
  * Read a resourceLocator value, coercing numeric expression results

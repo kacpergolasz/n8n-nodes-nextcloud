@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { createDeckClient, filterActiveBoards } from '../../GenericFunctions';
 import { getBoards } from '../../repositories/DeckBoard.repository';
 import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import type { BoardOperationContext } from './types';
 
 export async function boardGetAll(

@@ -9,7 +9,7 @@ import {
 } from '../../GenericFunctions';
 import { getBoard, updateBoard } from '../../repositories/DeckBoard.repository';
 import { parseRequiredNumber, parseString } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveBoardFromInput } from '../shared/resolveInput';
 import type { BoardOperationContext } from './types';
 

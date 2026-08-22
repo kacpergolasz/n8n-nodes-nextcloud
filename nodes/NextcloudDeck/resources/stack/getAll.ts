@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { createDeckClient, toNodeJson } from '../../GenericFunctions';
 import { getStacks } from '../../repositories/DeckStack.repository';
 import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import type { StackOperationContext } from './types';
 
 export async function stackGetAll(

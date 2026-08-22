@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { createDeckClient, resolveCardId } from '../../GenericFunctions';
 import { deleteCard } from '../../repositories/DeckCard.repository';
 import { parseRequiredNumber } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveCardStackId } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
 

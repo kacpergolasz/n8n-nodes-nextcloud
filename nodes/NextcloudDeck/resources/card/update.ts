@@ -11,7 +11,7 @@ import {
 } from '../../GenericFunctions';
 import { getCard, updateCard } from '../../repositories/DeckCard.repository';
 import { parseRequiredNumber, parseString } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveCardStackId } from '../shared/resolveInput';
 import type { CardOperationContext } from './types';
 

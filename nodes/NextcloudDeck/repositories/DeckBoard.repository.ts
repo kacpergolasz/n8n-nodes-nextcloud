@@ -11,7 +11,7 @@
 import { z } from 'zod';
 
 import type { DeckClient } from '../deck.client';
-import { parseEmpty, parseWith, type Maybe } from '../shared/apiResponseHelpers';
+import { parseEmpty, parseWith, type Maybe } from '../../shared/apiResult';
 
 export type DeckAclParticipantType = 0 | 1 | 7;
 
@@ -32,7 +32,8 @@ const deckLabelSchema = z
 		color: z.string(),
 		boardId: z.coerce.number(),
 		cardId: z.union([z.coerce.number(), z.null()]),
-		lastModified: z.number().optional(),
+		/** Live create responses often send `null` for untouched default labels. */
+		lastModified: z.number().nullish(),
 		ETag: z.string().optional(),
 	})
 	.strict();

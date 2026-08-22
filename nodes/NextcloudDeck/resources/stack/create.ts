@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { createDeckClient, toNodeJson } from '../../GenericFunctions';
 import { createStack } from '../../repositories/DeckStack.repository';
 import { parseRequiredNumber, parseRequiredString } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import type { StackOperationContext } from './types';
 
 export async function stackCreate(

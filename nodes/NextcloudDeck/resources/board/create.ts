@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { createDeckClient, normalizeDeckColor } from '../../GenericFunctions';
 import { createBoard } from '../../repositories/DeckBoard.repository';
 import { parseRequiredString, parseString } from '../../../shared/parse';
-import { unwrapResult } from '../../shared/apiResponseHelpers';
+import { unwrapResult } from '../../../shared/apiResult';
 import type { BoardOperationContext } from './types';
 
 export async function boardCreate(

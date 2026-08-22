@@ -13,7 +13,7 @@ import type { DeckCard } from './repositories/DeckCard.repository';
 import type { DeckBoard } from './repositories/DeckBoard.repository';
 import { getBoards } from './repositories/DeckBoard.repository';
 import { getStacks } from './repositories/DeckStack.repository';
-import { unwrapResult } from './shared/apiResponseHelpers';
+import { unwrapResult } from '../shared/apiResult';
 
 export { parseBoardAdditionalFields, parseCardAdditionalFields } from './DeckSchemas';
 
