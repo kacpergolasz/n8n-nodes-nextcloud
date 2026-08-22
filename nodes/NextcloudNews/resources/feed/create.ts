@@ -1,8 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { firstFeed, newsRequest } from '../../GenericFunctions';
+import { createNewsClient } from '../../GenericFunctions';
+import { createFeed } from '../../repositories/NewsFeed.repository';
 import { parseRequiredString } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { feedToJson } from '../shared/entityJson';
 import { resolveOptionalFolderId } from '../shared/resolveInput';
 import type { FeedOperationContext } from './types';
@@ -21,18 +23,12 @@ export async function feedCreate(
 
 	const folderId = resolveOptionalFolderId(context, itemIndex);
 
-	const response = await newsRequest(context, 'POST', '/feeds', {
-		body: {
+	const feed = unwrapResult(
+		await createFeed(await createNewsClient(context), {
 			url: feedUrl.trim(),
 			folderId,
-		},
-	});
-	const feed = firstFeed(response);
-	if (!feed) {
-		throw new NodeOperationError(context.getNode(), 'Feed create returned an empty response', {
-			itemIndex,
-		});
-	}
+		}),
+	);
 
 	return {
 		json: feedToJson(feed),

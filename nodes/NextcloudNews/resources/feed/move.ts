@@ -1,6 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { newsRequest } from '../../GenericFunctions';
+import { createNewsClient } from '../../GenericFunctions';
+import { moveFeed } from '../../repositories/NewsFeed.repository';
+import { unwrapResult } from '../../../shared/apiResult';
 import { resolveFeedFromInput, resolveOptionalFolderId } from '../shared/resolveInput';
 import type { FeedOperationContext } from './types';
 
@@ -12,9 +14,12 @@ export async function feedMove(
 	const feedId = resolveFeedFromInput(context, itemIndex);
 	const folderId = resolveOptionalFolderId(context, itemIndex);
 
-	await newsRequest(context, 'POST', `/feeds/${feedId}/move`, {
-		body: { folderId },
-	});
+	unwrapResult(
+		await moveFeed(await createNewsClient(context), {
+			feedId: Number(feedId),
+			folderId,
+		}),
+	);
 
 	return {
 		json: { id: Number(feedId), folderId, moved: true },

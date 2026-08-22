@@ -20,12 +20,16 @@ export type Maybe<T> =
 
 const emptyResponseSchema = z.union([z.undefined(), z.record(z.unknown())]);
 
-export function parseWith<T>(result: Maybe<unknown>, schema: z.ZodType<T>): Maybe<T> {
+export function parseWith<S extends z.ZodTypeAny>(
+	result: Maybe<unknown>,
+	schema: S,
+): Maybe<z.output<S>> {
 	if (!result.success) {
 		return result;
 	}
 	try {
-		return { success: true, response: schema.parse(result.response) };
+		const parsed: z.output<S> = schema.parse(result.response);
+		return { success: true, response: parsed };
 	} catch (error) {
 		return { success: false, error: error instanceof Error ? error : new Error(String(error)) };
 	}

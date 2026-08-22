@@ -6,8 +6,10 @@ import {
 	normalizeNewsBatchSize,
 	type NewsItemsQueryType,
 } from '../../../shared/pagination';
-import { newsRequest, unwrapItems } from '../../GenericFunctions';
+import { createNewsClient } from '../../GenericFunctions';
+import { getItems } from '../../repositories/NewsItem.repository';
 import { parseRequiredBoolean, parseRequiredNumber } from '../../../shared/parse';
+import { unwrapResult } from '../../../shared/apiResult';
 import { itemToJson } from '../shared/entityJson';
 import {
 	resolveOptionalFeedId,
@@ -86,7 +88,16 @@ export async function itemGetAll(
 		oldestFirst,
 	});
 
-	const items = unwrapItems(await newsRequest(context, 'GET', '/items', { qs }));
+	const items = unwrapResult(
+		await getItems(await createNewsClient(context), {
+			batchSize: Number(qs.batchSize),
+			offset: Number(qs.offset),
+			type: qs.type !== undefined ? Number(qs.type) : undefined,
+			id: qs.id !== undefined ? Number(qs.id) : undefined,
+			getRead: qs.getRead !== undefined ? Boolean(qs.getRead) : undefined,
+			oldestFirst: qs.oldestFirst !== undefined ? Boolean(qs.oldestFirst) : undefined,
+		}),
+	);
 	const nextOffset = newsItemsNextOffsetHint(items, effectiveBatchSize);
 
 	return [

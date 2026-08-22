@@ -115,16 +115,16 @@ describe('itemGetAll', () => {
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		expect(httpRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
 			method: 'GET',
-			url: 'https://cloud.example.com/index.php/apps/news/api/v1-3/items',
-			qs: buildNewsItemsQueryParams({
-				batchSize: 3,
-				offset: 0,
-				type: 3,
-				id: 0,
-				getRead: false,
-				oldestFirst: false,
-			}),
+			url: 'https://cloud.example.com/index.php/apps/news/api/v1-3/items?batchSize=3&offset=0&type=3&id=0&getRead=false&oldestFirst=false',
 		});
+		expect(buildNewsItemsQueryParams({
+			batchSize: 3,
+			offset: 0,
+			type: 3,
+			id: 0,
+			getRead: false,
+			oldestFirst: false,
+		})).toMatchObject({ batchSize: 3, type: 3 });
 
 		expect(result).toHaveLength(1);
 		expect(result[0].json).toEqual({
@@ -159,15 +159,8 @@ describe('itemGetAll', () => {
 			{ itemIndex: 1, credentials: CREDENTIALS },
 		);
 
-		expect(httpRequestWithAuthentication.mock.calls[0][1].qs).toEqual(
-			buildNewsItemsQueryParams({
-				batchSize: 20,
-				offset: 43,
-				type: 1,
-				id: 12,
-				getRead: false,
-				oldestFirst: false,
-			}),
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toBe(
+			'https://cloud.example.com/index.php/apps/news/api/v1-3/items?batchSize=20&offset=43&type=1&id=12&getRead=false&oldestFirst=false',
 		);
 		expect(result).toHaveLength(1);
 		expect(result[0].json.nextOffset).toBeNull();
@@ -193,12 +186,10 @@ describe('itemGetAll', () => {
 			{ itemIndex: 0, credentials: CREDENTIALS },
 		);
 
-		expect(httpRequestWithAuthentication.mock.calls[0][1].qs).toMatchObject({
-			type: 0,
-			id: 67,
-			batchSize: 10,
-			getRead: true,
-		});
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('type=0');
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('id=67');
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('batchSize=10');
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('getRead=true');
 	});
 
 	it('maps Unread Only to getRead=false for type All', async () => {
@@ -219,13 +210,11 @@ describe('itemGetAll', () => {
 			{ itemIndex: 0, credentials: CREDENTIALS },
 		);
 
-		expect(httpRequestWithAuthentication.mock.calls[0][1].qs).toMatchObject({
-			type: 3,
-			id: 0,
-			getRead: false,
-			batchSize: 50,
-			offset: 0,
-		});
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('type=3');
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('id=0');
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('getRead=false');
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('batchSize=50');
+		expect(httpRequestWithAuthentication.mock.calls[0][1].url).toContain('offset=0');
 	});
 
 	it('returns { items: [], nextOffset: null } when News returns no items', async () => {

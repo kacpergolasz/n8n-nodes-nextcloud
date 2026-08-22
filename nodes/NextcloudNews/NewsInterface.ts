@@ -13,9 +13,10 @@ export type NewsFeed = {
 	url: string;
 	title: string;
 	faviconLink?: string | null;
-	added?: number;
+	added?: number | null;
 	folderId?: number | null;
-	unreadCount?: number;
+	unreadCount?: number | null;
+	nextUpdateTime?: number | null;
 	link?: string | null;
 	pinned?: boolean;
 };
@@ -27,12 +28,12 @@ export type NewsItem = {
 	url?: string | null;
 	title?: string | null;
 	author?: string | null;
-	pubDate?: number;
+	pubDate?: number | null;
 	body?: string | null;
 	feedId?: number;
 	unread?: boolean;
 	starred?: boolean;
-	lastModified?: number;
+	lastModified?: number | string | null;
 };
 
 export type NewsFoldersResponse = {
